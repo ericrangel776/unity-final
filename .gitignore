@@ -1,0 +1,9 @@
+# --- Claude Code (append these lines to your .gitignore) ---
+# Personal, machine-specific overrides: never commit
+.claude/settings.local.json
+CLAUDE.local.md
+# Python bytecode (hooks and your own code)
+__pycache__/
+# Tool caches
+.ruff_cache/
+.pytest_cache/

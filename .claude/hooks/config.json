@@ -1,0 +1,32 @@
+{
+  "_help": "Settings read by the hook scripts in this folder. Edit per project. Keys starting with _ are comments.",
+
+  "_check_command": "Run by verify_on_stop.py when Claude tries to finish with uncommitted changes. Empty string = disabled. Examples: 'uv run pytest -q', 'npm test', 'dotnet test', 'ruff check . && pytest -q'",
+  "check_command": "ruff check . --extend-exclude .claude",
+  "check_timeout_seconds": 300,
+  "max_stop_retries": 3,
+
+  "_format_commands": "Run after every edit, by file extension. {file} is replaced with the edited path. Skipped silently if the tool is not installed.",
+  "format_commands": {
+    ".py": "ruff format {file}",
+    ".js": "npx --no-install prettier --write {file}",
+    ".jsx": "npx --no-install prettier --write {file}",
+    ".ts": "npx --no-install prettier --write {file}",
+    ".tsx": "npx --no-install prettier --write {file}",
+    ".json": "npx --no-install prettier --write {file}",
+    ".css": "npx --no-install prettier --write {file}",
+    ".html": "npx --no-install prettier --write {file}",
+    ".md": "npx --no-install prettier --write {file}"
+  },
+
+  "_lint_commands": "Run after every edit. If the linter fails, its output is sent back to Claude so it fixes the problem right away.",
+  "lint_commands": {
+    ".py": "ruff check {file}"
+  },
+
+  "_protected_paths": "Glob patterns (relative to the project root) Claude may not edit. Secrets, lockfiles and .git are always protected.",
+  "protected_paths": [
+    ".github/workflows/**",
+    "migrations/**"
+  ]
+}
