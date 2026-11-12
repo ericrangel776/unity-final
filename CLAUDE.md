@@ -41,10 +41,30 @@ Memories; run structure like Slay the Spire). Original assets/names only - no IP
 4. Boss AI + juice (15-card boss deck, telegraphs, hit-stop, VFX/SFX)
 
 ## Commands
-- TODO: add setup, run, test (Unity Test Runner), and lint commands once the Unity project exists.
+Unity **6000.3.24f1** (6.3 LTS), URP 3D, Input System only (legacy input disabled).
+Close the Editor before batchmode runs (a project can only be open once).
+- Open: Unity Hub -> Add -> select the repo root. First import takes several minutes (shaders).
+- EditMode tests:
+  `"/c/Program Files/Unity/Hub/Editor/6000.3.24f1/Editor/Unity.exe" -batchmode -nographics -projectPath "$(pwd -W)" -runTests -testPlatform EditMode -testResults "$(pwd -W)/TestResults/editmode.xml" -logFile "$(pwd -W)/TestResults/editmode.log"`
+- PlayMode tests: same command with `-testPlatform PlayMode` (and `playmode.*` file names).
+- Result: exit code 0 = all passed; summary in the `<test-run ...>` line of the XML.
+- Lint: none yet; compile errors show as `error CS` lines in the log.
 
 ## Architecture
-- TODO: map the main folders (e.g. under `Assets/`) once the Unity project is created.
+- `Assets/_Project/` - all our code/content (keeps it apart from template/third-party assets).
+  - `Scripts/Core` (`DeckArpg.Core`) - data + rules, no scene deps: `CardData`, `RuntimeCardInstance`,
+    `AttackPayload`, clash/Sleight math. References nothing of ours.
+  - `Scripts/Gameplay` (`DeckArpg.Gameplay`) - MonoBehaviours: player, `DeckRuntimeManager`,
+    `CombatActionController`, enemies, boss, rooms. Refs Core, Input System, Cinemachine.
+  - `Scripts/UI` (`DeckArpg.UI`) - hand HUD, Active Reload bar, reward/map-card screens. Refs Core, Gameplay, uGUI/TMP.
+  - `Scripts/Editor` (`DeckArpg.Editor`) - editor-only tools (card authoring, debug windows).
+  - `Tests/EditMode`, `Tests/PlayMode` - NUnit test assemblies (`DeckArpg.Tests.*`).
+  - Add content folders (`Prefabs/`, `ScriptableObjects/Cards/`, `Art/`, `Audio/`, `Scenes/`) when the
+    first asset goes in - git does not track empty folders and Unity churns their `.meta` files.
+- Dependency direction: Core <- Gameplay <- UI. Never reference upward. Namespace = assembly name.
+- `Assets/Settings/` - URP pipeline/renderer assets (PC + Mobile); `Assets/Scenes/SampleScene` - template scene.
+- `Assets/InputSystem_Actions.inputactions` - project-wide input actions (`Player`, `UI` maps).
+- Commit `Assets/`, `Packages/`, `ProjectSettings/` and every `.meta`; `Library/`, `Logs/`, `UserSettings/` are ignored.
 - `docs/specs/` - feature specs written with /spec
 - `docs/notes/CURRENT.md` - running notes for the task in progress (/handoff)
 

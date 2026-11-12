@@ -1,0 +1,22 @@
+{
+    "name": "DeckArpg.Tests.PlayMode",
+    "rootNamespace": "DeckArpg.Tests.PlayMode",
+    "references": [
+        "UnityEngine.TestRunner",
+        "DeckArpg.Core",
+        "DeckArpg.Gameplay"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

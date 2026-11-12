@@ -1,0 +1,33 @@
+# Normalize text files; Unity YAML assets are text (Force Text serialization)
+* text=auto
+
+# Unity YAML: merge with Unity's Smart Merge (UnityYAMLMerge) if configured; never diff as binary
+*.unity    text merge=unityyamlmerge eol=lf
+*.prefab   text merge=unityyamlmerge eol=lf
+*.asset    text merge=unityyamlmerge eol=lf
+*.mat      text merge=unityyamlmerge eol=lf
+*.anim     text merge=unityyamlmerge eol=lf
+*.controller text merge=unityyamlmerge eol=lf
+*.overrideController text merge=unityyamlmerge eol=lf
+*.physicMaterial text merge=unityyamlmerge eol=lf
+*.meta     text eol=lf
+*.asmdef   text eol=lf
+*.inputactions text eol=lf
+
+*.cs       text diff=csharp
+
+# Binary assets
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.psd  binary
+*.tga  binary
+*.exr  binary
+*.hdr  binary
+*.fbx  binary
+*.blend binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.ttf  binary
+*.otf  binary

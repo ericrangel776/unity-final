@@ -1,0 +1,19 @@
+{
+    "name": "DeckArpg.Editor",
+    "rootNamespace": "DeckArpg.Editor",
+    "references": [
+        "DeckArpg.Core",
+        "DeckArpg.Gameplay"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
