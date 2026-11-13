@@ -227,8 +227,13 @@ namespace DeckArpg.Gameplay
             mat.SetFloat("_Blend", 2f);        // additive
             mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
             mat.SetFloat("_DstBlend", (float)BlendMode.One);
+            mat.SetFloat("_DstBlendAlpha", (float)BlendMode.One);
             mat.SetFloat("_ZWrite", 0f);
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            // What URP's material validator would otherwise fix up on import (keeps rebuilds stable).
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.SetShaderPassEnabled("DepthOnly", false);
+            mat.SetShaderPassEnabled("SHADOWCASTER", false);
             mat.renderQueue = (int)RenderQueue.Transparent;
             if (texture != null) mat.SetTexture(BaseMapId, texture);
         }
