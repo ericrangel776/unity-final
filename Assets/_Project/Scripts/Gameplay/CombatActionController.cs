@@ -12,6 +12,9 @@ namespace DeckArpg.Gameplay
     [RequireComponent(typeof(CombatantStatus))]
     public sealed class CombatActionController : MonoBehaviour
     {
+        [Tooltip("Seconds after a card activates before its hitbox can damage bodies. It can still clash " +
+                 "during this windup, which is the window for answering it with a 0-card.")]
+        [SerializeField] private float bodyHitDelay;
         [Header("Strike (melee box in front)")]
         [SerializeField] private float strikeReach = 1.1f;
         [SerializeField] private Vector3 strikeSize = new Vector3(1.6f, 1.2f, 1.2f);
@@ -31,6 +34,7 @@ namespace DeckArpg.Gameplay
 
         public CombatantStatus Status { get; private set; }
         public int ActiveHitboxCount => active.Count;
+        public float BodyHitDelay { get => bodyHitDelay; set => bodyHitDelay = Mathf.Max(0f, value); }
 
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
         public event Action<RuntimeCardInstance, bool> CardBroken;
@@ -57,17 +61,17 @@ namespace DeckArpg.Gameplay
             {
                 case CardShape.Throw:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
-                    hb.InitSphere(this, payload, throwRadius, throwLifetime, aimDirection * throwSpeed, showHitboxes);
+                    hb.InitSphere(this, payload, throwRadius, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
                     break;
                 case CardShape.Arcana:
                     go.transform.SetParent(transform, false);
                     go.transform.position = origin;
-                    hb.InitSphere(this, payload, arcanaRadius, arcanaDuration, Vector3.zero, showHitboxes);
+                    hb.InitSphere(this, payload, arcanaRadius, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
                     break;
                 default:
                     go.transform.SetParent(transform, false);
                     go.transform.SetPositionAndRotation(origin + aimDirection * strikeReach, Quaternion.LookRotation(aimDirection));
-                    hb.InitBox(this, payload, strikeSize, strikeDuration, showHitboxes);
+                    hb.InitBox(this, payload, strikeSize, strikeDuration, bodyHitDelay, showHitboxes);
                     break;
             }
 

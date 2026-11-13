@@ -176,11 +176,45 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void DeleteFromCurrentCycle_CardNotInDiscard_ReturnsFalse()
+        public void DeleteFromCurrentCycle_CardOutsideCycle_ReturnsFalse()
         {
             Init(cards.Numbered(1, 2, 3));
-            Assert.IsFalse(deck.DeleteFromCurrentCycle(deck.Hand[0]));
+            Assert.IsFalse(deck.DeleteFromCurrentCycle(cards.Card(5)));
             Assert.IsFalse(deck.DeleteFromCurrentCycle(null));
+        }
+
+        [Test]
+        public void DeleteFromCurrentCycle_CardReloadedIntoHand_IsRemovedAndSlotRefilled()
+        {
+            // Slow projectile: card played, owner reloads before the 0-break lands.
+            // 3-card deck: the only discarded card must come back into the empty slot 0.
+            Init(cards.Numbered(1, 2, 3));
+            deck.TryPlay(0, out var played);
+            Assert.IsTrue(deck.Reload());
+            Assert.AreSame(played, deck.Hand[0]);
+
+            Assert.IsTrue(deck.DeleteFromCurrentCycle(played));
+
+            Assert.IsNull(deck.Hand[0], "Slot refills from the (empty) queue.");
+            Assert.AreEqual(1, deck.DeletedThisCycleCount);
+            Assert.AreEqual(3, deck.CyclingCardCount + deck.DeletedThisCycleCount, "No card lost or duplicated.");
+        }
+
+        [Test]
+        public void DeleteFromCurrentCycle_CardInDrawQueue_IsRemoved()
+        {
+            var all = cards.Numbered(1, 2, 3, 4, 5);
+            Init(all);
+            var queued = all.First(c => !deck.Hand.Contains(c)); // 2 of the 5 were not dealt
+
+            Assert.IsTrue(deck.DeleteFromCurrentCycle(queued));
+
+            Assert.AreEqual(1, deck.DrawCount);
+            Assert.AreEqual(1, deck.DeletedThisCycleCount);
+            Assert.AreEqual(5, deck.CyclingCardCount + deck.DeletedThisCycleCount, "No card lost or duplicated.");
+            deck.TryPlay(0, out _);
+            deck.TryPlay(0, out _);
+            Assert.IsFalse(deck.DiscardPile.Contains(queued), "Deleted card is never drawn.");
         }
 
         [Test]

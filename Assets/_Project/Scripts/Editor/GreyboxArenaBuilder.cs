@@ -29,6 +29,7 @@ namespace DeckArpg.Editor
         private const float ArenaHalfSize = 12f;
         private static readonly Quaternion IsoRotation = Quaternion.Euler(50f, 45f, 0f);
         private const float CameraDistance = 22f;
+        public const float DummyParryWindow = 0.3f;
 
         [MenuItem("DeckArpg/Build M1 Arena")]
         public static void Build()
@@ -155,7 +156,8 @@ namespace DeckArpg.Editor
             var status = root.AddComponent<CombatantStatus>();
             status.Team = Team.Enemy;
             SetInt(status, "maxHp", 60);
-            root.AddComponent<CombatActionController>();
+            // Windup between the swing activating and it hurting: the window to answer with a 0-Parry.
+            root.AddComponent<CombatActionController>().BodyHitDelay = DummyParryWindow;
             var deckManager = root.AddComponent<DeckRuntimeManager>();
             AssignDeck(deckManager, deck);
             root.AddComponent<TrainingDummyEnemy>();

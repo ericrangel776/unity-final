@@ -111,14 +111,33 @@ namespace DeckArpg.Core
         }
 
         /// <summary>
-        /// A played card that was broken by a 0 is removed from discard until the next reload.
-        /// Returns false if the card is not in the discard pile.
+        /// A played card that was broken by a 0 is set aside until the next reload. Usually it is in
+        /// discard, but a slow projectile can outlive a reload, so the hand (slot is refilled) and the
+        /// draw queue are searched too. Returns false if the card is not in this cycle.
         /// </summary>
         public bool DeleteFromCurrentCycle(RuntimeCardInstance card)
         {
-            if (card == null || !discard.Remove(card)) return false;
+            if (card == null || !RemoveFromCycle(card)) return false;
             deletedThisCycle.Add(card);
             Changed?.Invoke();
+            return true;
+        }
+
+        private bool RemoveFromCycle(RuntimeCardInstance card)
+        {
+            if (discard.Remove(card)) return true;
+
+            for (int i = 0; i < HandSize; i++)
+            {
+                if (hand[i] != card) continue;
+                hand[i] = DrawNext();
+                return true;
+            }
+
+            if (!drawQueue.Contains(card)) return false;
+            var remaining = drawQueue.ToArray();
+            drawQueue.Clear();
+            foreach (var c in remaining) if (c != card) drawQueue.Enqueue(c);
             return true;
         }
 

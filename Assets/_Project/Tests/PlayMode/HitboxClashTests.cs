@@ -161,6 +161,61 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(body.MaxHp, body.Hp);
         }
 
+        private static IEnumerator WaitSeconds(float seconds)
+        {
+            float end = Time.time + seconds;
+            while (Time.time < end) yield return new WaitForFixedUpdate();
+        }
+
+        [UnityTest]
+        public IEnumerator EnemyWindup_WithoutParry_BodyHitLandsAfterDelay()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            var enemy = MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 1.5f));
+            enemy.BodyHitDelay = 0.3f;
+            enemy.Spawn(Payload(enemy, 9, tick: 10), Vector3.back);
+
+            yield return Physics();
+            Assert.AreEqual(body.MaxHp, body.Hp, "No damage during the windup.");
+
+            yield return WaitSeconds(0.4f);
+            Assert.AreEqual(body.MaxHp - 9 * CombatMath.DamagePerPoint, body.Hp);
+        }
+
+        [UnityTest]
+        public IEnumerator Zero_PlayedDuringEnemyWindup_PreventsBodyDamage()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            var player = MakeCombatant(Team.Player, Vector3.zero);
+            var enemy = MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 1.5f));
+            enemy.BodyHitDelay = 0.3f;
+            enemy.Spawn(Payload(enemy, 9, tick: 10), Vector3.back); // already overlaps the body
+
+            yield return Physics(2);
+            player.Spawn(Payload(player, 0, tick: 11, zero: true), Vector3.forward);
+            yield return WaitSeconds(0.5f);
+
+            Assert.AreEqual(body.MaxHp, body.Hp, "A timely 0-parry must stop the hit.");
+            Assert.IsTrue(enemy.Status.IsStunned);
+            Assert.AreEqual(0, enemy.ActiveHitboxCount);
+        }
+
+        [UnityTest]
+        public IEnumerator ClashLoser_OverlappingBody_DealsNoDamage()
+        {
+            // Enemy's losing box touches the player's body in the same step it clashes.
+            var body = MakeBody(Team.Player, Vector3.zero);
+            var player = MakeCombatant(Team.Player, Vector3.zero);
+            var enemy = MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 1.5f));
+            player.Spawn(Payload(player, 7, tick: 1), Vector3.forward);
+            enemy.Spawn(Payload(enemy, 3, tick: 2), Vector3.back);
+
+            yield return Physics();
+
+            Assert.IsTrue(enemy.Status.IsStunned);
+            Assert.AreEqual(body.MaxHp, body.Hp, "A hitbox that lost its clash must not deal damage.");
+        }
+
         [UnityTest]
         public IEnumerator BodyHit_SameTeam_DealsNoDamage()
         {

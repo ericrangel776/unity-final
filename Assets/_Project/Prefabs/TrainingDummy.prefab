@@ -275,6 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 863e70055e72a724f87f600a9481fd95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.CombatActionController
+  bodyHitDelay: 0.3
   strikeReach: 1.1
   strikeSize: {x: 1.6, y: 1.2, z: 1.2}
   strikeDuration: 0.3
