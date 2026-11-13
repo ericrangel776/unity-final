@@ -68,6 +68,7 @@ namespace DeckArpg.Editor
             hud.AddComponent<HandHudView>();
             hud.AddComponent<ClashFeedbackView>();
             hud.AddComponent<CardShatterView>();
+            hud.AddComponent<DeadlockView>();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
@@ -269,6 +270,7 @@ namespace DeckArpg.Editor
         {
             var fx = new GameObject("ClashFx");
             fx.AddComponent<HitStop>();
+            fx.AddComponent<DeadlockController>(); // equal-value clashes become the timing-ring tie-break
             fx.AddComponent<ClashImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
         }
 

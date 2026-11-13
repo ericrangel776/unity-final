@@ -16,6 +16,8 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float cardBreakZoom = 3f;
         [Tooltip("FOV reduction (degrees) on a Zero Break.")]
         [SerializeField] private float zeroBreakZoom = 5f;
+        [Tooltip("FOV reduction (degrees) held for a whole Deadlock.")]
+        [SerializeField] private float deadlockZoom = 6f;
         [Tooltip("Minimum time held at full zoom, even without a freeze.")]
         [SerializeField] private float minHoldSeconds = 0.08f;
         [SerializeField] private float easeOutSeconds = 0.3f;
@@ -35,11 +37,16 @@ namespace DeckArpg.Gameplay
             BaseFov = vcam.Lens.FieldOfView;
         }
 
-        private void OnEnable() => ClashSystem.ClashOccurred += HandleClash;
+        private void OnEnable()
+        {
+            ClashSystem.ClashOccurred += HandleClash;
+            DeadlockController.Started += HandleDeadlock;
+        }
 
         private void OnDisable()
         {
             ClashSystem.ClashOccurred -= HandleClash;
+            DeadlockController.Started -= HandleDeadlock;
             if (active) SetFov(BaseFov);
             active = false;
         }
@@ -49,6 +56,9 @@ namespace DeckArpg.Gameplay
             if (e.Result.Outcome != ClashOutcome.AWins && e.Result.Outcome != ClashOutcome.BWins) return;
             Punch(e.Result.BrokeByZero ? zeroBreakZoom : cardBreakZoom);
         }
+
+        // Held for the whole Deadlock automatically: it keeps time frozen, and the zoom holds while frozen.
+        private void HandleDeadlock(DeadlockController deadlock) => Punch(deadlockZoom);
 
         /// <summary>Zooms in by <paramref name="degrees"/>. A punch during a punch keeps the stronger zoom.</summary>
         public void Punch(float degrees)

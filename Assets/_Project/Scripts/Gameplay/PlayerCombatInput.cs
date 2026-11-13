@@ -80,6 +80,9 @@ namespace DeckArpg.Gameplay
                 return;
             }
 
+            // Before movement/dash: a dash during the frozen Deadlock would grant i-frames through its result.
+            if (RouteToDeadlock()) return;
+
             motor.SetMoveInput(move.ReadValue<Vector2>());
             ReadAim();
             if (dash.WasPressedThisFrame()) motor.TryDash();
@@ -100,6 +103,24 @@ namespace DeckArpg.Gameplay
             if (canAct && buffer.TryDequeue(now, out var command) && Execute(command))
                 recoveryRemaining = actionRecovery;
         }
+
+        /// <summary>
+        /// While a Deadlock runs, Poke and slot presses are its input (one press counts) and are never
+        /// buffered, so they can't also fire as card plays after it. Other presses are dropped.
+        /// </summary>
+        private bool RouteToDeadlock()
+        {
+            var deadlock = DeadlockController.Current;
+            if (deadlock == null || !deadlock.IsActive) return false;
+
+            if (Pressed(poke)) deadlock.SubmitPlayer(DeadlockChoice.Poke);
+            else if (Pressed(slot1)) deadlock.SubmitPlayer(DeadlockChoice.Slot1);
+            else if (Pressed(slot2)) deadlock.SubmitPlayer(DeadlockChoice.Slot2);
+            else if (Pressed(slot3)) deadlock.SubmitPlayer(DeadlockChoice.Slot3);
+            return true;
+        }
+
+        private static bool Pressed(InputAction action) => action != null && action.WasPressedThisFrame();
 
         private void Buffer(InputAction action, CombatCommand command, float now)
         {

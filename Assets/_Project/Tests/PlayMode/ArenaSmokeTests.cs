@@ -93,6 +93,8 @@ namespace DeckArpg.Tests.PlayMode
                 "Camera should punch in on breaks.");
             Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.ClashFeedbackView>());
             Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.CardShatterView>(), "Broken cards should shatter.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<DeadlockController>(), "Ties should go to a Deadlock.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.DeadlockView>(), "Deadlock needs its HUD.");
         }
 
         [UnityTest]
