@@ -27,6 +27,22 @@ namespace DeckArpg.Tests.EditMode
             Assert.IsNotNull(InputSystem.actions.FindActionMap("Player"), "Missing 'Player' action map.");
         }
 
+        [TestCase("Move")]
+        [TestCase("Dash")]
+        [TestCase("PlaySlot1")]
+        [TestCase("PlaySlot2")]
+        [TestCase("PlaySlot3")]
+        [TestCase("Parry")]
+        [TestCase("Poke")]
+        [TestCase("Reload")]
+        [TestCase("Aim")]
+        public void PlayerMap_DefinesCombatAction(string actionName)
+        {
+            var action = InputSystem.actions.FindActionMap("Player").FindAction(actionName);
+            Assert.IsNotNull(action, $"Missing Player action '{actionName}'.");
+            Assert.IsNotEmpty(action.bindings, $"Action '{actionName}' has no bindings.");
+        }
+
         [TestCase("DeckArpg.Core")]
         [TestCase("DeckArpg.Gameplay")]
         public void GameAssembly_IsCompiledAndLoaded(string assemblyName)

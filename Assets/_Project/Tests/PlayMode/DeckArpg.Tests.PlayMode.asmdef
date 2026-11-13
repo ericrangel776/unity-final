@@ -4,7 +4,10 @@
     "references": [
         "UnityEngine.TestRunner",
         "DeckArpg.Core",
-        "DeckArpg.Gameplay"
+        "DeckArpg.Gameplay",
+        "DeckArpg.UI",
+        "UnityEngine.UI",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

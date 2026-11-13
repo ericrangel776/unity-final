@@ -3,7 +3,9 @@
     "rootNamespace": "DeckArpg.Editor",
     "references": [
         "DeckArpg.Core",
-        "DeckArpg.Gameplay"
+        "DeckArpg.Gameplay",
+        "DeckArpg.UI",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [
         "Editor"
