@@ -79,3 +79,9 @@ When compacting, always keep: the current goal, the list of files modified, the
 test command and its latest result, and any failed approaches to avoid.
 
 ## Lessons learned
+- `Time.timeScale` is global: anything that freezes it must share one owner/saved scale across
+  instances, or a second freezer saves `0` as "previous" and locks the game. Restore it in `OnDisable`.
+- In PlayMode tests, `WaitForFixedUpdate` / `Time.time` loops never advance while `timeScale == 0`;
+  wait on frames + `Time.realtimeSinceStartup` with a timeout, and reset `Time.timeScale = 1` in TearDown.
+- Arena tests leave `M1_Arena` loaded for later tests, so its scene components (e.g. `HitStop`)
+  still react to events in other fixtures. Wrap batchmode test runs in `timeout` so a hang fails fast.
