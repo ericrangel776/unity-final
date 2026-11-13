@@ -17,6 +17,25 @@ namespace DeckArpg.Tests.PlayMode
     {
         private const string SceneName = "M1_Arena";
 
+        /// <summary>
+        /// Unload the arena after every test. Left loaded, its live dummy, player and HitStop keep
+        /// reacting to hitboxes and clashes spawned by later fixtures (e.g. freezing time mid-test),
+        /// which made unrelated physics tests flaky.
+        /// </summary>
+        [UnityTearDown]
+        public IEnumerator UnloadArena()
+        {
+            Time.timeScale = 1f;
+            var arena = SceneManager.GetSceneByName(SceneName);
+            if (!arena.IsValid() || !arena.isLoaded) yield break;
+
+            // A scene can't be unloaded while it's the only one loaded, so switch to an empty one first.
+            var empty = SceneManager.CreateScene("Empty_" + System.Guid.NewGuid().ToString("N"));
+            SceneManager.SetActiveScene(empty);
+            yield return SceneManager.UnloadSceneAsync(arena);
+            Assert.AreEqual(1f, Time.timeScale, "Unloading mid-freeze must restore the time scale.");
+        }
+
         [UnityTest]
         public IEnumerator Arena_LoadsAndRuns_DummyTelegraphsAndSwings()
         {
