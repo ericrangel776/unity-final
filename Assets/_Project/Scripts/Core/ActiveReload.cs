@@ -18,51 +18,79 @@ namespace DeckArpg.Core
         Jammed
     }
 
+    /// <summary>Where the reload prompt appears around the player. The HUD maps these to screen offsets.</summary>
+    public enum ReloadPromptAnchor
+    {
+        Above,
+        UpperRight,
+        Right,
+        Below,
+        Left,
+        UpperLeft
+    }
+
     /// <summary>Tunables and pure grading for the Active Reload timing bar.</summary>
     public static class ActiveReloadRules
     {
-        public const float BarSeconds = 1.2f;
-        /// <summary>Center of the bar: where the sweet spot sits.</summary>
-        public const float TargetTime = 0.6f;
-        public const float PerfectTolerance = 0.06f;
-        public const float GoodTolerance = 0.15f;
-        /// <summary>A mistimed press jams the reload; it finishes this long after the bar started.</summary>
-        public const float JamTotalSeconds = 2.0f;
+        /// <summary>Each reload rolls its bar duration in this range (seconds).</summary>
+        public const float MinBarSeconds = 0.8f;
+        public const float MaxBarSeconds = 1.6f;
+        /// <summary>Each reload rolls the sweet-zone center in this range (fraction of the bar).</summary>
+        public const float MinTarget01 = 0.40f;
+        public const float MaxTarget01 = 0.85f;
+        /// <summary>Zone half-widths as a fraction of the bar, so faster bars leave less time in the zone.</summary>
+        public const float PerfectTolerance01 = 0.05f;
+        public const float GoodTolerance01 = 0.125f;
+        /// <summary>A jammed reload finishes this long after the bar would have ended.</summary>
+        public const float JamExtraSeconds = 0.8f;
         public const float BoostSpeedMultiplier = 1.3f;
         public const float BoostSeconds = 2f;
 
-        /// <summary>Grade for a press <paramref name="offset"/> seconds after the bar started.</summary>
-        public static ReloadGrade Grade(float offset)
+        public static readonly int AnchorCount = Enum.GetValues(typeof(ReloadPromptAnchor)).Length;
+
+        /// <summary>Grade for a press at bar progress <paramref name="progress01"/> with the zone centered on <paramref name="target01"/>.</summary>
+        public static ReloadGrade Grade(float progress01, float target01)
         {
-            if (float.IsNaN(offset) || offset < 0f || offset > BarSeconds) return ReloadGrade.Miss;
-            float error = Math.Abs(offset - TargetTime);
-            // Tiny epsilon so the documented inclusive bounds survive float rounding (0.6 - 0.54 != 0.06f).
+            if (float.IsNaN(progress01) || progress01 < 0f || progress01 > 1f) return ReloadGrade.Miss;
+            float error = Math.Abs(progress01 - target01);
+            // Tiny epsilon so the documented inclusive bounds survive float rounding.
             const float eps = 1e-4f;
-            if (error <= PerfectTolerance + eps) return ReloadGrade.Perfect;
-            if (error <= GoodTolerance + eps) return ReloadGrade.Good;
+            if (error <= PerfectTolerance01 + eps) return ReloadGrade.Perfect;
+            if (error <= GoodTolerance01 + eps) return ReloadGrade.Good;
             return ReloadGrade.Miss;
         }
     }
 
     /// <summary>
-    /// Active Reload state machine for one deck. <see cref="Begin"/> starts a 1.2 s bar; a Perfect/Good
-    /// <see cref="Press"/> reloads instantly (Perfect adds a move-speed boost), a Miss jams it until
-    /// <see cref="ActiveReloadRules.JamTotalSeconds"/>, and no press reloads when the bar ends.
+    /// Active Reload state machine for one deck. <see cref="Begin"/> rolls a bar speed, sweet-spot position
+    /// and prompt anchor, then runs the bar. A Perfect/Good <see cref="Press"/> reloads instantly (Perfect
+    /// adds a move-speed boost), a Miss jams it, and no press reloads when the bar ends.
     /// Time comes from the caller via <see cref="Tick"/> (scaled time, so hit-stop pauses it).
     /// </summary>
     public sealed class ActiveReload
     {
         private readonly DeckCycle deck;
+        private readonly Random rng;
+        private bool hasAnchor;
 
-        public ActiveReload(DeckCycle deck)
+        public ActiveReload(DeckCycle deck, Random random)
         {
             this.deck = deck ?? throw new ArgumentNullException(nameof(deck));
+            rng = random ?? throw new ArgumentNullException(nameof(random));
         }
 
         public ReloadState State { get; private set; }
         /// <summary>Seconds since <see cref="Begin"/>; 0 while Idle.</summary>
         public float Elapsed { get; private set; }
+        /// <summary>Length of the current (or last) bar, rolled at <see cref="Begin"/>.</summary>
+        public float BarDuration { get; private set; }
+        /// <summary>Sweet-zone center of the current (or last) bar, as a fraction of the bar.</summary>
+        public float Target01 { get; private set; }
+        /// <summary>Where the current (or last) prompt appears around the player.</summary>
+        public ReloadPromptAnchor Anchor { get; private set; }
         public float BoostRemaining { get; private set; }
+
+        public float JamTotalSeconds => BarDuration + ActiveReloadRules.JamExtraSeconds;
 
         /// <summary>Fill of the visible bar: the timing bar while Running, the jam recharge while Jammed.</summary>
         public float Progress01
@@ -71,8 +99,8 @@ namespace DeckArpg.Core
             {
                 switch (State)
                 {
-                    case ReloadState.Running: return Math.Min(1f, Elapsed / ActiveReloadRules.BarSeconds);
-                    case ReloadState.Jammed: return Math.Min(1f, Elapsed / ActiveReloadRules.JamTotalSeconds);
+                    case ReloadState.Running: return Math.Min(1f, Elapsed / BarDuration);
+                    case ReloadState.Jammed: return Math.Min(1f, Elapsed / JamTotalSeconds);
                     default: return 0f;
                 }
             }
@@ -89,6 +117,9 @@ namespace DeckArpg.Core
         public bool Begin()
         {
             if (State != ReloadState.Idle || !deck.CanReload) return false;
+            BarDuration = Roll(ActiveReloadRules.MinBarSeconds, ActiveReloadRules.MaxBarSeconds);
+            Target01 = Roll(ActiveReloadRules.MinTarget01, ActiveReloadRules.MaxTarget01);
+            Anchor = RollAnchor();
             State = ReloadState.Running;
             Elapsed = 0f;
             return true;
@@ -99,7 +130,7 @@ namespace DeckArpg.Core
         {
             if (State != ReloadState.Running) return ReloadGrade.None;
 
-            var grade = ActiveReloadRules.Grade(Elapsed);
+            var grade = ActiveReloadRules.Grade(Elapsed / BarDuration, Target01);
             if (grade == ReloadGrade.Miss)
             {
                 State = ReloadState.Jammed;
@@ -119,8 +150,8 @@ namespace DeckArpg.Core
 
             if (State == ReloadState.Idle) return;
             Elapsed += deltaSeconds;
-            if (State == ReloadState.Running && Elapsed >= ActiveReloadRules.BarSeconds) Complete(ReloadGrade.None);
-            else if (State == ReloadState.Jammed && Elapsed >= ActiveReloadRules.JamTotalSeconds) Complete(ReloadGrade.Miss);
+            if (State == ReloadState.Running && Elapsed >= BarDuration) Complete(ReloadGrade.None);
+            else if (State == ReloadState.Jammed && Elapsed >= JamTotalSeconds) Complete(ReloadGrade.Miss);
         }
 
         /// <summary>Abort without reloading (e.g. death/respawn). Any active boost is kept.</summary>
@@ -136,6 +167,21 @@ namespace DeckArpg.Core
             State = ReloadState.Idle;
             Elapsed = 0f;
             Completed?.Invoke(grade);
+        }
+
+        private float Roll(float min, float max) => min + (float)rng.NextDouble() * (max - min);
+
+        /// <summary>Uniform over the anchors, excluding the previous one so the prompt always moves.</summary>
+        private ReloadPromptAnchor RollAnchor()
+        {
+            if (!hasAnchor)
+            {
+                hasAnchor = true;
+                return (ReloadPromptAnchor)rng.Next(ActiveReloadRules.AnchorCount);
+            }
+            int next = rng.Next(ActiveReloadRules.AnchorCount - 1);
+            if (next >= (int)Anchor) next++;
+            return (ReloadPromptAnchor)next;
         }
     }
 }
