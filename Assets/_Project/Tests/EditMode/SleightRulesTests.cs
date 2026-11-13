@@ -109,6 +109,12 @@ namespace DeckArpg.Tests.EditMode
         public void CanBurn_OnlyAboveFloorOfThree(int cycling, bool expected) =>
             Assert.AreEqual(expected, SleightRules.CanBurn(cycling));
 
+        [TestCase(CardShape.Strike, 3)]
+        [TestCase(CardShape.Throw, 2)]
+        [TestCase(CardShape.Arcana, 1)]
+        public void HitCount_PerShape(CardShape shape, int expected) =>
+            Assert.AreEqual(expected, SleightRules.HitCount(shape));
+
         [Test]
         public void Compose_RejectsBadInput()
         {

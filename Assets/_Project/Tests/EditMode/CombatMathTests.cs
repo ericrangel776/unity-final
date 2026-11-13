@@ -49,6 +49,19 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(33, CombatMath.Damage(Sleight(10, 1)));
         }
 
+        [Test]
+        public void Damage_MultiHitSleight_SplitsTotalPerHit_RoundedUp()
+        {
+            // 20 * 3 = 60, x1.5 = 90 total; 3 hits -> 30 each; 2 hits -> 45 each.
+            Assert.AreEqual(30, CombatMath.Damage(new AttackPayload(1, Team.Player, 20, false, true, 0,
+                CardShape.Strike, Element.Physical, 5, hitCount: 3)));
+            Assert.AreEqual(45, CombatMath.Damage(new AttackPayload(1, Team.Player, 20, false, true, 0,
+                CardShape.Throw, Element.Physical, 5, hitCount: 2)));
+            // 7 * 3 = 21, x1.3 = 28 total; 3 hits -> 9.33 -> 10.
+            Assert.AreEqual(10, CombatMath.Damage(new AttackPayload(1, Team.Player, 7, false, true, 0,
+                CardShape.Strike, Element.Physical, 3, hitCount: 3)));
+        }
+
         private static AttackPayload Card(int value, bool zero = false) =>
             new AttackPayload(1, Team.Player, value, zero, false, 0, CardShape.Strike, Element.Physical);
 

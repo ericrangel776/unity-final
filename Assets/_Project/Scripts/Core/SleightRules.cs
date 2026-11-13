@@ -45,6 +45,20 @@ namespace DeckArpg.Core
 
         public static bool CanBurn(int cyclingCardCount) => cyclingCardCount > BurnFloor;
 
+        /// <summary>
+        /// Hits a Sleight of this shape can land on one body: Strike combo 3, Throw boomerang 2 (out + back),
+        /// Arcana blast 1. Total damage is split across them.
+        /// </summary>
+        public static int HitCount(CardShape shape)
+        {
+            switch (shape)
+            {
+                case CardShape.Strike: return 3;
+                case CardShape.Throw: return 2;
+                default: return 1;
+            }
+        }
+
         public static SleightResult Compose(IReadOnlyList<RuntimeCardInstance> stocked)
         {
             Validate(stocked);

@@ -89,6 +89,18 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(1f, p.DamageMultiplier);
         }
 
+        [Test]
+        public void HitCount_DefaultsToOne_AndIsOneForSingleCards()
+        {
+            var s = new SleightResult(12, CardShape.Strike, Element.Fire, 4, false);
+            Assert.AreEqual(1, AttackPayload.FromSleight(s, 1, Team.Player, 0).HitCount);
+            Assert.AreEqual(3, AttackPayload.FromSleight(s, 1, Team.Player, 0, hitCount: 3).HitCount);
+            Assert.AreEqual(1, new AttackPayload(1, Team.Player, 5, false, false, 0, CardShape.Strike,
+                Element.Physical, 0, hitCount: 3).HitCount);
+            Assert.AreEqual(1, new AttackPayload(1, Team.Player, 10, false, true, 0, CardShape.Strike,
+                Element.Physical, 0, hitCount: -2).HitCount);
+        }
+
         [TestCase(-3, 0)]
         [TestCase(14, 9)]
         public void FinisherValue_IsClamped(int raw, int expected)
