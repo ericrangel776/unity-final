@@ -139,6 +139,64 @@ namespace DeckArpg.Tests.PlayMode
             yield return null;
         }
 
+        private static IEnumerator Physics(int steps = 4)
+        {
+            for (int i = 0; i < steps; i++) yield return new WaitForFixedUpdate();
+        }
+
+        /// <summary>Player swinging +Z from the origin; enemy with a body collider close enough that
+        /// the player's winning strike box also overlaps the enemy's body.</summary>
+        private (CombatActionController player, CombatActionController enemy) BreakSetup()
+        {
+            var playerGo = new GameObject("Player");
+            spawned.Add(playerGo);
+            playerGo.AddComponent<CombatantStatus>().Team = Team.Player;
+            var player = playerGo.AddComponent<CombatActionController>();
+
+            var enemyGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            spawned.Add(enemyGo);
+            enemyGo.transform.position = new Vector3(0f, 0f, 1.8f);
+            enemyGo.AddComponent<CombatantStatus>().Team = Team.Enemy;
+            var enemy = enemyGo.AddComponent<CombatActionController>();
+            return (player, enemy);
+        }
+
+        private static AttackPayload Swing(CombatActionController c, int value, int tick) =>
+            new AttackPayload(c.Status.OwnerId, c.Status.Team, value, false, false, tick, CardShape.Strike, Element.Physical);
+
+        [UnityTest]
+        public IEnumerator WinningSwing_HittingTheLoser_IsNotACounter()
+        {
+            var (player, enemy) = BreakSetup();
+            enemy.Spawn(Swing(enemy, 2, tick: 1), Vector3.back);
+            player.Spawn(Swing(player, 9, tick: 2), Vector3.forward);
+
+            yield return Physics();
+
+            Assert.IsTrue(enemy.Status.IsStunned, "Setup: the enemy's card should be broken.");
+            Assert.AreEqual(enemy.Status.MaxHp - Normal(9), enemy.Status.Hp,
+                "Setup: the winning swing should still land as a normal hit.");
+            Assert.AreEqual(0, counters.Count, "The swing that won the clash must not count as the follow-up.");
+            Assert.IsTrue(enemy.Status.IsCounterWindowOpen, "The window stays open for a real follow-up.");
+        }
+
+        [UnityTest]
+        public IEnumerator FollowUpAfterBreak_IsACounter()
+        {
+            var (player, enemy) = BreakSetup();
+            enemy.Spawn(Swing(enemy, 2, tick: 1), Vector3.back);
+            player.Spawn(Swing(player, 9, tick: 2), Vector3.forward);
+            yield return Physics();
+            int hpBefore = enemy.Status.Hp;
+
+            // A second, separate attack (a new hitbox) lands inside the window.
+            player.Spawn(Swing(player, 3, tick: 3), Vector3.forward);
+            yield return Physics();
+
+            Assert.AreEqual(1, counters.Count);
+            Assert.AreEqual(hpBefore - CombatMath.CounterDamage(Normal(3)), enemy.Status.Hp);
+        }
+
         [UnityTest]
         public IEnumerator CounterHit_ShowsCounterPopup_WithoutReplacingClashPopup()
         {

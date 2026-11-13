@@ -16,6 +16,8 @@ namespace DeckArpg.Gameplay
         private readonly HashSet<CombatantStatus> alreadyHit = new HashSet<CombatantStatus>();
         private readonly Dictionary<CombatantStatus, int> touching = new Dictionary<CombatantStatus, int>();
         private readonly List<CombatantStatus> hitScratch = new List<CombatantStatus>();
+        // Combatants whose card this hitbox broke. Its own follow-through on them isn't a counter.
+        private readonly HashSet<CombatantStatus> brokeInClash = new HashSet<CombatantStatus>();
         private Rigidbody body;
         private Collider trigger;
         private Vector3 velocity;
@@ -93,8 +95,15 @@ namespace DeckArpg.Gameplay
             foreach (var status in hitScratch)
             {
                 // Hits during i-frames are not consumed, so dashing through only protects while dashing.
-                if (status.TakeHit(Payload, status.transform.position - source)) alreadyHit.Add(status);
+                bool canCounter = !brokeInClash.Contains(status);
+                if (status.TakeHit(Payload, status.transform.position - source, canCounter)) alreadyHit.Add(status);
             }
+        }
+
+        /// <summary>This hitbox won a clash against <paramref name="loser"/>'s card.</summary>
+        internal void MarkBroke(CombatantStatus loser)
+        {
+            if (loser != null) brokeInClash.Add(loser);
         }
 
         private void OnTriggerEnter(Collider other)

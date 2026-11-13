@@ -81,15 +81,16 @@ namespace DeckArpg.Gameplay
 
         /// <summary>
         /// Applies a body hit pushing us along <paramref name="fromDirection"/> (attacker to us).
-        /// Returns false if the hit was ignored (i-frames, dead, or friendly).
+        /// <paramref name="canCounter"/> is false for the swing that broke our card, so only a separate
+        /// follow-up gets the counter bonus. Returns false if the hit was ignored (i-frames, dead, or friendly).
         /// </summary>
-        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection)
+        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection, bool canCounter = true)
         {
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
             int damage = CombatMath.Damage(payload);
-            // 0-damage hits (0-cards) don't spend the counter window.
-            bool counter = damage > 0 && IsCounterWindowOpen;
+            // 0-damage hits (0-cards) and the breaking swing itself don't spend the counter window.
+            bool counter = canCounter && damage > 0 && IsCounterWindowOpen;
             if (counter)
             {
                 damage = CombatMath.CounterDamage(damage);
