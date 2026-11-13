@@ -69,6 +69,9 @@ namespace DeckArpg.Editor
             hud.AddComponent<ClashFeedbackView>();
             hud.AddComponent<CardShatterView>();
             hud.AddComponent<DeadlockView>();
+            hud.AddComponent<StockView>();
+            hud.AddComponent<ReloadBarView>();
+            hud.AddComponent<SpeedLinesView>();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
