@@ -227,6 +227,37 @@ namespace DeckArpg.Tests.EditMode
             AssertConserved();
         }
 
+        // ---- restore (Overburn) ----
+
+        [Test]
+        public void RestoreBurned_MovesBurnedToDiscard_AndClearsFlag()
+        {
+            Init(cards.Numbered(1, 2, 3, 4, 5, 6, 7));
+            var catalyst = deck.Hand[0];
+            Stock(0);
+            Stock(1);
+            Stock(2);
+            int discardBefore = deck.DiscardCount;
+            changes = 0;
+
+            Assert.AreEqual(1, deck.RestoreBurned());
+
+            Assert.AreEqual(0, deck.BurnedCount);
+            Assert.AreEqual(discardBefore + 1, deck.DiscardCount);
+            CollectionAssert.Contains(deck.DiscardPile, catalyst);
+            Assert.IsFalse(catalyst.IsBurnedThisFight);
+            Assert.AreEqual(1, changes);
+            AssertConserved();
+        }
+
+        [Test]
+        public void RestoreBurned_NothingBurned_IsNoOp()
+        {
+            Init(cards.Numbered(1, 2, 3, 4));
+            Assert.AreEqual(0, deck.RestoreBurned());
+            Assert.AreEqual(0, changes);
+        }
+
         // ---- interrupt (Card Break) ----
 
         [Test]

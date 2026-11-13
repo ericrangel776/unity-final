@@ -191,6 +191,24 @@ namespace DeckArpg.Core
             return StockResult.Fired;
         }
 
+        /// <summary>
+        /// Overburn: every burned card goes back to discard (and loses its burned flag), so the next
+        /// reload shuffles it in. Returns how many came back.
+        /// </summary>
+        public int RestoreBurned()
+        {
+            int count = burned.Count;
+            if (count == 0) return 0;
+            foreach (var c in burned)
+            {
+                c.IsBurnedThisFight = false;
+                discard.Add(c);
+            }
+            burned.Clear();
+            Changed?.Invoke();
+            return count;
+        }
+
         private void Burn(RuntimeCardInstance card)
         {
             card.IsBurnedThisFight = true;

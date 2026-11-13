@@ -114,15 +114,54 @@ namespace DeckArpg.Core
         /// <summary>Raised after the deck reshuffles, with how the reload finished.</summary>
         public event Action<ReloadGrade> Completed;
 
+        /// <summary>True while an Overburn bar runs (and during its <see cref="Completed"/> handlers).</summary>
+        public bool IsOverburn { get; private set; }
+        public int OverburnUsesThisRoom { get; private set; }
+
+        public int NextOverburnCost(int maxHp) => OverburnRules.Cost(maxHp, OverburnUsesThisRoom);
+
+        /// <summary>The next Overburn costs 10% again. Call on room start and respawn.</summary>
+        public void ResetOverburnCost() => OverburnUsesThisRoom = 0;
+
         public bool Begin()
         {
             if (State != ReloadState.Idle || !deck.CanReload) return false;
+            StartBar();
+            return true;
+        }
+
+        /// <summary>
+        /// Overburn needs an empty draw queue and at least one burned card (discard may be empty), and the
+        /// payer must survive the price.
+        /// </summary>
+        public bool CanBeginOverburn(IHpPool payer)
+        {
+            if (payer == null) throw new ArgumentNullException(nameof(payer));
+            if (State != ReloadState.Idle || deck.DrawCount > 0 || deck.BurnedCount == 0) return false;
+            return OverburnRules.CanAfford(payer.Hp, NextOverburnCost(payer.MaxHp));
+        }
+
+        /// <summary>
+        /// Pays the escalating HP price and starts the bar. When it finishes (any grade), every burned
+        /// card is restored and shuffled in with the discard.
+        /// </summary>
+        public bool BeginOverburn(IHpPool payer)
+        {
+            if (!CanBeginOverburn(payer)) return false;
+            payer.SpendHp(NextOverburnCost(payer.MaxHp));
+            OverburnUsesThisRoom++;
+            IsOverburn = true;
+            StartBar();
+            return true;
+        }
+
+        private void StartBar()
+        {
             BarDuration = Roll(ActiveReloadRules.MinBarSeconds, ActiveReloadRules.MaxBarSeconds);
             Target01 = Roll(ActiveReloadRules.MinTarget01, ActiveReloadRules.MaxTarget01);
             Anchor = RollAnchor();
             State = ReloadState.Running;
             Elapsed = 0f;
-            return true;
         }
 
         /// <summary>Grades a press on the running bar. Ignored (returns None) while Idle or Jammed.</summary>
@@ -154,19 +193,22 @@ namespace DeckArpg.Core
             else if (State == ReloadState.Jammed && Elapsed >= JamTotalSeconds) Complete(ReloadGrade.Miss);
         }
 
-        /// <summary>Abort without reloading (e.g. death/respawn). Any active boost is kept.</summary>
+        /// <summary>Abort without reloading (e.g. death/respawn). Any active boost is kept; an Overburn is not refunded.</summary>
         public void Cancel()
         {
             State = ReloadState.Idle;
             Elapsed = 0f;
+            IsOverburn = false;
         }
 
         private void Complete(ReloadGrade grade)
         {
+            if (IsOverburn) deck.RestoreBurned();
             deck.Reload();
             State = ReloadState.Idle;
             Elapsed = 0f;
             Completed?.Invoke(grade);
+            IsOverburn = false;
         }
 
         private float Roll(float min, float max) => min + (float)rng.NextDouble() * (max - min);
