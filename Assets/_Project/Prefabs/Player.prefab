@@ -101,6 +101,7 @@ GameObject:
   - component: {fileID: 5783547288697158413}
   - component: {fileID: 7770060624006147725}
   - component: {fileID: 1974628967359001895}
+  - component: {fileID: 2210356174249282608}
   - component: {fileID: 4566514264567665511}
   - component: {fileID: 6367400724714652440}
   - component: {fileID: 6959820947352314712}
@@ -173,6 +174,23 @@ MonoBehaviour:
   breakPostureDamage: 25
   breakStunSeconds: 0.8
   postureBreakStunSeconds: 2
+  hitFlinchSeconds: 0.15
+  flinchCooldownSeconds: 1
+  knockbackDecaySeconds: 0.15
+--- !u!114 &2210356174249282608
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4220050465038504828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12c1bd4003986c44ea1cbc30faedc87a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.HitFlash
+  flashSeconds: 0.1
+  flashColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &4566514264567665511
 MonoBehaviour:
   m_ObjectHideFlags: 0
