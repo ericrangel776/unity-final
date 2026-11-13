@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2da138edc98b28042a365e99c1c946b2, type: 3}
+  m_Name: strike_5
+  m_EditorClassIdentifier: DeckArpg.Core::DeckArpg.Core.CardData
+  cardId: strike_5
+  displayName: Strike 5
+  isZeroBreaker: 0
+  baseValue: 5
+  shape: 0
+  element: 0
+  isHeal: 0
+  isPremium: 0
