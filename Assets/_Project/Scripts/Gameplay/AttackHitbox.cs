@@ -25,6 +25,16 @@ namespace DeckArpg.Gameplay
         private float bodyHitDelay;
         private bool initialized;
         private bool cancelled;
+        private Transform visual;
+        // Boomerang (Throw Sleight): fly out, then home back to returnTo; each pass may hit a body once.
+        private Transform returnTo;
+        private float outRemaining;
+        private bool returning;
+        // Growing blast (Arcana Sleight): sphere radius lerps fromRadius -> toRadius over growSeconds.
+        private SphereCollider growSphere;
+        private float growFrom, growTo, growSeconds, growElapsed;
+
+        private const float ReturnCatchDistance = 0.6f;
 
         public AttackPayload Payload { get; private set; }
         public CombatActionController Owner { get; private set; }
@@ -78,6 +88,9 @@ namespace DeckArpg.Gameplay
             if (bodyHitDelay <= 0f) ApplyBodyHits();
             if (!IsLive) return;
 
+            if (growSphere != null) Grow(Time.fixedDeltaTime);
+            if (returnTo != null && !SteerBoomerang(Time.fixedDeltaTime)) return;
+
             if (velocity != Vector3.zero) body.MovePosition(body.position + velocity * Time.fixedDeltaTime);
             lifetime -= Time.fixedDeltaTime;
             if (lifetime <= 0f) Cancel();
@@ -98,6 +111,68 @@ namespace DeckArpg.Gameplay
                 bool canCounter = !brokeInClash.Contains(status);
                 if (status.TakeHit(Payload, status.transform.position - source, canCounter)) alreadyHit.Add(status);
             }
+        }
+
+        /// <summary>
+        /// Throw Sleight: after <paramref name="outSeconds"/> the projectile turns and homes back to
+        /// <paramref name="target"/> at the same speed, forgetting who it hit (second pass), and despawns on arrival.
+        /// </summary>
+        internal void MakeBoomerang(float outSeconds, Transform target, float safetyLifetime)
+        {
+            returnTo = target;
+            outRemaining = Mathf.Max(0f, outSeconds);
+            returning = false;
+            lifetime = Mathf.Max(lifetime, safetyLifetime);
+        }
+
+        /// <summary>Arcana Sleight: the sphere grows from <paramref name="fromRadius"/> to <paramref name="toRadius"/>.</summary>
+        internal void MakeGrowing(float fromRadius, float toRadius, float seconds)
+        {
+            growSphere = trigger as SphereCollider;
+            if (growSphere == null) return;
+            growFrom = Mathf.Max(0.01f, fromRadius);
+            growTo = Mathf.Max(growFrom, toRadius);
+            growSeconds = Mathf.Max(0.01f, seconds);
+            growElapsed = 0f;
+            lifetime = Mathf.Max(lifetime, bodyHitDelay + growSeconds); // live long enough to reach full size
+            SetRadius(growFrom);
+        }
+
+        public bool IsReturning => returning;
+        public float Radius => trigger is SphereCollider s ? s.radius : 0f;
+
+        private void Grow(float dt)
+        {
+            growElapsed += dt;
+            SetRadius(Mathf.Lerp(growFrom, growTo, Mathf.Clamp01(growElapsed / growSeconds)));
+        }
+
+        private void SetRadius(float radius)
+        {
+            growSphere.radius = radius;
+            if (visual != null) visual.localScale = Vector3.one * radius * 2f;
+        }
+
+        /// <summary>Returns false if the boomerang was caught (and cancelled) this step.</summary>
+        private bool SteerBoomerang(float dt)
+        {
+            if (!returning)
+            {
+                outRemaining -= dt;
+                if (outRemaining > 0f) return true;
+                returning = true;
+                alreadyHit.Clear(); // second pass may hit again
+            }
+
+            var target = returnTo.position + Vector3.up * 0.5f;
+            var toTarget = target - body.position;
+            if (toTarget.magnitude <= ReturnCatchDistance)
+            {
+                Cancel();
+                return false;
+            }
+            velocity = toTarget.normalized * velocity.magnitude;
+            return true;
         }
 
         /// <summary>This hitbox won a clash against <paramref name="loser"/>'s card.</summary>
@@ -158,6 +233,7 @@ namespace DeckArpg.Gameplay
             visual.transform.localScale = scale;
             var r = visual.GetComponent<Renderer>();
             r.material.color = ElementColors.For(Payload);
+            this.visual = visual.transform;
         }
     }
 }

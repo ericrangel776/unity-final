@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using DeckArpg.Core;
 using UnityEngine;
@@ -26,14 +27,38 @@ namespace DeckArpg.Gameplay
         [Header("Arcana (burst around self)")]
         [SerializeField] private float arcanaRadius = 2.2f;
         [SerializeField] private float arcanaDuration = 0.3f;
+        [Header("Sleights")]
+        [Tooltip("Strike Sleight: seconds between the hits of the lunge combo.")]
+        [SerializeField] private float sleightStrikeInterval = 0.12f;
+        [SerializeField] private float sleightStrikeScale = 1.3f;
+        [Tooltip("Throw Sleight: boomerang size multiplier, outbound time and safety lifetime.")]
+        [SerializeField] private float sleightThrowScale = 1.5f;
+        [SerializeField] private float sleightThrowOutSeconds = 0.45f;
+        [SerializeField] private float sleightThrowMaxLifetime = 2f;
+        [Tooltip("Arcana Sleight: blast grows from this radius to arcanaRadius x the end multiplier.")]
+        [SerializeField] private float sleightArcanaStartRadius = 0.5f;
+        [SerializeField] private float sleightArcanaEndMultiplier = 2f;
+        [SerializeField] private float sleightArcanaGrowSeconds = 0.35f;
         [Header("Visuals")]
         [SerializeField] private bool showHitboxes = true;
 
         private readonly List<AttackHitbox> active = new List<AttackHitbox>();
         private readonly Dictionary<AttackHitbox, RuntimeCardInstance> sources = new Dictionary<AttackHitbox, RuntimeCardInstance>();
+        private Coroutine pendingCombo;
 
         public CombatantStatus Status { get; private set; }
         public int ActiveHitboxCount => active.Count;
+
+        /// <summary>A Sleight combo is still spawning hits, or a Sleight hitbox is alive.</summary>
+        public bool IsSleightActive
+        {
+            get
+            {
+                if (pendingCombo != null) return true;
+                foreach (var hb in active) if (hb != null && hb.Payload.IsSleight) return true;
+                return false;
+            }
+        }
         public float BodyHitDelay { get => bodyHitDelay; set => bodyHitDelay = Mathf.Max(0f, value); }
 
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
@@ -46,7 +71,46 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>Spawns the hitbox for <paramref name="payload"/>, shaped by its <see cref="CardShape"/>.</summary>
-        public AttackHitbox Spawn(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source = null)
+        public AttackHitbox Spawn(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source = null) =>
+            SpawnScaled(payload, aimDirection, source, 1f);
+
+        /// <summary>
+        /// Fires a composed Sleight, each shape with its own behavior. Every hit carries the full Sleight
+        /// payload and clashes on its own. Strike: <c>HitCount</c> boxes spaced in time (pair with a motor lunge).
+        /// Throw: a piercing boomerang. Arcana: an expanding blast.
+        /// </summary>
+        public void SpawnSleight(AttackPayload payload, Vector3 aimDirection)
+        {
+            switch (payload.Shape)
+            {
+                case CardShape.Throw:
+                    SpawnScaled(payload, aimDirection, null, sleightThrowScale)
+                        .MakeBoomerang(sleightThrowOutSeconds, transform, sleightThrowMaxLifetime);
+                    break;
+                case CardShape.Arcana:
+                    SpawnScaled(payload, aimDirection, null, 1f)
+                        .MakeGrowing(sleightArcanaStartRadius, arcanaRadius * sleightArcanaEndMultiplier, sleightArcanaGrowSeconds);
+                    break;
+                default:
+                    if (pendingCombo != null) StopCoroutine(pendingCombo);
+                    pendingCombo = StartCoroutine(StrikeCombo(payload, aimDirection));
+                    break;
+            }
+        }
+
+        private IEnumerator StrikeCombo(AttackPayload payload, Vector3 aimDirection)
+        {
+            // Scaled time on purpose: hit-stop freezes the combo along with everything else.
+            var wait = new WaitForSeconds(sleightStrikeInterval);
+            for (int i = 0; i < payload.HitCount; i++)
+            {
+                if (i > 0) yield return wait;
+                SpawnScaled(payload, aimDirection, null, sleightStrikeScale);
+            }
+            pendingCombo = null;
+        }
+
+        private AttackHitbox SpawnScaled(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source, float scale)
         {
             aimDirection.y = 0f;
             if (aimDirection.sqrMagnitude < 0.0001f) aimDirection = transform.forward;
@@ -61,17 +125,17 @@ namespace DeckArpg.Gameplay
             {
                 case CardShape.Throw:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
-                    hb.InitSphere(this, payload, throwRadius, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
+                    hb.InitSphere(this, payload, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
                     break;
                 case CardShape.Arcana:
                     go.transform.SetParent(transform, false);
                     go.transform.position = origin;
-                    hb.InitSphere(this, payload, arcanaRadius, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
+                    hb.InitSphere(this, payload, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
                     break;
                 default:
                     go.transform.SetParent(transform, false);
                     go.transform.SetPositionAndRotation(origin + aimDirection * strikeReach, Quaternion.LookRotation(aimDirection));
-                    hb.InitBox(this, payload, strikeSize, strikeDuration, bodyHitDelay, showHitboxes);
+                    hb.InitBox(this, payload, strikeSize * scale, strikeDuration, bodyHitDelay, showHitboxes);
                     break;
             }
 
@@ -84,6 +148,11 @@ namespace DeckArpg.Gameplay
         /// <summary>Disables and destroys every live hitbox we own. Called on Card Break.</summary>
         public void CancelActiveAction()
         {
+            if (pendingCombo != null)
+            {
+                StopCoroutine(pendingCombo);
+                pendingCombo = null;
+            }
             // Copy first: Cancel() calls back into Unregister.
             var snapshot = active.ToArray();
             foreach (var hb in snapshot)
