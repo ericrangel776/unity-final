@@ -267,6 +267,7 @@ MonoBehaviour:
   hitFlinchSeconds: 0.3
   flinchCooldownSeconds: 1
   knockbackDecaySeconds: 0.15
+  counterWindowSeconds: 1
 --- !u!114 &2631862896955285652
 MonoBehaviour:
   m_ObjectHideFlags: 0
