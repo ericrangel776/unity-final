@@ -281,6 +281,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.HitFlash
   flashSeconds: 0.1
   flashColor: {r: 1, g: 1, b: 1, a: 1}
+  breakFlashSeconds: 0.2
+  breakColor: {r: 1, g: 0.85, b: 0.2, a: 1}
 --- !u!114 &6408333943189440713
 MonoBehaviour:
   m_ObjectHideFlags: 0
