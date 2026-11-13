@@ -64,5 +64,37 @@ namespace DeckArpg.Tests.EditMode
             var p = new AttackPayload(1, Team.Player, 21, false, true, 0, CardShape.Strike, Element.Physical);
             Assert.AreEqual(21, p.Value);
         }
+
+        [Test]
+        public void FromSleight_CarriesComposedStats()
+        {
+            var s = new SleightResult(23, CardShape.Arcana, Element.Ice, 5, false);
+            var p = AttackPayload.FromSleight(s, 3, Team.Player, 40);
+
+            Assert.IsTrue(p.IsSleight);
+            Assert.IsFalse(p.IsZeroBreaker);
+            Assert.AreEqual(23, p.Value);
+            Assert.AreEqual(CardShape.Arcana, p.Shape);
+            Assert.AreEqual(Element.Ice, p.Element);
+            Assert.AreEqual(5, p.FinisherValue);
+            Assert.AreEqual(1.5f, p.DamageMultiplier, 1e-5f);
+            Assert.AreEqual(40, p.ActivationTick);
+        }
+
+        [Test]
+        public void FinisherValue_IsZeroForSingleCards()
+        {
+            var p = new AttackPayload(1, Team.Player, 5, false, false, 0, CardShape.Strike, Element.Physical, finisherValue: 7);
+            Assert.AreEqual(0, p.FinisherValue);
+            Assert.AreEqual(1f, p.DamageMultiplier);
+        }
+
+        [TestCase(-3, 0)]
+        [TestCase(14, 9)]
+        public void FinisherValue_IsClamped(int raw, int expected)
+        {
+            var p = new AttackPayload(1, Team.Player, 10, false, true, 0, CardShape.Strike, Element.Physical, raw);
+            Assert.AreEqual(expected, p.FinisherValue);
+        }
     }
 }
