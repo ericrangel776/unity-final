@@ -16,8 +16,17 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float breakStunSeconds = 0.8f;
         [Tooltip("Stun when posture fills up.")]
         [SerializeField] private float postureBreakStunSeconds = 2f;
+        [Header("Hit reactions")]
+        [Tooltip("Stun from a damaging body hit.")]
+        [SerializeField] private float hitFlinchSeconds = 0.3f;
+        [Tooltip("After a flinch, hits can't flinch again for this long (prevents poke stunlock).")]
+        [SerializeField] private float flinchCooldownSeconds = 1f;
+        [Tooltip("Seconds for knockback to decay to zero.")]
+        [SerializeField] private float knockbackDecaySeconds = 0.15f;
 
         private float stunRemaining;
+        private float flinchCooldownRemaining;
+        private float knockbackDecayRate;
 
         public Team Team { get => team; set => team = value; }
         public int MaxHp => maxHp;
@@ -29,8 +38,15 @@ namespace DeckArpg.Gameplay
         /// <summary>Set by the dash (i-frames). Hits are ignored while true.</summary>
         public bool IsInvulnerable { get; set; }
         public int OwnerId => gameObject.GetInstanceID();
+        public float HitFlinchSeconds { get => hitFlinchSeconds; set => hitFlinchSeconds = Mathf.Max(0f, value); }
+        /// <summary>Push from the last body hit, decaying to zero. Movers add this to their motion.</summary>
+        public Vector3 KnockbackVelocity { get; private set; }
 
         public event Action<int> Damaged;
+        /// <summary>A damaging body hit landed: damage and the flat direction it pushed us.</summary>
+        public event Action<int, Vector3> HitTaken;
+        /// <summary>A body hit flinched us (not raised while the flinch cooldown runs).</summary>
+        public event Action Flinched;
         public event Action Broken;
         public event Action Died;
 
@@ -43,18 +59,47 @@ namespace DeckArpg.Gameplay
         {
             if (stunRemaining > 0f) stunRemaining -= Time.deltaTime;
             if (Posture > 0f) Posture = Mathf.Max(0f, Posture - postureDecayPerSecond * Time.deltaTime);
+            if (flinchCooldownRemaining > 0f) flinchCooldownRemaining -= Time.deltaTime;
+            if (KnockbackVelocity != Vector3.zero)
+                KnockbackVelocity = Vector3.MoveTowards(KnockbackVelocity, Vector3.zero, knockbackDecayRate * Time.deltaTime);
         }
 
-        /// <summary>Applies a body hit. Returns false if the hit was ignored (i-frames, dead, or friendly).</summary>
-        public bool TakeHit(in AttackPayload payload)
+        /// <summary>Applies a body hit with no knockback. Returns false if the hit was ignored.</summary>
+        public bool TakeHit(in AttackPayload payload) => TakeHit(payload, Vector3.zero);
+
+        /// <summary>
+        /// Applies a body hit pushing us along <paramref name="fromDirection"/> (attacker to us).
+        /// Returns false if the hit was ignored (i-frames, dead, or friendly).
+        /// </summary>
+        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection)
         {
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
             int damage = CombatMath.Damage(payload);
             Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
-            if (Hp == 0) Died?.Invoke();
+            if (Hp == 0)
+            {
+                Died?.Invoke();
+                return true;
+            }
+            if (damage > 0) React(payload, fromDirection, damage);
             return true;
+        }
+
+        private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
+        {
+            fromDirection.y = 0f;
+            var direction = fromDirection.sqrMagnitude > 0.0001f ? fromDirection.normalized : Vector3.zero;
+            float speed = CombatMath.KnockbackSpeed(payload);
+            KnockbackVelocity = direction * speed;
+            knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
+            HitTaken?.Invoke(damage, direction);
+
+            if (flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
+            stunRemaining = Mathf.Max(stunRemaining, hitFlinchSeconds);
+            flinchCooldownRemaining = flinchCooldownSeconds;
+            Flinched?.Invoke();
         }
 
         /// <summary>Called when one of our cards loses a clash: stun plus posture damage.</summary>
@@ -77,6 +122,8 @@ namespace DeckArpg.Gameplay
             Hp = maxHp;
             Posture = 0f;
             stunRemaining = 0f;
+            flinchCooldownRemaining = 0f;
+            KnockbackVelocity = Vector3.zero;
         }
     }
 }

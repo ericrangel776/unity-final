@@ -88,10 +88,12 @@ namespace DeckArpg.Gameplay
             foreach (var pair in touching)
                 if (pair.Key != null && !alreadyHit.Contains(pair.Key)) hitScratch.Add(pair.Key);
 
+            // Push away from the attacker, not the hitbox, so Arcana bursts and projectiles push sensibly.
+            var source = Owner != null ? Owner.transform.position : transform.position;
             foreach (var status in hitScratch)
             {
                 // Hits during i-frames are not consumed, so dashing through only protects while dashing.
-                if (status.TakeHit(Payload)) alreadyHit.Add(status);
+                if (status.TakeHit(Payload, status.transform.position - source)) alreadyHit.Add(status);
             }
         }
 

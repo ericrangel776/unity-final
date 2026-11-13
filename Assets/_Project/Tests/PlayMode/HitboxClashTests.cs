@@ -217,6 +217,98 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator BodyHit_PushesVictimAwayFromAttacker()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            var enemy = MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 1.5f));
+            Vector3? pushed = null;
+            Vector3 velocityAtHit = Vector3.zero;
+            body.HitTaken += (_, dir) => { pushed = dir; velocityAtHit = body.KnockbackVelocity; };
+            enemy.Spawn(Payload(enemy, 5, tick: 1), Vector3.back);
+
+            yield return Physics();
+
+            Assert.IsTrue(pushed.HasValue, "A damaging body hit should raise HitTaken.");
+            Assert.Greater(Vector3.Dot(pushed.Value, Vector3.back), 0.99f, "Push must point away from the attacker (+Z).");
+            Assert.AreEqual(CombatMath.KnockbackSpeed(Payload(enemy, 5, tick: 1)), velocityAtHit.magnitude, 0.001f);
+            Assert.Greater(Vector3.Dot(velocityAtHit, Vector3.back), 0f);
+        }
+
+        private static AttackPayload EnemyHit(int value, bool zero = false) =>
+            new AttackPayload(1, Team.Enemy, value, zero, false, 0, CardShape.Strike, Element.Physical);
+
+        [UnityTest]
+        public IEnumerator BodyHit_FlinchesVictim()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            int flinches = 0;
+            body.Flinched += () => flinches++;
+
+            Assert.IsTrue(body.TakeHit(EnemyHit(4), Vector3.back));
+
+            Assert.IsTrue(body.IsStunned, "A damaging hit should flinch (short stun).");
+            Assert.AreEqual(1, flinches);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator SecondHit_WithinFlinchCooldown_DamagesButDoesNotFlinchAgain()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            int flinches = 0;
+            body.Flinched += () => flinches++;
+
+            body.TakeHit(EnemyHit(1), Vector3.back);
+            body.TakeHit(EnemyHit(1), Vector3.back);
+
+            Assert.AreEqual(1, flinches, "Flinch cooldown should block a second flinch (no poke stunlock).");
+            Assert.AreEqual(body.MaxHp - 2 * CombatMath.DamagePerPoint, body.Hp, "Both hits still deal damage.");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ZeroCardBodyHit_CausesNoReaction()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            bool reacted = false;
+            body.HitTaken += (_, __) => reacted = true;
+
+            body.TakeHit(EnemyHit(0, zero: true), Vector3.back);
+
+            Assert.IsFalse(reacted);
+            Assert.IsFalse(body.IsStunned);
+            Assert.AreEqual(Vector3.zero, body.KnockbackVelocity);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator BodyHit_DuringIFrames_CausesNoKnockbackOrFlinch()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            body.IsInvulnerable = true;
+
+            Assert.IsFalse(body.TakeHit(EnemyHit(6), Vector3.back));
+
+            Assert.IsFalse(body.IsStunned);
+            Assert.AreEqual(Vector3.zero, body.KnockbackVelocity);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator BodyHit_FlashesRenderers()
+        {
+            var body = MakeBody(Team.Player, Vector3.zero);
+            var flash = body.gameObject.AddComponent<HitFlash>();
+
+            body.TakeHit(EnemyHit(3), Vector3.back);
+
+            Assert.IsTrue(flash.IsFlashing);
+            float end = Time.realtimeSinceStartup + 1f;
+            while (flash.IsFlashing && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsFalse(flash.IsFlashing, "Flash should clear on its own.");
+        }
+
+        [UnityTest]
         public IEnumerator BodyHit_SameTeam_DealsNoDamage()
         {
             var body = MakeBody(Team.Enemy, Vector3.zero);

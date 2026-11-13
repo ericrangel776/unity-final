@@ -55,12 +55,14 @@ namespace DeckArpg.Gameplay
         {
             status.Died += HandleDied;
             status.Broken += CancelTelegraph;
+            status.Flinched += CancelTelegraph;
         }
 
         private void OnDisable()
         {
             status.Died -= HandleDied;
             status.Broken -= CancelTelegraph;
+            status.Flinched -= CancelTelegraph;
         }
 
         private void Start()
@@ -82,6 +84,8 @@ namespace DeckArpg.Gameplay
                 if (timer <= 0f) Respawn();
                 return;
             }
+            // Before the stun check so a flinched dummy still slides back.
+            if (status.KnockbackVelocity != Vector3.zero) body.Move(status.KnockbackVelocity * Time.deltaTime);
             if (status.IsStunned || target == null) return;
 
             var toTarget = target.position - transform.position;

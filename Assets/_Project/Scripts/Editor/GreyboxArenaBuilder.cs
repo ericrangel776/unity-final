@@ -30,6 +30,8 @@ namespace DeckArpg.Editor
         private static readonly Quaternion IsoRotation = Quaternion.Euler(50f, 45f, 0f);
         private const float CameraDistance = 22f;
         public const float DummyParryWindow = 0.3f;
+        /// <summary>Player flinch is shorter than the dummy's default so getting hit stays fair.</summary>
+        public const float PlayerHitFlinch = 0.15f;
 
         [MenuItem("DeckArpg/Build M1 Arena")]
         public static void Build()
@@ -141,7 +143,10 @@ namespace DeckArpg.Editor
         {
             var root = CreateCharacterRoot("Player", bodyMat, accentMat);
             root.tag = "Player";
-            root.AddComponent<CombatantStatus>().Team = Team.Player;
+            var status = root.AddComponent<CombatantStatus>();
+            status.Team = Team.Player;
+            status.HitFlinchSeconds = PlayerHitFlinch;
+            root.AddComponent<HitFlash>();
             root.AddComponent<CombatActionController>();
             var deckManager = root.AddComponent<DeckRuntimeManager>();
             AssignDeck(deckManager, deck);
@@ -156,6 +161,7 @@ namespace DeckArpg.Editor
             var status = root.AddComponent<CombatantStatus>();
             status.Team = Team.Enemy;
             SetInt(status, "maxHp", 60);
+            root.AddComponent<HitFlash>();
             // Windup between the swing activating and it hurting: the window to answer with a 0-Parry.
             root.AddComponent<CombatActionController>().BodyHitDelay = DummyParryWindow;
             var deckManager = root.AddComponent<DeckRuntimeManager>();

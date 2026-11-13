@@ -1,4 +1,5 @@
 using System.Collections;
+using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
@@ -35,6 +36,28 @@ namespace DeckArpg.Tests.PlayMode
                 $"Dummy never approached and telegraphed a card. dummy={dummy.transform.position} " +
                 $"player={player.transform.position} target={(dummy.Target != null ? dummy.Target.name : "null")} " +
                 $"stunned={dummy.Status.IsStunned} hand0={dummy.Deck.Cycle.Hand[0]} t={Time.time:0.0}");
+        }
+
+        [UnityTest]
+        public IEnumerator Arena_HitDuringDummyTelegraph_CancelsIt()
+        {
+            yield return SceneManager.LoadSceneAsync(SceneName);
+
+            var dummy = Object.FindAnyObjectByType<TrainingDummyEnemy>();
+            Assert.IsNotNull(dummy.GetComponent<HitFlash>(), "Dummy should flash on hits.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<PlayerMotor>().GetComponent<HitFlash>(), "Player should flash on hits.");
+
+            float end = Time.time + 8f;
+            while (dummy.CurrentTelegraph == null && Time.time < end) yield return null;
+            Assert.IsNotNull(dummy.CurrentTelegraph, "Dummy never telegraphed.");
+
+            bool ended = false;
+            dummy.TelegraphEnded += () => ended = true;
+            var hit = new AttackPayload(1, Team.Player, 3, false, false, 0, CardShape.Strike, Element.Physical);
+            Assert.IsTrue(dummy.Status.TakeHit(hit, dummy.transform.forward * -1f));
+
+            Assert.IsTrue(ended, "A flinching hit should interrupt the wind-up.");
+            Assert.IsNull(dummy.CurrentTelegraph);
         }
 
         [UnityTest]

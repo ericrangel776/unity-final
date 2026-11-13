@@ -91,6 +91,7 @@ namespace DeckArpg.Gameplay
             {
                 horizontal = CameraRelative(moveInput) * moveSpeed;
             }
+            if (!IsDashing) horizontal += status.KnockbackVelocity;
 
             verticalVelocity = controller.isGrounded ? -1f : verticalVelocity + gravity * dt;
             controller.Move((horizontal + Vector3.up * verticalVelocity) * dt);

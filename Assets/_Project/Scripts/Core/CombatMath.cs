@@ -8,5 +8,12 @@ namespace DeckArpg.Core
         /// <summary>HP damage an attack deals on a body hit. 0-cards are parries and deal no HP damage.</summary>
         public static int Damage(in AttackPayload payload) =>
             payload.IsZeroBreaker ? 0 : payload.Value * DamagePerPoint;
+
+        public const float BaseKnockback = 3f;
+        public const float KnockbackPerPoint = 0.6f;
+
+        /// <summary>Initial push speed (m/s) a body hit gives its victim. 0-cards don't push.</summary>
+        public static float KnockbackSpeed(in AttackPayload payload) =>
+            payload.IsZeroBreaker ? 0f : BaseKnockback + payload.Value * KnockbackPerPoint;
     }
 }
