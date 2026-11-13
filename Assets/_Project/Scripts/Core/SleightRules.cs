@@ -81,6 +81,40 @@ namespace DeckArpg.Core
             return ValueOf(stocked, slot);
         }
 
+        /// <summary>
+        /// HUD preview for a partial (1-3 card) stock: what slot <paramref name="slot"/> adds right now. A 0 mirrors
+        /// the best numbered card stocked so far (1 if none). With 3 cards this matches <see cref="ComposedValue"/>.
+        /// </summary>
+        public static int PreviewSlotValue(IReadOnlyList<RuntimeCardInstance> stocked, int slot)
+        {
+            ValidatePartial(stocked);
+            if (slot < 0 || slot >= stocked.Count) throw new ArgumentOutOfRangeException(nameof(slot));
+            var card = stocked[slot];
+            if (!card.IsZeroBreaker) return card.GetEffectiveValue();
+            int best = 0;
+            for (int i = 0; i < stocked.Count; i++)
+                if (!stocked[i].IsZeroBreaker) best = Math.Max(best, stocked[i].GetEffectiveValue());
+            return best > 0 ? best : CardValue.Min;
+        }
+
+        /// <summary>Sum of <see cref="PreviewSlotValue"/> over a 1-3 card stock.</summary>
+        public static int PreviewTotal(IReadOnlyList<RuntimeCardInstance> stocked)
+        {
+            ValidatePartial(stocked);
+            int total = 0;
+            for (int i = 0; i < stocked.Count; i++) total += PreviewSlotValue(stocked, i);
+            return total;
+        }
+
+        private static void ValidatePartial(IReadOnlyList<RuntimeCardInstance> stocked)
+        {
+            if (stocked == null) throw new ArgumentNullException(nameof(stocked));
+            if (stocked.Count < 1 || stocked.Count > StockSize)
+                throw new ArgumentException($"A stock preview needs 1-{StockSize} cards.", nameof(stocked));
+            for (int i = 0; i < stocked.Count; i++)
+                if (stocked[i] == null) throw new ArgumentException("Stocked cards cannot be null.", nameof(stocked));
+        }
+
         private static int ValueOf(IReadOnlyList<RuntimeCardInstance> stocked, int slot)
         {
             var card = Resolve(stocked, slot);

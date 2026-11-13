@@ -116,6 +116,48 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(expected, SleightRules.HitCount(shape));
 
         [Test]
+        public void Preview_PartialStock_SumsWhatIsThere()
+        {
+            Assert.AreEqual(6, SleightRules.PreviewTotal(Of(cards.Card(6))));
+            Assert.AreEqual(10, SleightRules.PreviewTotal(Of(cards.Card(6), cards.Card(4))));
+        }
+
+        [Test]
+        public void Preview_ZeroMirrorsBestSoFar()
+        {
+            var stocked = Of(cards.Card(6), cards.Zero());
+            Assert.AreEqual(6, SleightRules.PreviewSlotValue(stocked, 1));
+            Assert.AreEqual(12, SleightRules.PreviewTotal(stocked));
+        }
+
+        [Test]
+        public void Preview_LoneZero_CountsAsMin()
+        {
+            Assert.AreEqual(CardValue.Min, SleightRules.PreviewTotal(Of(cards.Zero())));
+            Assert.AreEqual(2 * CardValue.Min, SleightRules.PreviewTotal(Of(cards.Zero(), cards.Zero())));
+        }
+
+        [Test]
+        public void Preview_FullStock_MatchesCompose()
+        {
+            var stocked = Of(cards.Zero(), cards.Card(9), cards.Card(5));
+            Assert.AreEqual(SleightRules.Compose(stocked).Value, SleightRules.PreviewTotal(stocked));
+            for (int i = 0; i < 3; i++)
+                Assert.AreEqual(SleightRules.ComposedValue(stocked, i), SleightRules.PreviewSlotValue(stocked, i));
+        }
+
+        [Test]
+        public void Preview_RejectsBadInput()
+        {
+            Assert.Throws<ArgumentNullException>(() => SleightRules.PreviewTotal(null));
+            Assert.Throws<ArgumentException>(() => SleightRules.PreviewTotal(Of()));
+            Assert.Throws<ArgumentException>(() =>
+                SleightRules.PreviewTotal(Of(cards.Card(1), cards.Card(1), cards.Card(1), cards.Card(1))));
+            Assert.Throws<ArgumentException>(() => SleightRules.PreviewTotal(Of(cards.Card(1), null)));
+            Assert.Throws<ArgumentOutOfRangeException>(() => SleightRules.PreviewSlotValue(Of(cards.Card(1)), 1));
+        }
+
+        [Test]
         public void Compose_RejectsBadInput()
         {
             Assert.Throws<ArgumentNullException>(() => SleightRules.Compose(null));
