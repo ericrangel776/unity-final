@@ -73,6 +73,8 @@ namespace DeckArpg.UI
         private void Update()
         {
             // HP / stun / dash change every frame; the hand only changes via the Changed event.
+            // The prompt depends on HP and the reload state, which change without a deck event.
+            if (deck != null && reloadText != null) RefreshPrompt();
             if (status == null || statusText == null) return;
             string state = status.IsDead ? "  DOWN" : status.IsStunned ? "  STUNNED" : "";
             string dash = motor != null && motor.DashCooldownRemaining > 0f ? "  dash..." : "  [Space] dash";
@@ -118,7 +120,8 @@ namespace DeckArpg.UI
             var help = UiFactory.CreateRect(canvas.transform, "Help", new Vector2(1f, 1f), new Vector2(1f, 1f),
                 new Vector2(-30f, -30f), new Vector2(700f, 40f));
             UiFactory.CreateText(help, "HelpText", 20, TextAnchor.UpperRight, new Color(1f, 1f, 1f, 0.7f)).text =
-                "WASD move · Mouse aim · 1/2/3 play · Q parry (after enemy swings) · LMB poke · R reload";
+                "WASD move · Mouse aim · 1/2/3 play · Q parry (after enemy swings) · LMB poke · R reload\n" +
+                "Shift+1/2/3/Q stock a Sleight · R again = timing press · Shift+R overburn";
         }
 
         private void Refresh()
@@ -139,8 +142,43 @@ namespace DeckArpg.UI
             parryValue.text = parry != null ? "0" : "";
 
             string reserve = cycle.ZeroReserveCount > 0 ? $" (+{cycle.ZeroReserveCount})" : "";
-            pilesText.text = $"Deck {cycle.DrawCount}   Discard {cycle.DiscardCount}   Parry{reserve}";
-            reloadText.text = cycle.CanReload ? "[R] RELOAD" : "";
+            pilesText.text = $"Deck {cycle.DrawCount}   Discard {cycle.DiscardCount}   Burned {cycle.BurnedCount}   Parry{reserve}";
+            RefreshPrompt();
+        }
+
+        public string PromptText => reloadText != null ? reloadText.text : null;
+
+        private static readonly Color ReloadPromptColor = new Color(1f, 0.85f, 0.3f);
+        private static readonly Color OverburnPromptColor = new Color(1f, 0.55f, 0.25f);
+        private static readonly Color DisabledPromptColor = new Color(0.6f, 0.6f, 0.6f, 0.8f);
+
+        /// <summary>
+        /// RELOAD and/or OVERBURN (with its HP price and how many cards it restores) while the bar is idle.
+        /// Overburn shows greyed when it's otherwise possible but would be lethal.
+        /// </summary>
+        private void RefreshPrompt()
+        {
+            var cycle = deck.Cycle;
+            var reload = deck.Reload;
+            if (reload == null || reload.State != ReloadState.Idle)
+            {
+                reloadText.text = "";
+                return;
+            }
+
+            string line = cycle.CanReload ? "[R] RELOAD" : "";
+            reloadText.color = ReloadPromptColor;
+            if (cycle.DrawCount == 0 && cycle.BurnedCount > 0 && status != null)
+            {
+                int cost = reload.NextOverburnCost(status.MaxHp);
+                bool affordable = OverburnRules.CanAfford(status.Hp, cost);
+                string overburn = affordable
+                    ? $"[Shift+R] OVERBURN  -{cost} HP  (restores {cycle.BurnedCount})"
+                    : $"OVERBURN needs {cost + 1}+ HP";
+                line = line.Length > 0 ? $"{line}     {overburn}" : overburn;
+                if (!cycle.CanReload) reloadText.color = affordable ? OverburnPromptColor : DisabledPromptColor;
+            }
+            reloadText.text = line;
         }
     }
 }
