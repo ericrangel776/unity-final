@@ -89,6 +89,8 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsNotNull(Object.FindAnyObjectByType<HitStop>(), "HitStop missing from arena.");
             Assert.IsNotNull(Object.FindAnyObjectByType<ClashImpactFx>(), "ClashImpactFx missing from arena.");
             Assert.IsNotNull(Object.FindAnyObjectByType<CinemachineImpulseListener>(), "Camera can't receive clash shake.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<CinemachineCamera>().GetComponent<CameraPunch>(),
+                "Camera should punch in on breaks.");
             Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.ClashFeedbackView>());
         }
 

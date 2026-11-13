@@ -140,6 +140,8 @@ namespace DeckArpg.Editor
             follow.TrackerSettings = tracker;
             // Receives clash camera shake from ClashImpactFx's impulse source.
             vcamGo.AddComponent<CinemachineImpulseListener>();
+            // Zooms in on Card Breaks and eases back out after the freeze.
+            vcamGo.AddComponent<CameraPunch>();
         }
 
         private static GameObject BuildPlayerPrefab(List<CardData> deck, Material bodyMat, Material accentMat)
