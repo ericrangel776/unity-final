@@ -92,12 +92,15 @@ namespace DeckArpg.Gameplay
             sources.Clear();
         }
 
-        /// <summary>Our hitbox lost a clash: cancel everything, take the stun, and report the broken card.</summary>
-        internal void OnClashLost(AttackHitbox loser, bool brokeByZero)
+        /// <summary>
+        /// Our hitbox lost a clash: cancel everything, take a break scaled by <paramref name="margin"/>
+        /// (shoved along <paramref name="awayFromWinner"/>), and report the broken card.
+        /// </summary>
+        internal void OnClashLost(AttackHitbox loser, bool brokeByZero, int margin, Vector3 awayFromWinner)
         {
             sources.TryGetValue(loser, out var card);
             CancelActiveAction();
-            Status.ApplyBreak();
+            Status.ApplyBreak(margin, awayFromWinner);
             CardBroken?.Invoke(card, brokeByZero);
         }
 

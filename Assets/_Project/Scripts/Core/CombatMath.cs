@@ -16,6 +16,33 @@ namespace DeckArpg.Core
         public static float KnockbackSpeed(in AttackPayload payload) =>
             payload.IsZeroBreaker ? 0f : BaseKnockback + payload.Value * KnockbackPerPoint;
 
+        /// <summary>Margin used when nothing better is known; scales break effects by exactly 1.</summary>
+        public const int BaselineBreakMargin = 2;
+        public const int MaxBreakMargin = 8;
+
+        /// <summary>
+        /// How decisively a break was won: the value gap, clamped to [1, 8]. A Zero Break is the most
+        /// decisive possible (max), since the 0 is a flag, never integer math.
+        /// </summary>
+        public static int BreakMargin(in AttackPayload winner, in AttackPayload loser)
+        {
+            if (winner.IsZeroBreaker) return MaxBreakMargin;
+            int gap = winner.Value - (loser.IsZeroBreaker ? 0 : loser.Value);
+            return ClampMargin(gap);
+        }
+
+        public static int ClampMargin(int margin) =>
+            margin < 1 ? 1 : margin > MaxBreakMargin ? MaxBreakMargin : margin;
+
+        /// <summary>Multiplier on a combatant's base break posture damage. 1 at the baseline margin.</summary>
+        public static float BreakPostureScale(int margin) => 0.6f + 0.2f * ClampMargin(margin);
+
+        /// <summary>Multiplier on a combatant's base break stun. 1 at the baseline margin.</summary>
+        public static float BreakStunScale(int margin) => 0.8f + 0.1f * ClampMargin(margin);
+
+        /// <summary>Speed (m/s) the loser of a break is shoved away from the winner.</summary>
+        public static float BreakShoveSpeed(int margin) => 2f + 0.8f * ClampMargin(margin);
+
         public const float NeutralHitStop = 0.05f;
         public const float CardBreakHitStop = 0.12f;
         public const float ZeroBreakHitStop = 0.18f;

@@ -60,6 +60,60 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Break_BiggerValueGap_DealsMorePostureAndLongerStun()
+        {
+            // Two independent pairs far apart so their hitboxes never touch each other.
+            var closePlayer = MakeCombatant(Team.Player, Vector3.zero);
+            var closeEnemy = MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 2.2f));
+            var widePlayer = MakeCombatant(Team.Player, new Vector3(50f, 0f, 0f));
+            var wideEnemy = MakeCombatant(Team.Enemy, new Vector3(50f, 0f, 2.2f));
+
+            closeEnemy.Spawn(Payload(closeEnemy, 5, tick: 1), Vector3.back);
+            closePlayer.Spawn(Payload(closePlayer, 6, tick: 2), Vector3.forward);
+            wideEnemy.Spawn(Payload(wideEnemy, 2, tick: 1), Vector3.back);
+            widePlayer.Spawn(Payload(widePlayer, 9, tick: 2), Vector3.forward);
+
+            yield return Physics();
+
+            Assert.IsTrue(closeEnemy.Status.IsStunned && wideEnemy.Status.IsStunned, "Both losers should be broken.");
+            Assert.Greater(wideEnemy.Status.Posture, closeEnemy.Status.Posture, "9 vs 2 should hit posture harder than 6 vs 5.");
+            Assert.Greater(wideEnemy.Status.StunRemaining, closeEnemy.Status.StunRemaining, "9 vs 2 should stun longer.");
+        }
+
+        [UnityTest]
+        public IEnumerator Break_ShovesLoserAwayFromWinner()
+        {
+            var (player, enemy) = FacingPair();
+            Vector3 shove = Vector3.zero;
+            // Read at event time: the shove decays over ~0.15 s.
+            System.Action<ClashEvent> probe = _ => shove = enemy.Status.KnockbackVelocity;
+            ClashSystem.ClashOccurred += probe;
+            try
+            {
+                enemy.Spawn(Payload(enemy, 2, tick: 1), Vector3.back);
+                player.Spawn(Payload(player, 9, tick: 2), Vector3.forward);
+                yield return Physics();
+            }
+            finally
+            {
+                ClashSystem.ClashOccurred -= probe;
+            }
+
+            Assert.Greater(Vector3.Dot(shove.normalized, Vector3.forward), 0.99f, "Loser at +Z is pushed further +Z.");
+            Assert.AreEqual(CombatMath.BreakShoveSpeed(7), shove.magnitude, 0.001f);
+            Assert.AreEqual(Vector3.zero, player.Status.KnockbackVelocity, "The winner isn't shoved.");
+        }
+
+        [UnityTest]
+        public IEnumerator ApplyBreak_WithoutMargin_KeepsBaselinePosture()
+        {
+            var c = MakeCombatant(Team.Enemy, Vector3.zero);
+            c.Status.ApplyBreak();
+            Assert.AreEqual(25f, c.Status.Posture, 0.001f, "Default break keeps the original 25 posture.");
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator EqualCards_CancelBoth_WithoutStun()
         {
             var (player, enemy) = FacingPair();

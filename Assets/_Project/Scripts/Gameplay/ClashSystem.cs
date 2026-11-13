@@ -38,10 +38,10 @@ namespace DeckArpg.Gameplay
                 case ClashOutcome.None:
                     return result;
                 case ClashOutcome.AWins:
-                    b.Owner.OnClashLost(b, result.BrokeByZero);
+                    Break(winner: a, loser: b, result.BrokeByZero);
                     break;
                 case ClashOutcome.BWins:
-                    a.Owner.OnClashLost(a, result.BrokeByZero);
+                    Break(winner: b, loser: a, result.BrokeByZero);
                     break;
                 case ClashOutcome.Neutral:
                     a.Owner.CancelActiveAction();
@@ -51,6 +51,14 @@ namespace DeckArpg.Gameplay
 
             ClashOccurred?.Invoke(new ClashEvent(result, payloadA, payloadB, position));
             return result;
+        }
+
+        // The loser's break scales with how decisively it lost, and shoves it away from the winner.
+        private static void Break(AttackHitbox winner, AttackHitbox loser, bool brokeByZero)
+        {
+            int margin = CombatMath.BreakMargin(winner.Payload, loser.Payload);
+            var away = loser.Owner.transform.position - winner.Owner.transform.position;
+            loser.Owner.OnClashLost(loser, brokeByZero, margin, away);
         }
     }
 }

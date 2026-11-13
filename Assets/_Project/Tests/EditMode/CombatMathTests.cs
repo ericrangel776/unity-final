@@ -25,6 +25,51 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(CombatMath.DamagePerPoint, CombatMath.Damage(AttackPayload.Poke(1, Team.Player, 0)));
         }
 
+        private static AttackPayload Card(int value, bool zero = false) =>
+            new AttackPayload(1, Team.Player, value, zero, false, 0, CardShape.Strike, Element.Physical);
+
+        [Test]
+        public void BreakMargin_IsValueGap()
+        {
+            Assert.AreEqual(1, CombatMath.BreakMargin(Card(6), Card(5)));
+            Assert.AreEqual(7, CombatMath.BreakMargin(Card(9), Card(2)));
+        }
+
+        [Test]
+        public void BreakMargin_ZeroBreak_IsMax()
+        {
+            Assert.AreEqual(CombatMath.MaxBreakMargin, CombatMath.BreakMargin(Card(0, zero: true), Card(9)));
+        }
+
+        [Test]
+        public void BreakMargin_BeatingAZeroPlayedFirst_UsesWinnerValue()
+        {
+            Assert.AreEqual(2, CombatMath.BreakMargin(Card(2), Card(0, zero: true)));
+        }
+
+        [Test]
+        public void BreakMargin_IsClampedToValidRange()
+        {
+            // A non-positive gap can't be a break; treat it as the smallest one.
+            Assert.AreEqual(1, CombatMath.BreakMargin(Card(5), Card(5)));
+            Assert.AreEqual(CombatMath.MaxBreakMargin, CombatMath.ClampMargin(50));
+        }
+
+        [Test]
+        public void BreakScales_AreOne_AtBaselineMargin()
+        {
+            Assert.AreEqual(1f, CombatMath.BreakPostureScale(CombatMath.BaselineBreakMargin), 1e-5f);
+            Assert.AreEqual(1f, CombatMath.BreakStunScale(CombatMath.BaselineBreakMargin), 1e-5f);
+        }
+
+        [Test]
+        public void BreakEffects_GrowWithMargin()
+        {
+            Assert.Greater(CombatMath.BreakPostureScale(7), CombatMath.BreakPostureScale(1));
+            Assert.Greater(CombatMath.BreakStunScale(7), CombatMath.BreakStunScale(1));
+            Assert.Greater(CombatMath.BreakShoveSpeed(7), CombatMath.BreakShoveSpeed(1));
+        }
+
         [Test]
         public void KnockbackSpeed_ZeroBreaker_IsZero()
         {

@@ -11,8 +11,9 @@ namespace DeckArpg.Gameplay
         [SerializeField] private int maxHp = 100;
         [SerializeField] private float maxPosture = 100f;
         [SerializeField] private float postureDecayPerSecond = 10f;
-        [Tooltip("Posture added when one of our cards is broken.")]
+        [Tooltip("Posture added when one of our cards is broken, at the baseline margin (scaled by the value gap).")]
         [SerializeField] private float breakPostureDamage = 25f;
+        [Tooltip("Stun when one of our cards is broken, at the baseline margin (scaled by the value gap).")]
         [SerializeField] private float breakStunSeconds = 0.8f;
         [Tooltip("Stun when posture fills up.")]
         [SerializeField] private float postureBreakStunSeconds = 2f;
@@ -34,6 +35,7 @@ namespace DeckArpg.Gameplay
         public float MaxPosture => maxPosture;
         public float Posture { get; private set; }
         public bool IsStunned => stunRemaining > 0f;
+        public float StunRemaining => Mathf.Max(0f, stunRemaining);
         public bool IsDead => Hp <= 0;
         /// <summary>Set by the dash (i-frames). Hits are ignored while true.</summary>
         public bool IsInvulnerable { get; set; }
@@ -89,11 +91,7 @@ namespace DeckArpg.Gameplay
 
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
-            fromDirection.y = 0f;
-            var direction = fromDirection.sqrMagnitude > 0.0001f ? fromDirection.normalized : Vector3.zero;
-            float speed = CombatMath.KnockbackSpeed(payload);
-            KnockbackVelocity = direction * speed;
-            knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
+            var direction = Push(fromDirection, CombatMath.KnockbackSpeed(payload));
             HitTaken?.Invoke(damage, direction);
 
             if (flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
@@ -102,12 +100,29 @@ namespace DeckArpg.Gameplay
             Flinched?.Invoke();
         }
 
-        /// <summary>Called when one of our cards loses a clash: stun plus posture damage.</summary>
-        public void ApplyBreak()
+        /// <summary>Sets a decaying push along the flattened direction. Returns the unit direction used.</summary>
+        private Vector3 Push(Vector3 direction, float speed)
+        {
+            direction.y = 0f;
+            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
+            KnockbackVelocity = direction * speed;
+            knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
+            return direction;
+        }
+
+        /// <summary>Card break at the baseline margin with no shove.</summary>
+        public void ApplyBreak() => ApplyBreak(CombatMath.BaselineBreakMargin, Vector3.zero);
+
+        /// <summary>
+        /// Called when one of our cards loses a clash: posture damage and stun scaled by how decisively
+        /// we lost (<paramref name="margin"/>), plus a shove along <paramref name="awayFromWinner"/>.
+        /// </summary>
+        public void ApplyBreak(int margin, Vector3 awayFromWinner)
         {
             if (IsDead) return;
-            Posture += breakPostureDamage;
-            float stun = breakStunSeconds;
+            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin);
+            float stun = breakStunSeconds * CombatMath.BreakStunScale(margin);
+            if (awayFromWinner != Vector3.zero) Push(awayFromWinner, CombatMath.BreakShoveSpeed(margin));
             if (Posture >= maxPosture)
             {
                 Posture = 0f;
