@@ -62,6 +62,7 @@ namespace DeckArpg.Editor
             dummy.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
             BuildCameras(player.transform);
+            BuildClashFx();
 
             var hud = new GameObject("HUD");
             hud.AddComponent<HandHudView>();
@@ -137,6 +138,8 @@ namespace DeckArpg.Editor
             tracker.BindingMode = BindingMode.WorldSpace;
             tracker.PositionDamping = new Vector3(0.4f, 0.4f, 0.4f);
             follow.TrackerSettings = tracker;
+            // Receives clash camera shake from ClashImpactFx's impulse source.
+            vcamGo.AddComponent<CinemachineImpulseListener>();
         }
 
         private static GameObject BuildPlayerPrefab(List<CardData> deck, Material bodyMat, Material accentMat)
@@ -234,6 +237,36 @@ namespace DeckArpg.Editor
             mat.SetColor("_BaseColor", color);
             EditorUtility.SetDirty(mat);
             return mat;
+        }
+
+        /// <summary>Additive particle material + soft-dot texture saved as assets so builds keep them.</summary>
+        private static Material GetOrCreateSparkMaterial()
+        {
+            string texPath = $"{MaterialFolder}/ClashSparkDot.asset";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            if (tex == null)
+            {
+                tex = ClashImpactFx.CreateSoftDotTexture();
+                AssetDatabase.CreateAsset(tex, texPath);
+            }
+
+            string path = $"{MaterialFolder}/ClashSpark.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            ClashImpactFx.ConfigureAdditive(mat, tex);
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        private static void BuildClashFx()
+        {
+            var fx = new GameObject("ClashFx");
+            fx.AddComponent<HitStop>();
+            fx.AddComponent<ClashImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
         }
 
         private static void AddSceneToBuildSettings(string path)

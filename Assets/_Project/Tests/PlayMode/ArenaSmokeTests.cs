@@ -2,6 +2,7 @@ using System.Collections;
 using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -58,6 +59,18 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.IsTrue(ended, "A flinching hit should interrupt the wind-up.");
             Assert.IsNull(dummy.CurrentTelegraph);
+        }
+
+        [UnityTest]
+        public IEnumerator Arena_HasClashJuiceWired()
+        {
+            yield return SceneManager.LoadSceneAsync(SceneName);
+            yield return null;
+
+            Assert.IsNotNull(Object.FindAnyObjectByType<HitStop>(), "HitStop missing from arena.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<ClashImpactFx>(), "ClashImpactFx missing from arena.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<CinemachineImpulseListener>(), "Camera can't receive clash shake.");
+            Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.ClashFeedbackView>());
         }
 
         [UnityTest]
