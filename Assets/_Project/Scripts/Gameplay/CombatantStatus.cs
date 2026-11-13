@@ -24,8 +24,11 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float flinchCooldownSeconds = 1f;
         [Tooltip("Seconds for knockback to decay to zero.")]
         [SerializeField] private float knockbackDecaySeconds = 0.15f;
+        [Tooltip("After one of our cards is broken, the first damaging hit within this window is a counter (x1.5).")]
+        [SerializeField] private float counterWindowSeconds = 1f;
 
         private float stunRemaining;
+        private float counterWindowRemaining;
         private float flinchCooldownRemaining;
         private float knockbackDecayRate;
 
@@ -51,6 +54,11 @@ namespace DeckArpg.Gameplay
         public event Action Flinched;
         public event Action Broken;
         public event Action Died;
+        /// <summary>True while a counter hit is possible (just after one of our cards was broken).</summary>
+        public bool IsCounterWindowOpen => counterWindowRemaining > 0f;
+
+        /// <summary>Any combatant took a counter hit: the victim and the boosted damage. For global feedback.</summary>
+        public static event Action<CombatantStatus, int> CounterHit;
 
         private void Awake()
         {
@@ -62,6 +70,8 @@ namespace DeckArpg.Gameplay
             if (stunRemaining > 0f) stunRemaining -= Time.deltaTime;
             if (Posture > 0f) Posture = Mathf.Max(0f, Posture - postureDecayPerSecond * Time.deltaTime);
             if (flinchCooldownRemaining > 0f) flinchCooldownRemaining -= Time.deltaTime;
+            // Scaled time on purpose: the break's own hit-stop shouldn't eat the window.
+            if (counterWindowRemaining > 0f) counterWindowRemaining -= Time.deltaTime;
             if (KnockbackVelocity != Vector3.zero)
                 KnockbackVelocity = Vector3.MoveTowards(KnockbackVelocity, Vector3.zero, knockbackDecayRate * Time.deltaTime);
         }
@@ -78,8 +88,16 @@ namespace DeckArpg.Gameplay
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
             int damage = CombatMath.Damage(payload);
+            // 0-damage hits (0-cards) don't spend the counter window.
+            bool counter = damage > 0 && IsCounterWindowOpen;
+            if (counter)
+            {
+                damage = CombatMath.CounterDamage(damage);
+                counterWindowRemaining = 0f;
+            }
             Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
+            if (counter) CounterHit?.Invoke(this, damage);
             if (Hp == 0)
             {
                 Died?.Invoke();
@@ -129,6 +147,7 @@ namespace DeckArpg.Gameplay
                 stun = postureBreakStunSeconds;
             }
             stunRemaining = Mathf.Max(stunRemaining, stun);
+            counterWindowRemaining = counterWindowSeconds;
             Broken?.Invoke();
         }
 
@@ -138,6 +157,7 @@ namespace DeckArpg.Gameplay
             Posture = 0f;
             stunRemaining = 0f;
             flinchCooldownRemaining = 0f;
+            counterWindowRemaining = 0f;
             KnockbackVelocity = Vector3.zero;
         }
     }

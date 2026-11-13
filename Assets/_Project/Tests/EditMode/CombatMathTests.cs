@@ -71,6 +71,20 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void CounterDamage_IsOneAndAHalfTimes_RoundedUp()
+        {
+            Assert.AreEqual(30, CombatMath.CounterDamage(20));
+            Assert.AreEqual(5, CombatMath.CounterDamage(3), "A poke (3) still gains: 4.5 rounds up to 5.");
+        }
+
+        [Test]
+        public void CounterDamage_ZeroOrNegative_IsZero()
+        {
+            Assert.AreEqual(0, CombatMath.CounterDamage(0));
+            Assert.AreEqual(0, CombatMath.CounterDamage(-4));
+        }
+
+        [Test]
         public void KnockbackSpeed_ZeroBreaker_IsZero()
         {
             var p = new AttackPayload(1, Team.Player, 0, true, false, 0, CardShape.Strike, Element.Physical);

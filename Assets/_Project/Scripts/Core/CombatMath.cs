@@ -43,6 +43,15 @@ namespace DeckArpg.Core
         /// <summary>Speed (m/s) the loser of a break is shoved away from the winner.</summary>
         public static float BreakShoveSpeed(int margin) => 2f + 0.8f * ClampMargin(margin);
 
+        public const float CounterMultiplier = 1.5f;
+
+        /// <summary>
+        /// Damage for a counter hit (the first hit on someone whose card was just broken): x1.5,
+        /// rounded up so even a poke gains something. 0 stays 0.
+        /// </summary>
+        public static int CounterDamage(int baseDamage) =>
+            baseDamage <= 0 ? 0 : (int)System.Math.Ceiling(baseDamage * (double)CounterMultiplier);
+
         public const float NeutralHitStop = 0.05f;
         public const float CardBreakHitStop = 0.12f;
         public const float ZeroBreakHitStop = 0.18f;
