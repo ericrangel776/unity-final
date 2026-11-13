@@ -67,6 +67,7 @@ namespace DeckArpg.Editor
             var hud = new GameObject("HUD");
             hud.AddComponent<HandHudView>();
             hud.AddComponent<ClashFeedbackView>();
+            hud.AddComponent<CardShatterView>();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);

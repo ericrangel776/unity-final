@@ -92,6 +92,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsNotNull(Object.FindAnyObjectByType<CinemachineCamera>().GetComponent<CameraPunch>(),
                 "Camera should punch in on breaks.");
             Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.ClashFeedbackView>());
+            Assert.IsNotNull(Object.FindAnyObjectByType<DeckArpg.UI.CardShatterView>(), "Broken cards should shatter.");
         }
 
         [UnityTest]
