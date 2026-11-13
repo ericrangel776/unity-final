@@ -35,6 +35,7 @@ namespace DeckArpg.Tests.EditMode
         [TestCase("Parry")]
         [TestCase("Poke")]
         [TestCase("Reload")]
+        [TestCase("Stock")]
         [TestCase("Aim")]
         public void PlayerMap_DefinesCombatAction(string actionName)
         {
