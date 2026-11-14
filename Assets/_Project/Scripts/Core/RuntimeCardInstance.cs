@@ -9,6 +9,11 @@ namespace DeckArpg.Core
         public int PermanentRunUpgradeMod { get; set; }
         public int TemporaryRoomMod { get; set; }
         public bool IsBurnedThisFight { get; set; }
+        /// <summary>Set when the Forge makes this copy Premium. The asset is never touched.</summary>
+        public bool IsPremiumOverride { get; set; }
+
+        /// <summary>Premium cards hit harder (+<see cref="PremiumBonus"/>) but burn whenever they're played.</summary>
+        public const int PremiumBonus = 2;
 
         public RuntimeCardInstance(CardData data)
         {
@@ -17,15 +22,17 @@ namespace DeckArpg.Core
         }
 
         public bool IsZeroBreaker => Data.IsZeroBreaker;
+        public bool IsPremium => Data.IsPremium || IsPremiumOverride;
 
         /// <summary>
-        /// 0 for zero-breakers (mods never touch them); otherwise base + mods clamped to [1, 9].
+        /// 0 for zero-breakers (mods never touch them); otherwise base + mods (+2 if Premium) clamped to [1, 9].
         /// Callers must check <see cref="IsZeroBreaker"/> rather than comparing against 0.
         /// </summary>
         public int GetEffectiveValue()
         {
             if (Data.IsZeroBreaker) return 0;
-            return CardValue.Clamp(Data.BaseValue + PermanentRunUpgradeMod + TemporaryRoomMod);
+            int premium = IsPremium ? PremiumBonus : 0;
+            return CardValue.Clamp(Data.BaseValue + PermanentRunUpgradeMod + TemporaryRoomMod + premium);
         }
 
         public override string ToString() => $"{Data.DisplayName} [{GetEffectiveValue()}]";

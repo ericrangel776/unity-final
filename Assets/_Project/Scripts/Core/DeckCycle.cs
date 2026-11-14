@@ -86,14 +86,17 @@ namespace DeckArpg.Core
             Changed?.Invoke();
         }
 
-        /// <summary>Plays the card in <paramref name="slot"/>: it goes to discard and the next card is drawn into that slot.</summary>
+        /// <summary>
+        /// Plays the card in <paramref name="slot"/>: it goes to discard (Premium: burned, Floor of 3 permitting)
+        /// and the next card is drawn into that slot.
+        /// </summary>
         public bool TryPlay(int slot, out RuntimeCardInstance card)
         {
             card = null;
             if (slot < 0 || slot >= HandSize || hand[slot] == null) return false;
 
             card = hand[slot];
-            discard.Add(card);
+            DiscardOrBurnPremium(card);
             hand[slot] = DrawNext();
             Changed?.Invoke();
             return true;
@@ -105,7 +108,7 @@ namespace DeckArpg.Core
             card = ParrySlot;
             if (card == null) return false;
 
-            discard.Add(card);
+            DiscardOrBurnPremium(card);
             ParrySlot = zeroReserve.Count > 0 ? zeroReserve.Dequeue() : null;
             Changed?.Invoke();
             return true;
@@ -183,9 +186,19 @@ namespace DeckArpg.Core
             }
 
             sleight = SleightRules.Compose(stock);
-            if (SleightRules.CanBurn(CyclingCardCount)) Burn(stock[0]);
-            else discard.Add(stock[0]);
-            for (int i = 1; i < stock.Count; i++) discard.Add(stock[i]);
+            // Slot 1 always tries to burn; Premium cards in any slot do too. Count down as cards burn
+            // so several burns in one Sleight still stop at the Floor of 3.
+            int cycling = CyclingCardCount;
+            for (int i = 0; i < stock.Count; i++)
+            {
+                bool wantsBurn = i == 0 || stock[i].IsPremium;
+                if (wantsBurn && SleightRules.CanBurn(cycling))
+                {
+                    Burn(stock[i]);
+                    cycling--;
+                }
+                else discard.Add(stock[i]);
+            }
             ClearStock();
             Changed?.Invoke();
             return StockResult.Fired;
@@ -207,6 +220,16 @@ namespace DeckArpg.Core
             burned.Clear();
             Changed?.Invoke();
             return count;
+        }
+
+        /// <summary>
+        /// A single-played card goes to discard, unless it's Premium and the Floor of 3 allows a burn.
+        /// Call it while the card is still counted as cycling (before it leaves its slot).
+        /// </summary>
+        private void DiscardOrBurnPremium(RuntimeCardInstance card)
+        {
+            if (card.IsPremium && SleightRules.CanBurn(CyclingCardCount)) Burn(card);
+            else discard.Add(card);
         }
 
         private void Burn(RuntimeCardInstance card)
