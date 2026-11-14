@@ -143,6 +143,20 @@ namespace DeckArpg.Gameplay
         public void ApplyBreak() => ApplyBreak(CombatMath.BaselineBreakMargin, Vector3.zero);
 
         /// <summary>
+        /// Posture damage from an effect (e.g. Shattered Hourglass). Filling the bar posture-breaks: long stun, bar
+        /// resets. No shove and no counter window. Ignored when dead or for non-positive amounts.
+        /// </summary>
+        public void AddPostureDamage(float amount)
+        {
+            if (IsDead || amount <= 0f) return;
+            Posture += amount;
+            if (Posture < maxPosture) return;
+            Posture = 0f;
+            stunRemaining = Mathf.Max(stunRemaining, postureBreakStunSeconds);
+            Broken?.Invoke();
+        }
+
+        /// <summary>
         /// Called when one of our cards loses a clash: posture damage and stun scaled by how decisively
         /// we lost (<paramref name="margin"/>), plus a shove along <paramref name="awayFromWinner"/>.
         /// </summary>

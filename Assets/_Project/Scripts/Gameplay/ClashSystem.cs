@@ -101,7 +101,10 @@ namespace DeckArpg.Gameplay
             var away = loser.Owner.transform.position - winner.Owner.transform.position;
             // The swing that won can still follow through, but the counter is for a separate follow-up.
             winner.MarkBroke(loser.Owner.Status);
+            var winnerOwner = winner.Owner;
+            var loserStatus = loser.Owner.Status;
             loser.Owner.OnClashLost(loser, brokeByZero, CombatMath.ClampMargin(margin), away);
+            winnerOwner.OnClashWon(loserStatus, brokeByZero);
         }
     }
 }

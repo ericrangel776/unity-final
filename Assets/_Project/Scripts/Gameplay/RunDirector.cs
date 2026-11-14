@@ -44,6 +44,7 @@ namespace DeckArpg.Gameplay
         private CombatantStatus playerStatus;
         private DeckRuntimeManager playerDeck;
         private CombatActionController playerCombat;
+        private RelicEffects playerRelics;
 
         public RunState Run { get; private set; }
         public RunDirectorState State { get; private set; }
@@ -51,6 +52,7 @@ namespace DeckArpg.Gameplay
         public TrainingDummyEnemy EnemyPrefab => enemyPrefab;
         public int EnemyBaseHp => enemyBaseHp;
         public PlayerCombatInput Player => player;
+        public RelicEffects PlayerRelics => playerRelics;
         /// <summary>Spawned enemies of the current room that haven't been removed yet.</summary>
         public IReadOnlyList<TrainingDummyEnemy> Enemies => enemies;
         public CombatReward CurrentReward { get; private set; }
@@ -76,6 +78,8 @@ namespace DeckArpg.Gameplay
             playerStatus = player.GetComponent<CombatantStatus>();
             playerDeck = player.GetComponent<DeckRuntimeManager>();
             playerCombat = player.GetComponent<CombatActionController>();
+            playerRelics = player.GetComponent<RelicEffects>();
+            if (playerRelics == null) playerRelics = player.gameObject.AddComponent<RelicEffects>();
             player.RespawnOnDeath = false;
             playerStatus.Died += HandlePlayerDied;
             // Added after DeckRuntimeManager's own listener, so a 0-broken card is already set aside here.
@@ -149,6 +153,15 @@ namespace DeckArpg.Gameplay
             SetState(RunDirectorState.ChoosingDoor);
         }
 
+        /// <summary>Takes relic option <paramref name="index"/> from the current reward. False if none is open or already taken.</summary>
+        public bool ChooseRelic(int index)
+        {
+            RequireState(RunDirectorState.Reward);
+            if (CurrentReward == null || !CurrentReward.TryPickRelic(index, Run)) return false;
+            playerRelics.SetRelics(Run.Relics);
+            return true;
+        }
+
         /// <summary>Leaves a Shop/Forge/Rest room and deals the next offer.</summary>
         public void LeaveUtility()
         {
@@ -168,6 +181,9 @@ namespace DeckArpg.Gameplay
             Element? element = buff != 0 ? room.Value.BuffElement : (Element?)null;
             playerDeck.SetRoomValueMod(buff, element);
             playerDeck.UseRunDeck(Run.Deck, NextSeed());
+            // After the rebuild: Reinitialize resets the Overburn price, and relics set this room's freebies.
+            playerRelics.SetRelics(Run.Relics);
+            playerRelics.BeginRoom();
         }
 
         private void SpawnEnemies(in MapCard room)
@@ -311,6 +327,7 @@ namespace DeckArpg.Gameplay
         [ContextMenu("Run/Choose Door 1")] private void DebugDoor1() => ChooseDoor(0);
         [ContextMenu("Run/Choose Door 2")] private void DebugDoor2() => ChooseDoor(Math.Min(1, Run.CurrentOffer.Count - 1));
         [ContextMenu("Run/Choose Door 3")] private void DebugDoor3() => ChooseDoor(Math.Min(2, Run.CurrentOffer.Count - 1));
+        [ContextMenu("Run/Choose Relic 1")] private void DebugRelic1() => ChooseRelic(0);
         [ContextMenu("Run/Finish Reward")] private void DebugFinishReward() => FinishReward();
         [ContextMenu("Run/Leave Utility Room")] private void DebugLeaveUtility() => LeaveUtility();
         [ContextMenu("Run/Restart")] private void DebugRestart() => RestartRun();
