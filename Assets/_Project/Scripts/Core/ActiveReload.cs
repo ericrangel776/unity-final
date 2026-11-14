@@ -72,6 +72,8 @@ namespace DeckArpg.Core
         private readonly DeckCycle deck;
         private readonly Random rng;
         private bool hasAnchor;
+        private int freeOverburnsPerRoom;
+        private int freeOverburnsUsed;
 
         public ActiveReload(DeckCycle deck, Random random)
         {
@@ -118,10 +120,23 @@ namespace DeckArpg.Core
         public bool IsOverburn { get; private set; }
         public int OverburnUsesThisRoom { get; private set; }
 
-        public int NextOverburnCost(int maxHp) => OverburnRules.Cost(maxHp, OverburnUsesThisRoom);
+        /// <summary>Cinder Lantern: Overburns per room that cost no HP. They don't count toward the escalation.</summary>
+        public int FreeOverburnsPerRoom
+        {
+            get => freeOverburnsPerRoom;
+            set => freeOverburnsPerRoom = Math.Max(0, value);
+        }
+        public int FreeOverburnsLeft => Math.Max(0, freeOverburnsPerRoom - freeOverburnsUsed);
 
-        /// <summary>The next Overburn costs 10% again. Call on room start and respawn.</summary>
-        public void ResetOverburnCost() => OverburnUsesThisRoom = 0;
+        public int NextOverburnCost(int maxHp) =>
+            FreeOverburnsLeft > 0 ? 0 : OverburnRules.Cost(maxHp, OverburnUsesThisRoom);
+
+        /// <summary>The next Overburn costs 10% again and free ones refill. Call on room start and respawn.</summary>
+        public void ResetOverburnCost()
+        {
+            OverburnUsesThisRoom = 0;
+            freeOverburnsUsed = 0;
+        }
 
         /// <summary>Ends any Perfect-reload speed boost now (respawn).</summary>
         public void ResetBoost() => BoostRemaining = 0f;
@@ -151,8 +166,12 @@ namespace DeckArpg.Core
         public bool BeginOverburn(IHpPool payer)
         {
             if (!CanBeginOverburn(payer)) return false;
-            payer.SpendHp(NextOverburnCost(payer.MaxHp));
-            OverburnUsesThisRoom++;
+            if (FreeOverburnsLeft > 0) freeOverburnsUsed++;
+            else
+            {
+                payer.SpendHp(NextOverburnCost(payer.MaxHp));
+                OverburnUsesThisRoom++;
+            }
             IsOverburn = true;
             StartBar();
             return true;

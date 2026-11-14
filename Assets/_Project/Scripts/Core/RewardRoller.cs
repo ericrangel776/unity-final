@@ -33,11 +33,16 @@ namespace DeckArpg.Core
             return result;
         }
 
-        /// <summary>Rolls the post-fight reward for a cleared combat room. Momentum is the streak before this clear.</summary>
+        /// <summary>
+        /// Rolls the post-fight reward for a cleared combat room. Momentum is the streak before this clear.
+        /// An earned relic rolls a choice from the relics not in <paramref name="ownedRelics"/>; with none left it
+        /// pays <see cref="RelicRules.FallbackCurrency"/> instead.
+        /// </summary>
         public static CombatReward RollCombatReward(in MapCard room, IReadOnlyList<CardData> pool, Momentum momentum,
-            Random rng, int extraOptions = 0)
+            Random rng, int extraOptions = 0, int extraSkipBonus = 0, IReadOnlyCollection<RelicId> ownedRelics = null)
         {
             if (extraOptions < 0) throw new ArgumentOutOfRangeException(nameof(extraOptions));
+            if (extraSkipBonus < 0) throw new ArgumentOutOfRangeException(nameof(extraSkipBonus));
             var tier = RewardRules.Tier(room.Number);
             int currency = RewardRules.Currency(room, momentum);
             var options = RollCards(pool, RewardRules.DraftOptions(tier) + extraOptions, RewardRules.RarityShift(room), rng);
@@ -46,7 +51,15 @@ namespace DeckArpg.Core
                          || (room.Kind != MapCardKind.Boss && RewardRules.HasRelicChance(tier)
                              && rng.Next(RewardRules.FranticRelicOdds) == 0);
 
-            return new CombatReward(currency, options, RewardRules.DraftPicks(tier), RewardRules.DraftUpgrade(tier), relic);
+            List<RelicId> relicOptions = null;
+            if (relic)
+            {
+                relicOptions = RelicRules.RollOffer(ownedRelics, rng);
+                if (relicOptions.Count == 0) currency += RelicRules.FallbackCurrency;
+            }
+
+            return new CombatReward(currency, options, RewardRules.DraftPicks(tier), RewardRules.DraftUpgrade(tier), relic,
+                relicOptions, RewardRules.SkipBonus + extraSkipBonus);
         }
 
         private static Rarity RollRarity(IReadOnlyList<int> weights, Random rng)
@@ -86,20 +99,32 @@ namespace DeckArpg.Core
     {
         private readonly List<CardData> options;
         private readonly bool[] taken;
+        private readonly List<RelicId> relicOptions;
 
         public int Currency { get; }
         public IReadOnlyList<CardData> Options => options;
         public int PicksAllowed { get; }
         /// <summary>Permanent upgrade applied to each drafted card (Fierce/Frantic).</summary>
         public int DraftUpgrade { get; }
-        /// <summary>The player also gets a relic choice (resolved in the relic step).</summary>
+        /// <summary>The room earned a relic: a choice from <see cref="RelicOptions"/>, or the fallback currency if all are owned.</summary>
         public bool OffersRelic { get; }
+        /// <summary>Relics to choose one from. Empty when no relic was earned or every relic is already owned.</summary>
+        public IReadOnlyList<RelicId> RelicOptions => relicOptions;
+        /// <summary>A relic was earned but all were owned, so <see cref="RelicRules.FallbackCurrency"/> is in <see cref="Currency"/>.</summary>
+        public bool RelicFallbackPaid => OffersRelic && relicOptions.Count == 0;
+        public bool IsRelicClaimed { get; private set; }
+        /// <summary>Currency paid by <see cref="Skip"/> when no card was taken.</summary>
+        public int SkipBonus { get; }
         public int PicksMade { get; private set; }
         public bool IsDraftClosed { get; private set; }
 
-        public CombatReward(int currency, List<CardData> options, int picksAllowed, int draftUpgrade, bool offersRelic)
+        public CombatReward(int currency, List<CardData> options, int picksAllowed, int draftUpgrade, bool offersRelic,
+            List<RelicId> relicOptions = null, int skipBonus = RewardRules.SkipBonus)
         {
             this.options = options ?? throw new ArgumentNullException(nameof(options));
+            if (skipBonus < 0) throw new ArgumentOutOfRangeException(nameof(skipBonus));
+            this.relicOptions = offersRelic && relicOptions != null ? new List<RelicId>(relicOptions) : new List<RelicId>();
+            SkipBonus = skipBonus;
             taken = new bool[options.Count];
             Currency = currency;
             PicksAllowed = picksAllowed;
@@ -123,12 +148,22 @@ namespace DeckArpg.Core
             return true;
         }
 
+        /// <summary>Takes relic option <paramref name="index"/>. Only one per reward; false if claimed, out of range or already owned.</summary>
+        public bool TryPickRelic(int index, RunState run)
+        {
+            if (run == null) throw new ArgumentNullException(nameof(run));
+            if (IsRelicClaimed || index < 0 || index >= relicOptions.Count) return false;
+            if (!run.AddRelic(relicOptions[index])) return false;
+            IsRelicClaimed = true;
+            return true;
+        }
+
         /// <summary>Closes the draft. Pays the skip bonus only if no card was taken. False if already closed.</summary>
         public bool Skip(RunState run)
         {
             if (run == null) throw new ArgumentNullException(nameof(run));
             if (IsDraftClosed) return false;
-            if (PicksMade == 0) run.AddCurrency(RewardRules.SkipBonus);
+            if (PicksMade == 0) run.AddCurrency(SkipBonus);
             IsDraftClosed = true;
             return true;
         }

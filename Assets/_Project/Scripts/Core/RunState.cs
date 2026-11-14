@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DeckArpg.Core
 {
-    /// <summary>The 6 relics. Effects arrive in M3 step 5; here they're only owned ids.</summary>
+    /// <summary>The 6 relics. Rules in <see cref="RelicRules"/>; fight effects in Gameplay's RelicEffects (docs/specs/m3-relics.md).</summary>
     public enum RelicId
     {
         ShatteredHourglass,
@@ -121,7 +121,9 @@ namespace DeckArpg.Core
             if (CurrentRoom.IsCombat)
             {
                 if (pool == null) throw new ArgumentNullException(nameof(pool));
-                reward = RewardRoller.RollCombatReward(CurrentRoom, pool, Momentum, Rng);
+                bool quill = HasRelic(RelicId.GildedQuill);
+                reward = RewardRoller.RollCombatReward(CurrentRoom, pool, Momentum, Rng,
+                    quill ? RelicRules.GildedQuillExtraOptions : 0, quill ? RelicRules.GildedQuillExtraSkipBonus : 0, relics);
                 AddCurrency(reward.Currency);
                 Momentum.RecordCombatClear(CurrentRoom.Number);
             }
