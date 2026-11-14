@@ -23,6 +23,21 @@ namespace DeckArpg.Tests.EditMode
             return new RuntimeCardInstance(data);
         }
 
+        /// <summary>A bare card asset (for run decks, draft pools and shops).</summary>
+        public CardData Data(int value, Rarity rarity = Rarity.Common, bool zero = false)
+        {
+            var data = CardData.Create($"test_data_{value}_{created.Count}", value, zeroBreaker: zero, rarity: rarity);
+            created.Add(data);
+            return data;
+        }
+
+        public List<CardData> DataSet(int count, Rarity rarity = Rarity.Common)
+        {
+            var list = new List<CardData>();
+            for (int i = 0; i < count; i++) list.Add(Data(1 + i % 9, rarity));
+            return list;
+        }
+
         public List<RuntimeCardInstance> Numbered(params int[] values)
         {
             var list = new List<RuntimeCardInstance>();
