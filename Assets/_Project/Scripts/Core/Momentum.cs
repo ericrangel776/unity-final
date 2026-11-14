@@ -29,6 +29,9 @@ namespace DeckArpg.Core
             else if (intensity <= ResetAtIntensity) Stacks = 0;
         }
 
+        /// <summary>Still Waters' Meditate: +1 stack (capped).</summary>
+        public void AddStack() => Stacks = Math.Min(MaxStacks, Stacks + 1);
+
         /// <summary>Currency after the +10%-per-stack bonus, rounded half up. Integer math.</summary>
         public int ApplyCurrencyBonus(int baseAmount)
         {
