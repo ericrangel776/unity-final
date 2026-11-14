@@ -35,6 +35,14 @@ namespace DeckArpg.Gameplay
         public RuntimeCardInstance CurrentTelegraph { get; private set; }
         /// <summary>0..1 progress through the telegraph wind-up.</summary>
         public float TelegraphProgress => state == State.Telegraph ? 1f - Mathf.Clamp01(timer / telegraphSeconds) : 0f;
+        /// <summary>
+        /// Veiled trial: the telegraphed value stays hidden until this many seconds before the swing (0 = off).
+        /// Absolute time, so room tempo doesn't shrink it.
+        /// </summary>
+        public float VeiledRevealSeconds { get; set; }
+        /// <summary>True while the current telegraph's value should show as <c>?</c>.</summary>
+        public bool IsTelegraphVeiled =>
+            state == State.Telegraph && CurrentTelegraph != null && VeiledRevealSeconds > 0f && timer > VeiledRevealSeconds;
         public CombatantStatus Status => status;
         public DeckRuntimeManager Deck => deck;
 

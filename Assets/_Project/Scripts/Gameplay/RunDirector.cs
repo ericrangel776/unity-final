@@ -43,6 +43,7 @@ namespace DeckArpg.Gameplay
         private readonly List<TrainingDummyEnemy> enemies = new List<TrainingDummyEnemy>();
         private CombatantStatus playerStatus;
         private DeckRuntimeManager playerDeck;
+        private CombatActionController playerCombat;
 
         public RunState Run { get; private set; }
         public RunDirectorState State { get; private set; }
@@ -74,8 +75,11 @@ namespace DeckArpg.Gameplay
             }
             playerStatus = player.GetComponent<CombatantStatus>();
             playerDeck = player.GetComponent<DeckRuntimeManager>();
+            playerCombat = player.GetComponent<CombatActionController>();
             player.RespawnOnDeath = false;
             playerStatus.Died += HandlePlayerDied;
+            // Added after DeckRuntimeManager's own listener, so a 0-broken card is already set aside here.
+            playerCombat.CardBroken += HandlePlayerCardBroken;
 
             if (startOnPlay) StartRun(seed);
         }
@@ -83,6 +87,7 @@ namespace DeckArpg.Gameplay
         private void OnDestroy()
         {
             if (playerStatus != null) playerStatus.Died -= HandlePlayerDied;
+            if (playerCombat != null) playerCombat.CardBroken -= HandlePlayerCardBroken;
         }
 
         // ---- run flow ----
@@ -168,7 +173,9 @@ namespace DeckArpg.Gameplay
         private void SpawnEnemies(in MapCard room)
         {
             int count = RoomIntensity.EnemyCount(room);
-            var deck = content.EnemyDeckFor(room.Kind);
+            var deck = new List<CardData>(content.EnemyDeckFor(room.Kind));
+            if (room.Trial == EliteTrial.Counterpuncher)
+                for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
             float tempo = RoomIntensity.EnemyTempoPercent(room) / 100f;
             int maxHp = RoomIntensity.EnemyMaxHp(enemyBaseHp, room);
             float postureScale = RoomIntensity.EnemyPosturePercent(room) / 100f;
@@ -191,11 +198,34 @@ namespace DeckArpg.Gameplay
                 enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * postureScale);
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 enemy.Deck.SetStartingDeck(deck, NextSeed());
+                ApplyTrial(enemy, room);
 
                 var captured = enemy;
                 enemy.Status.Died += () => HandleEnemyDied(captured);
                 enemies.Add(enemy);
             }
+        }
+
+        /// <summary>Purple Elite trial hooks (docs/specs/m3-elite-trials.md). Hexer lives in <see cref="HandlePlayerCardBroken"/>.</summary>
+        private void ApplyTrial(TrainingDummyEnemy enemy, in MapCard room)
+        {
+            switch (room.Trial)
+            {
+                case EliteTrial.Veiled:
+                    enemy.VeiledRevealSeconds = RoomIntensity.VeiledRevealSeconds(room.Number);
+                    break;
+                case EliteTrial.Counterpuncher:
+                    enemy.gameObject.AddComponent<CounterpuncherTrial>().Watch(playerCombat);
+                    break;
+            }
+        }
+
+        /// <summary>Hexer: each Card Break the player suffers burns that card (Floor of 3 permitting) and costs HP.</summary>
+        private void HandlePlayerCardBroken(RuntimeCardInstance card, bool brokeByZero)
+        {
+            if (State != RunDirectorState.Fighting || Run.CurrentRoom.Trial != EliteTrial.Hexer) return;
+            if (card != null) playerDeck.Cycle.BurnFromCycle(card);
+            playerStatus.SpendHp(RoomIntensity.HexerHpPerBreak(Run.CurrentRoom.Number)); // non-lethal
         }
 
         /// <summary>Spreads <paramref name="count"/> enemies on an arc around <see cref="enemyCenter"/>.</summary>
