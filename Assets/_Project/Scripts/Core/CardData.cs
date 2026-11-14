@@ -19,6 +19,7 @@ namespace DeckArpg.Core
         [SerializeField] private Element element;
         [SerializeField] private bool isHeal;
         [SerializeField] private bool isPremium;
+        [SerializeField] private Rarity rarity = Rarity.Common;
 
         public string CardId => cardId;
         public string DisplayName => displayName;
@@ -28,6 +29,7 @@ namespace DeckArpg.Core
         public Element Element => element;
         public bool IsHeal => isHeal;
         public bool IsPremium => isPremium;
+        public Rarity Rarity => rarity;
 
         private void OnValidate()
         {
@@ -40,7 +42,7 @@ namespace DeckArpg.Core
         /// </summary>
         public static CardData Create(string id, int value, CardShape shape = CardShape.Strike,
             Element element = Element.Physical, bool zeroBreaker = false, bool heal = false,
-            bool premium = false, string displayName = null)
+            bool premium = false, string displayName = null, Rarity rarity = Rarity.Common)
         {
             var card = CreateInstance<CardData>();
             card.cardId = id;
@@ -51,6 +53,7 @@ namespace DeckArpg.Core
             card.isZeroBreaker = zeroBreaker;
             card.isHeal = heal;
             card.isPremium = premium;
+            card.rarity = rarity;
             card.name = id;
             return card;
         }

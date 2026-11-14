@@ -17,6 +17,14 @@ namespace DeckArpg.Core
         Lightning
     }
 
+    /// <summary>Draft/shop rarity. Order matters: rarity shifts move toward Rare.</summary>
+    public enum Rarity
+    {
+        Common,
+        Uncommon,
+        Rare
+    }
+
     /// <summary>Which side an attack belongs to. Attacks on the same team never clash.</summary>
     public enum Team
     {
