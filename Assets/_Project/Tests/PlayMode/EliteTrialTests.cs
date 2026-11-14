@@ -48,49 +48,10 @@ namespace DeckArpg.Tests.PlayMode
 
         // ---- helpers ----
 
-        /// <summary>
-        /// Walks seeded runs (taking door 1 and clearing it) until a door offers a matching card, then enters it.
-        /// Returns the room's card. Deterministic: same seeds every time.
-        /// </summary>
-        private MapCard EnterRoom(Func<MapCard, bool> match)
-        {
-            for (int seed = 1; seed < 400; seed++)
-            {
-                director.RestartRun(seed);
-                for (int room = 1; room <= 5; room++)
-                {
-                    var offer = director.Run.CurrentOffer;
-                    for (int i = 0; i < offer.Count; i++)
-                    {
-                        if (!match(offer[i])) continue;
-                        director.ChooseDoor(i);
-                        return director.Run.CurrentRoom;
-                    }
-                    director.ChooseDoor(0);
-                    if (director.State == RunDirectorState.Fighting)
-                    {
-                        director.DebugDefeatAllEnemies();
-                        director.FinishReward();
-                    }
-                    else director.LeaveUtility();
-                }
-            }
-            Assert.Fail("No seed produced a matching door.");
-            return default;
-        }
-
         private MapCard EnterTrial(EliteTrial trial, Func<MapCard, bool> extra = null) =>
-            EnterRoom(c => c.Kind == MapCardKind.EliteTrial && c.Trial == trial && (extra == null || extra(c)));
+            RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.EliteTrial && c.Trial == trial && (extra == null || extra(c)));
 
         private TrainingDummyEnemy Elite => director.Enemies.Single();
-
-        private static void Place(Component who, Vector3 position)
-        {
-            var body = who.GetComponent<CharacterController>();
-            if (body != null) body.enabled = false;
-            who.transform.position = position;
-            if (body != null) body.enabled = true;
-        }
 
         /// <summary>Freezes the elite's own swing AI and puts the player <paramref name="distance"/> m in front of it.</summary>
         private void StandBeforeElite(float distance)
@@ -99,7 +60,7 @@ namespace DeckArpg.Tests.PlayMode
             elite.Target = null;
             var front = elite.transform.position + elite.transform.forward * distance;
             front.y = director.Player.transform.position.y;
-            Place(director.Player, front);
+            RunTestHelpers.Place(director.Player, front);
         }
 
         /// <summary>Plays the player's first hand card straight at the elite. Returns the card.</summary>
@@ -157,7 +118,7 @@ namespace DeckArpg.Tests.PlayMode
         {
             EnterTrial(EliteTrial.Veiled);
             var elite = Elite;
-            Place(director.Player, elite.transform.position + elite.transform.forward * 1.5f);
+            RunTestHelpers.Place(director.Player, elite.transform.position + elite.transform.forward * 1.5f);
 
             yield return WaitUntilRealtime(() => elite == null || elite.CurrentTelegraph != null, 6f);
             Assert.IsNotNull(elite.CurrentTelegraph, "The elite never telegraphed.");
