@@ -305,6 +305,14 @@ MonoBehaviour:
   throwLifetime: 1.2
   arcanaRadius: 2.2
   arcanaDuration: 0.3
+  sleightStrikeInterval: 0.12
+  sleightStrikeScale: 1.3
+  sleightThrowScale: 1.5
+  sleightThrowOutSeconds: 0.45
+  sleightThrowMaxLifetime: 2
+  sleightArcanaStartRadius: 0.5
+  sleightArcanaEndMultiplier: 2
+  sleightArcanaGrowSeconds: 0.35
   showHitboxes: 1
 --- !u!114 &8916190510095622547
 MonoBehaviour:

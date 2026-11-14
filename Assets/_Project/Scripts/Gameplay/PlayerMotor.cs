@@ -14,17 +14,26 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float dashDuration = 0.15f;
         [SerializeField] private float dashCooldown = 0.5f;
         [SerializeField] private float gravity = -20f;
+        [Header("Strike Sleight lunge")]
+        [SerializeField] private float lungeSpeed = 10f;
+        [SerializeField] private float lungeDuration = 0.3f;
 
         private CharacterController controller;
         private CombatantStatus status;
         private Vector2 moveInput;
         private Vector3 dashDirection;
+        private Vector3 lungeDirection;
         private float dashRemaining;
         private float dashCooldownRemaining;
+        private float lungeRemaining;
         private float verticalVelocity;
+        private float moveSpeedMultiplier = 1f;
 
         public Vector3 AimDirection { get; private set; } = Vector3.forward;
         public bool IsDashing => dashRemaining > 0f;
+        public bool IsLunging => lungeRemaining > 0f;
+        /// <summary>Scales walking speed (e.g. the Perfect-reload boost). Dash and lunge are unaffected.</summary>
+        public float MoveSpeedMultiplier { get => moveSpeedMultiplier; set => moveSpeedMultiplier = Mathf.Max(0f, value); }
         public float DashCooldownRemaining => dashCooldownRemaining;
         public float DashDuration => dashDuration;
 
@@ -68,6 +77,20 @@ namespace DeckArpg.Gameplay
             dashRemaining = dashDuration;
             dashCooldownRemaining = dashCooldown + dashDuration;
             status.IsInvulnerable = true;
+            lungeRemaining = 0f; // dashing out of a lunge cancels it
+            return true;
+        }
+
+        /// <summary>
+        /// Strike Sleight lunge: a short forced move along <paramref name="direction"/> that overrides walking.
+        /// No i-frames. Refused while stunned, dead or dashing; a stun or death stops it.
+        /// </summary>
+        public bool TryLunge(Vector3 direction)
+        {
+            if (IsDashing || status.IsStunned || status.IsDead) return false;
+            direction.y = 0f;
+            lungeDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : AimDirection;
+            lungeRemaining = lungeDuration;
             return true;
         }
 
@@ -86,10 +109,16 @@ namespace DeckArpg.Gameplay
             else if (status.IsStunned || status.IsDead)
             {
                 horizontal = Vector3.zero;
+                lungeRemaining = 0f;
+            }
+            else if (IsLunging)
+            {
+                horizontal = lungeDirection * lungeSpeed;
+                lungeRemaining -= dt;
             }
             else
             {
-                horizontal = CameraRelative(moveInput) * moveSpeed;
+                horizontal = CameraRelative(moveInput) * (moveSpeed * moveSpeedMultiplier);
             }
             if (!IsDashing) horizontal += status.KnockbackVelocity;
 
@@ -102,6 +131,7 @@ namespace DeckArpg.Gameplay
         private void OnDisable()
         {
             dashRemaining = 0f;
+            lungeRemaining = 0f;
             if (status != null) status.IsInvulnerable = false;
         }
 

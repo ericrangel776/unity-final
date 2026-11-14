@@ -5,9 +5,21 @@ namespace DeckArpg.Core
     {
         public const int DamagePerPoint = 3;
 
-        /// <summary>HP damage an attack deals on a body hit. 0-cards are parries and deal no HP damage.</summary>
-        public static int Damage(in AttackPayload payload) =>
-            payload.IsZeroBreaker ? 0 : payload.Value * DamagePerPoint;
+        /// <summary>
+        /// HP damage an attack deals on a body hit. 0-cards are parries and deal no HP damage.
+        /// Sleights scale by <c>1 + finisher*0.1</c>, rounded up in integer tenths (floats would
+        /// turn 30 * 1.1 into 34). Multi-hit Sleights split that total per hit, rounded up.
+        /// </summary>
+        public static int Damage(in AttackPayload payload)
+        {
+            if (payload.IsZeroBreaker) return 0;
+            int baseDamage = payload.Value * DamagePerPoint;
+            if (!payload.IsSleight) return baseDamage;
+            int tenths = baseDamage * (10 + payload.FinisherValue);
+            int total = (tenths + 9) / 10;
+            int hits = System.Math.Max(1, payload.HitCount);
+            return (total + hits - 1) / hits;
+        }
 
         public const float BaseKnockback = 3f;
         public const float KnockbackPerPoint = 0.6f;

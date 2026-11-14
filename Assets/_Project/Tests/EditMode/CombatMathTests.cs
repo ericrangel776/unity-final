@@ -25,6 +25,43 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(CombatMath.DamagePerPoint, CombatMath.Damage(AttackPayload.Poke(1, Team.Player, 0)));
         }
 
+        private static AttackPayload Sleight(int value, int finisher) =>
+            new AttackPayload(1, Team.Player, value, false, true, 0, CardShape.Strike, Element.Physical, finisher);
+
+        [Test]
+        public void Damage_Sleight_AppliesFinisherMultiplier()
+        {
+            // 20 * 3 = 60, x1.5 = 90
+            Assert.AreEqual(90, CombatMath.Damage(Sleight(20, 5)));
+        }
+
+        [Test]
+        public void Damage_Sleight_RoundsUpPartialPoints()
+        {
+            // 7 * 3 = 21, x1.3 = 27.3 -> 28
+            Assert.AreEqual(28, CombatMath.Damage(Sleight(7, 3)));
+        }
+
+        [Test]
+        public void Damage_Sleight_HasNoFloatRoundingError()
+        {
+            // 10 * 3 = 30, x1.1 = 33 exactly; float math gives ceil(33.0000014) = 34.
+            Assert.AreEqual(33, CombatMath.Damage(Sleight(10, 1)));
+        }
+
+        [Test]
+        public void Damage_MultiHitSleight_SplitsTotalPerHit_RoundedUp()
+        {
+            // 20 * 3 = 60, x1.5 = 90 total; 3 hits -> 30 each; 2 hits -> 45 each.
+            Assert.AreEqual(30, CombatMath.Damage(new AttackPayload(1, Team.Player, 20, false, true, 0,
+                CardShape.Strike, Element.Physical, 5, hitCount: 3)));
+            Assert.AreEqual(45, CombatMath.Damage(new AttackPayload(1, Team.Player, 20, false, true, 0,
+                CardShape.Throw, Element.Physical, 5, hitCount: 2)));
+            // 7 * 3 = 21, x1.3 = 28 total; 3 hits -> 9.33 -> 10.
+            Assert.AreEqual(10, CombatMath.Damage(new AttackPayload(1, Team.Player, 7, false, true, 0,
+                CardShape.Strike, Element.Physical, 3, hitCount: 3)));
+        }
+
         private static AttackPayload Card(int value, bool zero = false) =>
             new AttackPayload(1, Team.Player, value, zero, false, 0, CardShape.Strike, Element.Physical);
 

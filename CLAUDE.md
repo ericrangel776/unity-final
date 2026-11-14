@@ -87,3 +87,11 @@ test command and its latest result, and any failed approaches to avoid.
   react to their hitboxes/clashes and cause flaky failures. `ArenaSmokeTests` unloads `M1_Arena` in a
   `[UnityTearDown]`; any new test that loads a scene must do the same. Wrap batchmode test runs in
   `timeout` so a hang fails fast.
+- `yield return null` in a PlayMode test resumes after `Update` but before `LateUpdate`, so a view that
+  redraws in `LateUpdate` still shows last frame's value. To compare a view to the state it draws, freeze
+  `Time.timeScale = 0` first (frames still advance) and yield twice.
+- Batchmode has no window, so Screen Space - Overlay HUDs can't be screenshotted. `HudScreenshotCapture`
+  (`[Explicit]`) renders the main camera into a RenderTexture with the canvases switched to Screen Space -
+  Camera. Run it alone without `-nographics` (`-testFilter DeckArpg.Tests.PlayMode.HudScreenshotCapture`)
+  and inspect `TestResults/screens/`. Views that convert screen points must pass the canvas camera for
+  camera-space canvases (null only for overlay).

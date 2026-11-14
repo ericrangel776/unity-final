@@ -19,10 +19,18 @@ namespace DeckArpg.Core
         public readonly int ActivationTick;
         public readonly CardShape Shape;
         public readonly Element Element;
+        /// <summary>Sleight slot-3 value (0-9) that scales damage; 0 for anything that is not a Sleight.</summary>
+        public readonly int FinisherValue;
+        /// <summary>Hits a multi-hit Sleight can land per body; its damage is split across them. 1 for everything else.</summary>
+        public readonly int HitCount;
+
+        public float DamageMultiplier => 1f + FinisherValue * SleightRules.MultiplierPerPoint;
 
         public AttackPayload(int ownerId, Team team, int value, bool isZeroBreaker, bool isSleight,
-            int activationTick, CardShape shape, Element element)
+            int activationTick, CardShape shape, Element element, int finisherValue = 0, int hitCount = 1)
         {
+            FinisherValue = isSleight ? Math.Max(0, Math.Min(CardValue.Max, finisherValue)) : 0;
+            HitCount = isSleight ? Math.Max(1, hitCount) : 1;
             OwnerId = ownerId;
             Team = team;
             IsZeroBreaker = isZeroBreaker;
@@ -41,6 +49,12 @@ namespace DeckArpg.Core
             return new AttackPayload(ownerId, team, card.GetEffectiveValue(), card.IsZeroBreaker, false,
                 activationTick, card.Data.Shape, card.Data.Element);
         }
+
+        /// <summary>Snapshot of a composed Sleight. Never a zero-breaker: stocked 0s mirror a numbered card.</summary>
+        public static AttackPayload FromSleight(in SleightResult sleight, int ownerId, Team team, int activationTick,
+            int hitCount = 1) =>
+            new AttackPayload(ownerId, team, sleight.Value, false, true, activationTick, sleight.Shape,
+                sleight.Element, sleight.FinisherValue, hitCount);
 
         /// <summary>The always-available off-deck Value 1 poke, so the player is never helpless.</summary>
         public static AttackPayload Poke(int ownerId, Team team, int activationTick) =>

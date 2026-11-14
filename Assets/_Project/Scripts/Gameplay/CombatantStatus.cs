@@ -5,7 +5,7 @@ using UnityEngine;
 namespace DeckArpg.Gameplay
 {
     /// <summary>HP, posture, stun and i-frames for anything that can be hit.</summary>
-    public sealed class CombatantStatus : MonoBehaviour
+    public sealed class CombatantStatus : MonoBehaviour, IHpPool
     {
         [SerializeField] private Team team = Team.Enemy;
         [SerializeField] private int maxHp = 100;
@@ -106,6 +106,16 @@ namespace DeckArpg.Gameplay
             }
             if (damage > 0) React(payload, fromDirection, damage);
             return true;
+        }
+
+        /// <summary>
+        /// Pays HP as a cost (e.g. Overburn). Not a hit: no flinch, knockback, counter or events, and it
+        /// never kills (floors at 1). Ignored when dead or for non-positive amounts.
+        /// </summary>
+        public void SpendHp(int amount)
+        {
+            if (IsDead || amount <= 0) return;
+            Hp = Mathf.Max(1, Hp - amount);
         }
 
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)

@@ -69,6 +69,8 @@ namespace DeckArpg.Tests.EditMode
                 Assert.IsTrue(roots.Any(r => r.GetComponent<PlayerCombatInput>() != null), "Player missing.");
                 Assert.IsTrue(roots.Any(r => r.GetComponent<TrainingDummyEnemy>() != null), "Dummy missing.");
                 Assert.IsTrue(roots.Any(r => r.GetComponent("HandHudView") != null), "HUD missing.");
+                foreach (var view in new[] { "StockView", "ReloadBarView", "SpeedLinesView" })
+                    Assert.IsTrue(roots.Any(r => r.GetComponent(view) != null), $"HUD {view} missing.");
                 Assert.IsTrue(roots.Any(r => r.CompareTag("MainCamera") && r.GetComponent<Camera>() != null), "Main camera missing.");
             }
             finally

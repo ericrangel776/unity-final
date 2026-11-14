@@ -11,12 +11,19 @@ namespace DeckArpg.Gameplay
         PlaySlot3,
         Parry,
         Poke,
-        Reload
+        Reload,
+        StockSlot1,
+        StockSlot2,
+        StockSlot3,
+        StockParry,
+        Overburn
     }
 
     /// <summary>
     /// Reads the project-wide Player actions. Card commands go through a 0.2 s buffer so presses made
     /// during recovery or hit-stop still fire; movement, aim and dash are read directly.
+    /// Holding Stock turns slot/Parry presses into Sleight stocks and Reload into an Overburn. While the
+    /// Active Reload bar runs, card presses are dropped and a Reload press is the (unbuffered) timing press.
     /// </summary>
     [RequireComponent(typeof(PlayerMotor), typeof(CombatActionController), typeof(DeckRuntimeManager))]
     public sealed class PlayerCombatInput : MonoBehaviour
@@ -30,7 +37,7 @@ namespace DeckArpg.Gameplay
         private CombatActionController combat;
         private DeckRuntimeManager deck;
         private CombatantStatus status;
-        private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload;
+        private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload, stock;
         private float recoveryRemaining;
         private float respawnRemaining;
 
@@ -58,6 +65,7 @@ namespace DeckArpg.Gameplay
             parry = map.FindAction("Parry");
             poke = map.FindAction("Poke");
             reload = map.FindAction("Reload");
+            stock = map.FindAction("Stock");
             map.Enable();
         }
 
@@ -84,16 +92,22 @@ namespace DeckArpg.Gameplay
             if (RouteToDeadlock()) return;
 
             motor.SetMoveInput(move.ReadValue<Vector2>());
+            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier;
             ReadAim();
             if (dash.WasPressedThisFrame()) motor.TryDash();
 
             float now = Time.unscaledTime;
-            Buffer(slot1, CombatCommand.PlaySlot1, now);
-            Buffer(slot2, CombatCommand.PlaySlot2, now);
-            Buffer(slot3, CombatCommand.PlaySlot3, now);
-            Buffer(parry, CombatCommand.Parry, now);
+            bool stockHeld = stock != null && stock.IsPressed();
+            ReadReload(stockHeld, now);
+            // Card presses during the reload bar are dropped, not held for after it.
+            if (!deck.Reload.LocksCardPlays)
+            {
+                Buffer(slot1, stockHeld ? CombatCommand.StockSlot1 : CombatCommand.PlaySlot1, now);
+                Buffer(slot2, stockHeld ? CombatCommand.StockSlot2 : CombatCommand.PlaySlot2, now);
+                Buffer(slot3, stockHeld ? CombatCommand.StockSlot3 : CombatCommand.PlaySlot3, now);
+                Buffer(parry, stockHeld ? CombatCommand.StockParry : CombatCommand.Parry, now);
+            }
             Buffer(poke, CombatCommand.Poke, now);
-            Buffer(reload, CombatCommand.Reload, now);
 
             if (recoveryRemaining > 0f) recoveryRemaining -= Time.deltaTime;
 
@@ -120,6 +134,25 @@ namespace DeckArpg.Gameplay
             return true;
         }
 
+        /// <summary>
+        /// The timing press is graded the frame it happens (buffering would skew it). Starting a reload
+        /// is buffered like any action; with Stock held it starts an Overburn instead.
+        /// </summary>
+        private void ReadReload(bool stockHeld, float now)
+        {
+            if (!Pressed(reload)) return;
+            switch (deck.Reload.State)
+            {
+                case ReloadState.Running:
+                    deck.Reload.Press();
+                    break;
+                case ReloadState.Idle:
+                    buffer.Enqueue(stockHeld ? CombatCommand.Overburn : CombatCommand.Reload, now);
+                    break;
+                // Jammed: presses are ignored.
+            }
+        }
+
         private static bool Pressed(InputAction action) => action != null && action.WasPressedThisFrame();
 
         private void Buffer(InputAction action, CombatCommand command, float now)
@@ -140,8 +173,18 @@ namespace DeckArpg.Gameplay
         {
             int tick = Time.frameCount;
             RuntimeCardInstance card;
+            if (deck.Reload.LocksCardPlays && IsCardCommand(command)) return false;
             switch (command)
             {
+                case CombatCommand.StockSlot1:
+                case CombatCommand.StockSlot2:
+                case CombatCommand.StockSlot3:
+                    return HandleStock(deck.Cycle.TryStock((int)command - (int)CombatCommand.StockSlot1, out var sleight),
+                        sleight, tick);
+                case CombatCommand.StockParry:
+                    return HandleStock(deck.Cycle.TryStockParry(out var parrySleight), parrySleight, tick);
+                case CombatCommand.Overburn:
+                    return deck.Reload.BeginOverburn(status);
                 case CombatCommand.PlaySlot1:
                 case CombatCommand.PlaySlot2:
                 case CombatCommand.PlaySlot3:
@@ -156,14 +199,34 @@ namespace DeckArpg.Gameplay
                     combat.Spawn(AttackPayload.Poke(status.OwnerId, Team.Player, tick), motor.AimDirection);
                     return true;
                 case CombatCommand.Reload:
-                    return deck.Cycle.Reload();
+                    // Buffered Reload only starts the bar. The timing press is graded unbuffered in ReadReload,
+                    // so a double-tap during recovery can't land as an instant Miss/jam.
+                    return deck.Reload.Begin();
                 default:
                     return false;
             }
         }
 
+        private static bool IsCardCommand(CombatCommand command) =>
+            command != CombatCommand.Poke && command != CombatCommand.Reload && command != CombatCommand.Overburn;
+
+        /// <summary>A stock that completes the Sleight fires it: each shape has its own attack, Strike also lunges.</summary>
+        private bool HandleStock(StockResult result, in SleightResult sleight, int tick)
+        {
+            if (result == StockResult.Rejected) return false;
+            if (result == StockResult.Fired)
+            {
+                var payload = AttackPayload.FromSleight(sleight, status.OwnerId, Team.Player, tick,
+                    SleightRules.HitCount(sleight.Shape));
+                combat.SpawnSleight(payload, motor.AimDirection);
+                if (sleight.Shape == CardShape.Strike) motor.TryLunge(motor.AimDirection);
+            }
+            return true;
+        }
+
         private void HandleDied()
         {
+            deck.Reload.Cancel();
             combat.CancelActiveAction();
             buffer.Clear();
             respawnRemaining = respawnDelay;
