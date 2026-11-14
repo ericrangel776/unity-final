@@ -102,6 +102,23 @@ namespace DeckArpg.Tests.EditMode
         public void BountyCurrencyPercent(MapCardKind kind, int n, int expected) =>
             Assert.AreEqual(expected, RoomIntensity.BountyCurrencyPercent(Room(kind, n)));
 
+        [TestCase(MapCardKind.Vanguard, 1, 54)]     // 60 x 0.9
+        [TestCase(MapCardKind.Vanguard, 9, 102)]    // 60 x 1.7
+        [TestCase(MapCardKind.EliteTrial, 5, 195)]  // 60 x 1.3 = 78, x 2.5
+        [TestCase(MapCardKind.Boss, 7, 360)]        // 60 x 1.5 = 90, x 4
+        public void EnemyMaxHp_ScalesByIntensityAndSize(MapCardKind kind, int n, int expected) =>
+            Assert.AreEqual(expected, RoomIntensity.EnemyMaxHp(60, Room(kind, n)));
+
+        [Test]
+        public void EnemyMaxHp_RejectsBadBase() =>
+            Assert.Throws<ArgumentOutOfRangeException>(() => RoomIntensity.EnemyMaxHp(0, Room(MapCardKind.Vanguard, 5)));
+
+        [TestCase(MapCardKind.Vanguard, 100)]
+        [TestCase(MapCardKind.EliteTrial, 150)]
+        [TestCase(MapCardKind.Boss, 200)]
+        public void EnemyPosturePercent_BySize(MapCardKind kind, int expected) =>
+            Assert.AreEqual(expected, RoomIntensity.EnemyPosturePercent(Room(kind, 5)));
+
         [Test]
         public void EnemyRules_RejectBlueRooms()
         {

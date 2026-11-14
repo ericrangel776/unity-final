@@ -43,6 +43,31 @@ namespace DeckArpg.Core
             return percent;
         }
 
+        public const int EliteHpPercent = 250;
+        public const int BossHpPercent = 400;
+
+        /// <summary>
+        /// One enemy's max HP: <paramref name="baseHp"/> x <see cref="EnemyHpPercent"/> x size class
+        /// (Elite 250%, Boss 400%), rounded half up, at least 1.
+        /// </summary>
+        public static int EnemyMaxHp(int baseHp, in MapCard room)
+        {
+            if (baseHp < 1) throw new ArgumentOutOfRangeException(nameof(baseHp));
+            int hp = RewardRules.PercentHalfUp(baseHp, EnemyHpPercent(room));
+            if (room.Kind == MapCardKind.EliteTrial) hp = RewardRules.PercentHalfUp(hp, EliteHpPercent);
+            else if (room.Kind == MapCardKind.Boss) hp = RewardRules.PercentHalfUp(hp, BossHpPercent);
+            return Math.Max(1, hp);
+        }
+
+        /// <summary>Max posture by size class: mob 100%, Elite 150%, Boss 200%.</summary>
+        public static int EnemyPosturePercent(in MapCard room)
+        {
+            RequireCombat(room);
+            if (room.Kind == MapCardKind.EliteTrial) return 150;
+            if (room.Kind == MapCardKind.Boss) return 200;
+            return 100;
+        }
+
         /// <summary>Move speed and wind-up speed: <c>90 + 5 * I</c>, plus 10/20/30 on KindledGround.</summary>
         public static int EnemyTempoPercent(in MapCard room)
         {
