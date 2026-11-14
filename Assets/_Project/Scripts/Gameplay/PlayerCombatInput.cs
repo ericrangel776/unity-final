@@ -199,8 +199,8 @@ namespace DeckArpg.Gameplay
                     combat.Spawn(AttackPayload.Poke(status.OwnerId, Team.Player, tick), motor.AimDirection);
                     return true;
                 case CombatCommand.Reload:
-                    // A second Reload while the bar runs is the timing press; otherwise start the bar.
-                    if (deck.Reload.State == ReloadState.Running) return deck.Reload.Press() != ReloadGrade.None;
+                    // Buffered Reload only starts the bar. The timing press is graded unbuffered in ReadReload,
+                    // so a double-tap during recovery can't land as an instant Miss/jam.
                     return deck.Reload.Begin();
                 default:
                     return false;

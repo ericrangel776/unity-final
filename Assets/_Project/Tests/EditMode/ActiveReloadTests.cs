@@ -367,6 +367,19 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(ActiveReloadRules.BoostSeconds, reload.BoostRemaining, 1e-5f);
         }
 
+        [Test]
+        public void ResetBoost_EndsBoostImmediately()
+        {
+            StartBar();
+            TickToProgress(reload.Target01);
+            reload.Press();
+
+            reload.ResetBoost();
+
+            Assert.AreEqual(0f, reload.BoostRemaining);
+            Assert.AreEqual(1f, reload.SpeedMultiplier);
+        }
+
         // ---- cancel ----
 
         [Test]

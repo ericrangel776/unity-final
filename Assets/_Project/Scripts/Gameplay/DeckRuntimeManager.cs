@@ -35,7 +35,8 @@ namespace DeckArpg.Gameplay
         {
             // Scaled time: hit-stop and the Deadlock freeze pause the bar, the boost and the stock timeout.
             Reload.Tick(Time.deltaTime);
-            Cycle.AdvanceStockTimer(Time.deltaTime);
+            // Stocking is locked while the bar runs/jams, so a partial stock must not expire meanwhile.
+            if (!Reload.LocksCardPlays) Cycle.AdvanceStockTimer(Time.deltaTime);
         }
 
         private void OnEnable()
@@ -56,10 +57,11 @@ namespace DeckArpg.Gameplay
             Reinitialize();
         }
 
-        /// <summary>Fresh cycle from the starting deck; also cancels any reload bar and resets the Overburn price.</summary>
+        /// <summary>Fresh cycle from the starting deck; also cancels any reload bar, clears the speed boost and resets the Overburn price.</summary>
         public void Reinitialize()
         {
             Reload?.Cancel();
+            Reload?.ResetBoost();
             Reload?.ResetOverburnCost();
             var instances = new List<RuntimeCardInstance>();
             foreach (var data in startingDeck)

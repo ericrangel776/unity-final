@@ -235,15 +235,16 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator SecondReload_IsTheTimingPress()
+        public IEnumerator BufferedSecondReload_DoesNotJam()
         {
             MakePlayer(CardShape.Strike, 1, 2, 3, 4, 5, 6, 7);
             EmptyDrawQueue();
             Assert.IsTrue(input.Execute(CombatCommand.Reload));
 
-            // Pressed immediately: well before any sweet spot, so it jams.
-            Assert.IsTrue(input.Execute(CombatCommand.Reload));
-            Assert.AreEqual(ReloadState.Jammed, deck.Reload.State);
+            // A double-tap buffered during recovery reaches Execute after the bar started: it must not be
+            // graded (that would be an instant Miss). Only the unbuffered same-frame press grades.
+            Assert.IsFalse(input.Execute(CombatCommand.Reload));
+            Assert.AreEqual(ReloadState.Running, deck.Reload.State);
             yield return null;
         }
 
@@ -300,6 +301,39 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(input.Execute(CombatCommand.StockSlot1));
             for (int i = 0; i < 5; i++) yield return null;
             Assert.Greater(deck.Cycle.StockIdleSeconds, 0f);
+        }
+
+        [UnityTest]
+        public IEnumerator StockTimer_PausesWhileReloadLocksCards()
+        {
+            MakePlayer(CardShape.Strike, 1, 2, 3, 4, 5, 6, 7);
+            Assert.IsTrue(input.Execute(CombatCommand.StockSlot1));
+            EmptyDrawQueue();
+            Assert.IsTrue(input.Execute(CombatCommand.Reload));
+            float before = deck.Cycle.StockIdleSeconds;
+
+            for (int i = 0; i < 5; i++) yield return null;
+
+            Assert.AreEqual(ReloadState.Running, deck.Reload.State);
+            Assert.AreEqual(1, deck.Cycle.StockCount);
+            Assert.AreEqual(before, deck.Cycle.StockIdleSeconds);
+        }
+
+        [UnityTest]
+        public IEnumerator Reinitialize_ClearsSpeedBoost()
+        {
+            MakePlayer(CardShape.Strike, 1, 2, 3, 4, 5, 6, 7);
+            EmptyDrawQueue();
+            Assert.IsTrue(deck.Reload.Begin());
+            deck.Reload.Tick(deck.Reload.Target01 * deck.Reload.BarDuration);
+            Assert.AreEqual(ReloadGrade.Perfect, deck.Reload.Press());
+            Assert.Greater(deck.Reload.BoostRemaining, 0f);
+
+            deck.Reinitialize();
+
+            Assert.AreEqual(0f, deck.Reload.BoostRemaining);
+            Assert.AreEqual(1f, deck.Reload.SpeedMultiplier);
+            yield return null;
         }
 
         [UnityTest]

@@ -32,9 +32,12 @@ the bar are step 5.
   (its cards are already in discard/burned).
 - **Any** Card Break (including a poke being broken) calls `InterruptStock()`.
 - The timing press is handled immediately (not buffered), so the buffer can't skew the grade. Starting a reload
-  is buffered like other actions (it waits out recovery/stun).
+  is buffered like other actions (it waits out recovery/stun); a buffered Reload only ever starts the bar, so a
+  double-tap during recovery can't be graded as an instant Miss.
 - `DeckRuntimeManager` owns the `ActiveReload` (seeded like the deck). In `Update` (scaled time) it ticks
-  the bar and `AdvanceStockTimer`. `Reinitialize()` (respawn) cancels the bar and resets the Overburn cost.
+  the bar and, only while the bar doesn't lock card plays, `AdvanceStockTimer` (a partial stock can't expire
+  during a reload/jam it can't act through). `Reinitialize()` (respawn) cancels the bar, clears the speed
+  boost and resets the Overburn cost.
   Death cancels the bar immediately.
 - Stocking counts as an action (normal recovery), so firing a Sleight takes 3 presses spaced by recovery.
 - `PlayerCombatInput` copies `ActiveReload.SpeedMultiplier` to `PlayerMotor.MoveSpeedMultiplier` every frame
@@ -60,8 +63,8 @@ the bar are step 5.
 
 ### `DeckRuntimeManager`
 - `public ActiveReload Reload { get; private set; }`, created in `Awake` before the first `Reinitialize`.
-- `Update`: `Reload.Tick(Time.deltaTime)`, `Cycle.AdvanceStockTimer(Time.deltaTime)`.
-- `Reinitialize`: also `Reload.Cancel()` and `Reload.ResetOverburnCost()`.
+- `Update`: `Reload.Tick(Time.deltaTime)`; `Cycle.AdvanceStockTimer(Time.deltaTime)` unless `Reload.LocksCardPlays`.
+- `Reinitialize`: also `Reload.Cancel()`, `Reload.ResetBoost()` and `Reload.ResetOverburnCost()`.
 - `HandleCardBroken`: delete on a 0-break (as now), then `Cycle.InterruptStock()`.
 
 ### `PlayerMotor`
@@ -109,7 +112,9 @@ the bar are step 5.
 | Card Break mid-combo | remaining hits never spawn, lunge stops (stun) |
 | Boomerang owner dies/destroyed | flies on until its safety lifetime ends |
 | Card Break with empty stock | no-op |
-| Respawn | stock cleared, bar cancelled, Overburn cost reset |
+| Respawn | stock cleared, bar cancelled, speed boost cleared, Overburn cost reset |
+| Reload double-tap buffered during recovery | first starts the bar, second is dropped (no jam) |
+| Partial stock while the bar runs/jams | stock timeout paused |
 | Dummy decks | unaffected (still `Cycle.Reload()` directly) |
 
 ## Steps

@@ -123,6 +123,9 @@ namespace DeckArpg.Core
         /// <summary>The next Overburn costs 10% again. Call on room start and respawn.</summary>
         public void ResetOverburnCost() => OverburnUsesThisRoom = 0;
 
+        /// <summary>Ends any Perfect-reload speed boost now (respawn).</summary>
+        public void ResetBoost() => BoostRemaining = 0f;
+
         public bool Begin()
         {
             if (State != ReloadState.Idle || !deck.CanReload) return false;
