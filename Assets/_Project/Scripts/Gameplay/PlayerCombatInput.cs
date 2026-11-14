@@ -31,6 +31,8 @@ namespace DeckArpg.Gameplay
         [Tooltip("Minimum time between card plays; presses during it wait in the input buffer.")]
         [SerializeField] private float actionRecovery = 0.25f;
         [SerializeField] private float respawnDelay = 1.5f;
+        [Tooltip("Off in a run: death ends the run instead of reviving here.")]
+        [SerializeField] private bool respawnOnDeath = true;
 
         private readonly InputBuffer<CombatCommand> buffer = new InputBuffer<CombatCommand>();
         private PlayerMotor motor;
@@ -40,6 +42,17 @@ namespace DeckArpg.Gameplay
         private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload, stock;
         private float recoveryRemaining;
         private float respawnRemaining;
+
+        public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
+
+        /// <summary>Between rooms: drops buffered inputs, cancels live hitboxes and any pending respawn.</summary>
+        public void ResetForNewRoom()
+        {
+            buffer.Clear();
+            recoveryRemaining = 0f;
+            respawnRemaining = 0f;
+            combat.CancelActiveAction();
+        }
 
         private void Awake()
         {
@@ -85,6 +98,12 @@ namespace DeckArpg.Gameplay
             {
                 respawnRemaining -= Time.deltaTime;
                 if (respawnRemaining <= 0f) Respawn();
+                return;
+            }
+            // Without auto-respawn (a run) a dead player stays down until the run restarts.
+            if (status.IsDead)
+            {
+                motor.SetMoveInput(Vector2.zero);
                 return;
             }
 
@@ -229,7 +248,7 @@ namespace DeckArpg.Gameplay
             deck.Reload.Cancel();
             combat.CancelActiveAction();
             buffer.Clear();
-            respawnRemaining = respawnDelay;
+            if (respawnOnDeath) respawnRemaining = respawnDelay;
         }
 
         private void Respawn()

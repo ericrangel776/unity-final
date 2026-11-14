@@ -19,6 +19,8 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float telegraphSeconds = 0.7f;
         [SerializeField] private float recoverSeconds = 1.2f;
         [SerializeField] private float respawnDelay = 2f;
+        [Tooltip("Off in a run: a dead enemy is removed instead of coming back.")]
+        [SerializeField] private bool respawnOnDeath = true;
 
         private CharacterController body;
         private CombatActionController combat;
@@ -40,6 +42,22 @@ namespace DeckArpg.Gameplay
         public event Action TelegraphEnded;
 
         public Transform Target { get => target; set => target = value; }
+        public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
+        public float MoveSpeed => moveSpeed;
+        public float TelegraphSeconds => telegraphSeconds;
+        public float RecoverSeconds => recoverSeconds;
+
+        /// <summary>
+        /// Room tempo: moves faster and winds up/recovers quicker by <paramref name="multiplier"/> (1 = unchanged).
+        /// Call once, right after spawning. The parry window (BodyHitDelay) is not scaled.
+        /// </summary>
+        public void ApplyTempo(float multiplier)
+        {
+            if (multiplier <= 0f) throw new ArgumentOutOfRangeException(nameof(multiplier));
+            moveSpeed *= multiplier;
+            telegraphSeconds /= multiplier;
+            recoverSeconds /= multiplier;
+        }
 
         private void Awake()
         {
@@ -81,7 +99,9 @@ namespace DeckArpg.Gameplay
             if (status.IsDead)
             {
                 timer -= Time.deltaTime;
-                if (timer <= 0f) Respawn();
+                if (timer > 0f) return;
+                if (respawnOnDeath) Respawn();
+                else Destroy(gameObject);
                 return;
             }
             // Before the stun check so a flinched dummy still slides back.

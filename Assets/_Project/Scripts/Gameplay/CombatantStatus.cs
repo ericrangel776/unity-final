@@ -162,6 +162,27 @@ namespace DeckArpg.Gameplay
             Broken?.Invoke();
         }
 
+        /// <summary>Sets max HP (at least 1) and refills to it. Used when a run scales enemies or syncs the player.</summary>
+        public void SetMaxHp(int value)
+        {
+            maxHp = Mathf.Max(1, value);
+            Hp = maxHp;
+        }
+
+        /// <summary>Sets max posture (at least 1) and clears current posture.</summary>
+        public void SetMaxPosture(float value)
+        {
+            maxPosture = Mathf.Max(1f, value);
+            Posture = 0f;
+        }
+
+        /// <summary>Sets HP without a hit (run HP carry-over). Clamped to [1, max]; ignored when dead.</summary>
+        public void SetHp(int value)
+        {
+            if (IsDead) return;
+            Hp = Mathf.Clamp(value, 1, maxHp);
+        }
+
         public void Revive()
         {
             Hp = maxHp;

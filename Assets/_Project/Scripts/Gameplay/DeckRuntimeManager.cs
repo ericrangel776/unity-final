@@ -17,6 +17,9 @@ namespace DeckArpg.Gameplay
         [SerializeField] private int seed;
 
         private CombatActionController controller;
+        private List<RuntimeCardInstance> runDeck;
+        private int roomValueMod;
+        private Element? roomModElement;
 
         public DeckCycle Cycle { get; } = new DeckCycle();
         /// <summary>Active Reload for this deck (bar, jam, boost, Overburn). Ticked here on scaled time.</summary>
@@ -57,15 +60,51 @@ namespace DeckArpg.Gameplay
             Reinitialize();
         }
 
-        /// <summary>Fresh cycle from the starting deck; also cancels any reload bar, clears the speed boost and resets the Overburn price.</summary>
+        /// <summary>
+        /// Plays a run's persistent card instances (with their Forge upgrades and Premium) instead of fresh
+        /// copies of the starting deck. Pass null to go back to the starting deck. Deals a fresh cycle.
+        /// </summary>
+        public void UseRunDeck(IEnumerable<RuntimeCardInstance> instances, int newSeed = 0)
+        {
+            runDeck = instances != null ? new List<RuntimeCardInstance>(instances) : null;
+            seed = newSeed;
+            Reinitialize();
+        }
+
+        /// <summary>
+        /// Room modifier added to every card (or only cards of <paramref name="onlyElement"/>) as
+        /// <see cref="RuntimeCardInstance.TemporaryRoomMod"/>. Applied on every <see cref="Reinitialize"/>.
+        /// Zero-breakers ignore it (they never use integer math).
+        /// </summary>
+        public void SetRoomValueMod(int amount, Element? onlyElement = null)
+        {
+            roomValueMod = amount;
+            roomModElement = onlyElement;
+        }
+
+        /// <summary>Fresh cycle from the starting (or run) deck with the room mod; also cancels any reload bar, clears the speed boost and resets the Overburn price.</summary>
         public void Reinitialize()
         {
             Reload?.Cancel();
             Reload?.ResetBoost();
             Reload?.ResetOverburnCost();
             var instances = new List<RuntimeCardInstance>();
-            foreach (var data in startingDeck)
-                if (data != null) instances.Add(new RuntimeCardInstance(data));
+            if (runDeck != null)
+            {
+                foreach (var card in runDeck)
+                {
+                    if (card == null) continue;
+                    card.IsBurnedThisFight = false; // burns last one room
+                    instances.Add(card);
+                }
+            }
+            else
+            {
+                foreach (var data in startingDeck)
+                    if (data != null) instances.Add(new RuntimeCardInstance(data));
+            }
+            foreach (var card in instances)
+                card.TemporaryRoomMod = roomModElement == null || card.Data.Element == roomModElement ? roomValueMod : 0;
             Cycle.Initialize(instances, new System.Random(seed != 0 ? seed : Environment.TickCount));
         }
 
