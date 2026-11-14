@@ -41,6 +41,8 @@ namespace DeckArpg.Core
         public int BurnedCount => burned.Count;
         public int DeletedThisCycleCount => deletedThisCycle.Count;
         public int ZeroReserveCount => zeroReserve.Count;
+        /// <summary>0-cards ready to play right now: the Parry slot plus the reserve behind it.</summary>
+        public int ZerosReady => (ParrySlot != null ? 1 : 0) + zeroReserve.Count;
         public IReadOnlyList<RuntimeCardInstance> DiscardPile => discard;
         public IReadOnlyList<RuntimeCardInstance> BurnedPile => burned;
         /// <summary>Cards stocked toward the next Sleight, in slot order (0-2 entries).</summary>
@@ -269,6 +271,25 @@ namespace DeckArpg.Core
         {
             if (card == null || !RemoveFromCycle(card)) return false;
             deletedThisCycle.Add(card);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// Burns <paramref name="card"/> for the room from wherever it sits in the cycle (discard, set aside by a
+        /// 0-break, hand or draw queue). The Floor of 3 applies; a card set aside this cycle still counts toward
+        /// it because it would come back on reload. Returns false if blocked, already burned or not in the cycle.
+        /// </summary>
+        public bool BurnFromCycle(RuntimeCardInstance card)
+        {
+            if (card == null || card.IsBurnedThisFight || stock.Contains(card)) return false;
+            bool setAside = deletedThisCycle.Contains(card);
+            int cycling = CyclingCardCount + (setAside ? 1 : 0);
+            if (!SleightRules.CanBurn(cycling)) return false;
+
+            if (setAside) deletedThisCycle.Remove(card);
+            else if (!RemoveFromCycle(card)) return false;
+            Burn(card);
             Changed?.Invoke();
             return true;
         }
