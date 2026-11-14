@@ -12,6 +12,7 @@ namespace DeckArpg.Editor
     public static class StarterContentBuilder
     {
         public const string CardsFolder = "Assets/_Project/ScriptableObjects/Cards";
+        public const string RunContentPath = "Assets/_Project/ScriptableObjects/RunContent.asset";
 
         [MenuItem("DeckArpg/Build Starter Cards")]
         public static void BuildMenu()
@@ -20,6 +21,103 @@ namespace DeckArpg.Editor
             BuildDummyDeck();
             AssetDatabase.SaveAssets();
             Debug.Log($"Starter cards ready in {CardsFolder}");
+        }
+
+        /// <summary>
+        /// Builds every M3 card (create-if-missing) and rewrites the <see cref="RunContent"/> manifest that lists them.
+        /// See docs/specs/m3-card-pool.md.
+        /// </summary>
+        [MenuItem("DeckArpg/Build Run Content")]
+        public static void BuildRunContentMenu() => BuildRunContent();
+
+        public static RunContent BuildRunContent()
+        {
+            var built = RunContent.Create(BuildPlayerStarterDeck(), BuildDraftPool(), BuildDummyDeck(),
+                BuildHexfireDeck(), BuildEliteDeck(), BuildBossDeck(),
+                GetOrCreate("enemy_counter_0", 1, CardShape.Strike, Element.Physical, "Counter", zero: true));
+
+            var existing = AssetDatabase.LoadAssetAtPath<RunContent>(RunContentPath);
+            RunContent result;
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(built, existing);
+                existing.name = "RunContent";
+                Object.DestroyImmediate(built);
+                EditorUtility.SetDirty(existing);
+                result = existing;
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(built, RunContentPath);
+                result = built;
+            }
+            AssetDatabase.SaveAssets();
+
+            var problems = result.Validate();
+            if (problems.Count > 0) Debug.LogError("RunContent problems:\n" + string.Join("\n", problems));
+            else Debug.Log($"Run content ready at {RunContentPath}");
+            return result;
+        }
+
+        /// <summary>17 draftable cards: 7 Common, 6 Uncommon, 4 Rare (incl. the Null Ward 0-card).</summary>
+        public static List<CardData> BuildDraftPool()
+        {
+            const Rarity C = Rarity.Common, U = Rarity.Uncommon, R = Rarity.Rare;
+            return new List<CardData>
+            {
+                GetOrCreate("cleave_4", 4, CardShape.Strike, Element.Physical, "Cleave 4", rarity: C),
+                GetOrCreate("cleave_6", 6, CardShape.Strike, Element.Physical, "Cleave 6", rarity: C),
+                GetOrCreate("ember_4", 4, CardShape.Throw, Element.Fire, "Ember 4", rarity: C),
+                GetOrCreate("frost_5", 5, CardShape.Arcana, Element.Ice, "Frost 5", rarity: C),
+                GetOrCreate("spark_3", 3, CardShape.Throw, Element.Lightning, "Spark 3", rarity: C),
+                GetOrCreate("spark_5", 5, CardShape.Throw, Element.Lightning, "Spark 5", rarity: C),
+                GetOrCreate("volt_burst_4", 4, CardShape.Arcana, Element.Lightning, "Volt Burst 4", rarity: C),
+
+                GetOrCreate("cleave_8", 8, CardShape.Strike, Element.Physical, "Cleave 8", rarity: U),
+                GetOrCreate("ember_7", 7, CardShape.Throw, Element.Fire, "Ember 7", rarity: U),
+                GetOrCreate("frost_7", 7, CardShape.Arcana, Element.Ice, "Frost 7", rarity: U),
+                GetOrCreate("spark_7", 7, CardShape.Throw, Element.Lightning, "Spark 7", rarity: U),
+                GetOrCreate("cinder_nova_6", 6, CardShape.Arcana, Element.Fire, "Cinder Nova 6", rarity: U),
+                GetOrCreate("rime_lance_6", 6, CardShape.Throw, Element.Ice, "Rime Lance 6", rarity: U),
+
+                GetOrCreate("cleave_9", 9, CardShape.Strike, Element.Physical, "Cleave 9", rarity: R),
+                GetOrCreate("thunderhead_9", 9, CardShape.Arcana, Element.Lightning, "Thunderhead 9", rarity: R),
+                GetOrCreate("inferno_8", 8, CardShape.Arcana, Element.Fire, "Inferno 8", rarity: R),
+                GetOrCreate("null_ward_0", 1, CardShape.Strike, Element.Physical, "Null Ward", zero: true, rarity: R),
+            };
+        }
+
+        /// <summary>Hexfire room enemies: elemental mid cards.</summary>
+        public static List<CardData> BuildHexfireDeck()
+        {
+            return new List<CardData>
+            {
+                GetOrCreate("hex_bolt_3", 3, CardShape.Throw, Element.Fire, "Hex Bolt 3"),
+                GetOrCreate("hex_frost_4", 4, CardShape.Arcana, Element.Ice, "Hex Frost 4"),
+                GetOrCreate("hex_spark_5", 5, CardShape.Throw, Element.Lightning, "Hex Spark 5"),
+                GetOrCreate("hex_flare_6", 6, CardShape.Arcana, Element.Fire, "Hex Flare 6"),
+                GetOrCreate("hex_arc_7", 7, CardShape.Throw, Element.Lightning, "Hex Arc 7"),
+            };
+        }
+
+        /// <summary>Purple Elite: heavy hitters.</summary>
+        public static List<CardData> BuildEliteDeck()
+        {
+            var deck = new List<CardData>();
+            int[] values = { 5, 6, 7, 7, 8, 9 };
+            for (int i = 0; i < values.Length; i++)
+                deck.Add(GetOrCreate($"brute_{i + 1}_{values[i]}", values[i], CardShape.Strike, Element.Physical, $"Brute {values[i]}"));
+            return deck;
+        }
+
+        /// <summary>Boss placeholder: the 15-card visible deck from the design doc (real boss AI is M4).</summary>
+        public static List<CardData> BuildBossDeck()
+        {
+            var deck = new List<CardData>();
+            int[] values = { 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9 };
+            for (int i = 0; i < values.Length; i++)
+                deck.Add(GetOrCreate($"warden_{i + 1:00}_{values[i]}", values[i], CardShape.Strike, Element.Physical, $"Warden {values[i]}"));
+            return deck;
         }
 
         /// <summary>10 cards: Strike 2-7, Ember (Fire Throw) 3 and 5, Frost (Ice Arcana) 4, one 0-Parry.</summary>
@@ -49,14 +147,14 @@ namespace DeckArpg.Editor
         }
 
         private static CardData GetOrCreate(string id, int value, CardShape shape, Element element, string displayName,
-            bool zero = false)
+            bool zero = false, Rarity rarity = Rarity.Common)
         {
             EnsureFolder(CardsFolder);
             string path = $"{CardsFolder}/{id}.asset";
             var existing = AssetDatabase.LoadAssetAtPath<CardData>(path);
             if (existing != null) return existing;
 
-            var card = CardData.Create(id, value, shape, element, zero, displayName: displayName);
+            var card = CardData.Create(id, value, shape, element, zero, displayName: displayName, rarity: rarity);
             AssetDatabase.CreateAsset(card, path);
             return card;
         }
