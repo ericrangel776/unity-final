@@ -25,13 +25,16 @@ namespace DeckArpg.Core
         public readonly int HitCount;
         /// <summary>Iron Will Idol: an enemy 0 can't break this attack (the attack wins instead). Sleights only.</summary>
         public readonly bool ZeroProof;
+        /// <summary>The off-deck poke: damage only. It never flinches, shoves, or clashes with a telegraph.</summary>
+        public readonly bool IsPoke;
 
         public float DamageMultiplier => 1f + FinisherValue * SleightRules.MultiplierPerPoint;
 
         public AttackPayload(int ownerId, Team team, int value, bool isZeroBreaker, bool isSleight,
             int activationTick, CardShape shape, Element element, int finisherValue = 0, int hitCount = 1,
-            bool zeroProof = false)
+            bool zeroProof = false, bool isPoke = false)
         {
+            IsPoke = isPoke;
             ZeroProof = isSleight && zeroProof;
             FinisherValue = isSleight ? Math.Max(0, Math.Min(CardValue.Max, finisherValue)) : 0;
             HitCount = isSleight ? Math.Max(1, hitCount) : 1;
@@ -62,6 +65,7 @@ namespace DeckArpg.Core
 
         /// <summary>The always-available off-deck Value 1 poke, so the player is never helpless.</summary>
         public static AttackPayload Poke(int ownerId, Team team, int activationTick) =>
-            new AttackPayload(ownerId, team, PokeValue, false, false, activationTick, CardShape.Strike, Element.Physical);
+            new AttackPayload(ownerId, team, PokeValue, false, false, activationTick, CardShape.Strike, Element.Physical,
+                isPoke: true);
     }
 }
