@@ -171,7 +171,9 @@ namespace DeckArpg.Gameplay
         {
             sources.TryGetValue(loser, out var card);
             CancelActiveAction();
-            Status.ApplyBreak(margin, awayFromWinner);
+            // The player's stun shrinks as more enemies are alive, so crowds can't stun-lock.
+            float stunScale = Status.Team == Team.Player ? CombatMath.CrowdStunScale(TrainingDummyEnemy.LiveCount) : 1f;
+            Status.ApplyBreak(margin, awayFromWinner, stunScale);
             CardBroken?.Invoke(card, brokeByZero);
         }
 

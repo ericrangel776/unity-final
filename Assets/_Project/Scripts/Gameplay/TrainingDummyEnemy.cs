@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DeckArpg.Core;
 using UnityEngine;
 
@@ -12,6 +13,20 @@ namespace DeckArpg.Gameplay
     public sealed class TrainingDummyEnemy : MonoBehaviour
     {
         private enum State { Approach, Telegraph, Recover }
+
+        private static readonly HashSet<TrainingDummyEnemy> Registered = new HashSet<TrainingDummyEnemy>();
+
+        /// <summary>Enabled enemies that are alive. Scales the player's break stun (crowds stun less).</summary>
+        public static int LiveCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var e in Registered)
+                    if (e != null && e.status != null && !e.status.IsDead) n++;
+                return n;
+            }
+        }
 
         [SerializeField] private Transform target;
         [SerializeField] private float moveSpeed = 2.5f;
@@ -79,6 +94,7 @@ namespace DeckArpg.Gameplay
 
         private void OnEnable()
         {
+            Registered.Add(this);
             status.Died += HandleDied;
             status.Broken += CancelTelegraph;
             status.Flinched += CancelTelegraph;
@@ -86,6 +102,7 @@ namespace DeckArpg.Gameplay
 
         private void OnDisable()
         {
+            Registered.Remove(this);
             status.Died -= HandleDied;
             status.Broken -= CancelTelegraph;
             status.Flinched -= CancelTelegraph;
@@ -138,6 +155,9 @@ namespace DeckArpg.Gameplay
             }
         }
 
+        /// <summary>Tests: start winding up the first hand card now.</summary>
+        internal void ForceTelegraph() => BeginTelegraph();
+
         private void BeginTelegraph()
         {
             var cycle = deck.Cycle;
@@ -156,6 +176,7 @@ namespace DeckArpg.Gameplay
 
             CurrentTelegraph = cycle.Hand[telegraphSlot];
             state = State.Telegraph;
+            status.FlinchArmor = true; // only a card clash can stop the wind-up
             timer = telegraphSeconds;
             TelegraphStarted?.Invoke(CurrentTelegraph);
         }
@@ -172,6 +193,28 @@ namespace DeckArpg.Gameplay
             timer = recoverSeconds;
         }
 
+        /// <summary>
+        /// <paramref name="incoming"/> reached our body mid wind-up: clash it with the telegraphed card. A higher
+        /// card breaks the anticipated attack, an equal one cancels both, a lower one is broken and we still swing.
+        /// Pokes and 0-cards (either side) don't clash: a 0 only answers a live swing.
+        /// </summary>
+        internal void ResolveTelegraphClash(AttackHitbox incoming)
+        {
+            var telegraph = CurrentTelegraph;
+            if (state != State.Telegraph || telegraph == null || incoming == null || !incoming.IsLive) return;
+            var payload = incoming.Payload;
+            if (payload.Team == Team.Enemy || payload.IsPoke || payload.IsZeroBreaker || telegraph.IsZeroBreaker) return;
+
+            int slot = telegraphSlot;
+            var anticipated = AttackPayload.FromCard(telegraph, status.OwnerId, Team.Enemy, Time.frameCount);
+            var result = ClashSystem.ResolveTelegraph(incoming, combat, anticipated);
+            if (result.Outcome != ClashOutcome.AWins && result.Outcome != ClashOutcome.Neutral) return;
+
+            // The anticipated card is spent (a win's break already ended the telegraph via Broken).
+            deck.Cycle.TryPlay(slot, out _);
+            CancelTelegraph();
+        }
+
         private void CancelTelegraph()
         {
             if (state != State.Telegraph) return;
@@ -183,11 +226,13 @@ namespace DeckArpg.Gameplay
         private void EndTelegraph()
         {
             CurrentTelegraph = null;
+            status.FlinchArmor = false;
             TelegraphEnded?.Invoke();
         }
 
         private void HandleDied()
         {
+            status.FlinchArmor = false;
             CancelTelegraph();
             combat.CancelActiveAction();
             timer = respawnDelay;

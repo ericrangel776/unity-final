@@ -44,6 +44,8 @@ namespace DeckArpg.Gameplay
         public bool IsInvulnerable { get; set; }
         public int OwnerId => gameObject.GetInstanceID();
         public float HitFlinchSeconds { get => hitFlinchSeconds; set => hitFlinchSeconds = Mathf.Max(0f, value); }
+        /// <summary>Set while an enemy winds up a telegraph: hits still damage but can't flinch it out of the attack.</summary>
+        public bool FlinchArmor { get; set; }
         /// <summary>Push from the last body hit, decaying to zero. Movers add this to their motion.</summary>
         public Vector3 KnockbackVelocity { get; private set; }
 
@@ -120,10 +122,11 @@ namespace DeckArpg.Gameplay
 
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
-            var direction = Push(fromDirection, CombatMath.KnockbackSpeed(payload));
+            // A poke is damage only: no shove (can't keep enemies at bay) and no flinch.
+            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, CombatMath.KnockbackSpeed(payload));
             HitTaken?.Invoke(damage, direction);
 
-            if (flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
+            if (payload.IsPoke || FlinchArmor || flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
             stunRemaining = Mathf.Max(stunRemaining, hitFlinchSeconds);
             flinchCooldownRemaining = flinchCooldownSeconds;
             Flinched?.Invoke();
@@ -132,11 +135,16 @@ namespace DeckArpg.Gameplay
         /// <summary>Sets a decaying push along the flattened direction. Returns the unit direction used.</summary>
         private Vector3 Push(Vector3 direction, float speed)
         {
-            direction.y = 0f;
-            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
+            direction = Flatten(direction);
             KnockbackVelocity = direction * speed;
             knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
             return direction;
+        }
+
+        private static Vector3 Flatten(Vector3 direction)
+        {
+            direction.y = 0f;
+            return direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
         }
 
         /// <summary>Card break at the baseline margin with no shove.</summary>
@@ -159,8 +167,9 @@ namespace DeckArpg.Gameplay
         /// <summary>
         /// Called when one of our cards loses a clash: posture damage and stun scaled by how decisively
         /// we lost (<paramref name="margin"/>), plus a shove along <paramref name="awayFromWinner"/>.
+        /// <paramref name="stunScale"/> multiplies the final stun (the player's crowd scaling).
         /// </summary>
-        public void ApplyBreak(int margin, Vector3 awayFromWinner)
+        public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f)
         {
             if (IsDead) return;
             Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin);
@@ -171,7 +180,7 @@ namespace DeckArpg.Gameplay
                 Posture = 0f;
                 stun = postureBreakStunSeconds;
             }
-            stunRemaining = Mathf.Max(stunRemaining, stun);
+            stunRemaining = Mathf.Max(stunRemaining, stun * Mathf.Max(0f, stunScale));
             counterWindowRemaining = counterWindowSeconds;
             Broken?.Invoke();
         }

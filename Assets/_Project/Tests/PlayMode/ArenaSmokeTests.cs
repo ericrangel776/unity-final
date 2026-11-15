@@ -59,7 +59,7 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Arena_HitDuringDummyTelegraph_CancelsIt()
+        public IEnumerator Arena_PlainHitDuringDummyTelegraph_DoesNotCancelIt()
         {
             yield return SceneManager.LoadSceneAsync(SceneName);
 
@@ -76,8 +76,10 @@ namespace DeckArpg.Tests.PlayMode
             var hit = new AttackPayload(1, Team.Player, 3, false, false, 0, CardShape.Strike, Element.Physical);
             Assert.IsTrue(dummy.Status.TakeHit(hit, dummy.transform.forward * -1f));
 
-            Assert.IsTrue(ended, "A flinching hit should interrupt the wind-up.");
-            Assert.IsNull(dummy.CurrentTelegraph);
+            // Only a card clash (see TelegraphClashTests) can stop the wind-up; a plain hit is armored through.
+            Assert.IsFalse(ended, "A plain hit must not interrupt the wind-up.");
+            Assert.IsNotNull(dummy.CurrentTelegraph);
+            Assert.Less(dummy.Status.Hp, dummy.Status.MaxHp, "The hit still deals damage.");
         }
 
         [UnityTest]

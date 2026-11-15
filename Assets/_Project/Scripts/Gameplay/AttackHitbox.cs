@@ -107,6 +107,10 @@ namespace DeckArpg.Gameplay
             var source = Owner != null ? Owner.transform.position : transform.position;
             foreach (var status in hitScratch)
             {
+                // A body that is winding up a telegraph clashes its card with ours first.
+                var winder = status.GetComponent<TrainingDummyEnemy>();
+                if (winder != null) winder.ResolveTelegraphClash(this);
+                if (!IsLive) return; // lost or tied: our action was cancelled
                 // Hits during i-frames are not consumed, so dashing through only protects while dashing.
                 bool canCounter = !brokeInClash.Contains(status);
                 if (status.TakeHit(Payload, status.transform.position - source, canCounter)) alreadyHit.Add(status);
