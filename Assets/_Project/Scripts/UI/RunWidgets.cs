@@ -33,8 +33,14 @@ namespace DeckArpg.UI
         public static readonly Color Gold = new Color(1f, 0.85f, 0.35f);
         public static readonly Color CellColor = new Color(0.32f, 0.35f, 0.45f, 1f);
 
-        /// <summary>Layout bands in the 1920x1080 reference (the M2 HUD owns the top ~70 px and the bottom ~250 px).</summary>
-        public const float HeaderY = -175f, SubheaderY = -232f, ButtonY = 270f, HintY = 225f;
+        /// <summary>
+        /// Layout bands in the 1920x1080 reference. The HUD strip owns the top ~140 px; the combat HUD is hidden while a
+        /// screen is open, so the bottom is free. Top-anchored: header, subheader, prompt. Bottom-anchored: feedback,
+        /// buttons, key hint.
+        /// </summary>
+        public const float HeaderY = -175f, SubheaderY = -232f, PromptY = -280f;
+        public const float FeedbackY = 205f, ButtonY = 115f, HintY = 60f;
+        public static readonly Color Warning = new Color(1f, 0.45f, 0.4f);
 
         /// <summary>A text label in its own rect, so it can be placed inside a parent.</summary>
         public static Text Label(Transform parent, string name, Vector2 anchor, Vector2 pivot, Vector2 position,
@@ -102,7 +108,7 @@ namespace DeckArpg.UI
             tile.Button.colors = Tint(color);
         }
 
-        private static ColorBlock Tint(Color color)
+        internal static ColorBlock Tint(Color color)
         {
             var colors = ColorBlock.defaultColorBlock;
             colors.normalColor = color;

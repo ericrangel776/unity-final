@@ -23,6 +23,7 @@ namespace DeckArpg.UI
 
         private readonly List<RunScreen> attached = new List<RunScreen>();
         private readonly Dictionary<RunScreen, RectTransform> roots = new Dictionary<RunScreen, RectTransform>();
+        private readonly List<CanvasGroup> hiddenHud = new List<CanvasGroup>();
         private Canvas canvas;
         private RectTransform dim;
 
@@ -30,6 +31,8 @@ namespace DeckArpg.UI
         public RunScreen Current { get; private set; }
         public Canvas Canvas => canvas;
         public bool InputBlocked => director != null && director.Player != null && director.Player.InputBlocked;
+        /// <summary>True while the combat HUD (every overlay canvas sorted below the screens) is hidden behind an open screen.</summary>
+        public bool CombatHudHidden => hiddenHud.Count > 0;
 
         private void Awake()
         {
@@ -81,6 +84,7 @@ namespace DeckArpg.UI
             dim.gameObject.SetActive(true);
             roots[screen].gameObject.SetActive(true);
             SetBlocked(true);
+            HideCombatHud();
             screen.Refresh();
         }
 
@@ -91,6 +95,7 @@ namespace DeckArpg.UI
             roots[Current].gameObject.SetActive(false);
             dim.gameObject.SetActive(false);
             Current = null;
+            ShowCombatHud();
         }
 
         /// <summary>Routes a number key: <paramref name="index"/> 0 = key `1`.</summary>
@@ -122,11 +127,44 @@ namespace DeckArpg.UI
         private void OnDisable()
         {
             if (director != null && director.Player != null) director.Player.InputBlocked = false;
+            ShowCombatHud();
         }
 
         private void SetBlocked(bool blocked)
         {
             if (director != null && director.Player != null) director.Player.InputBlocked = blocked;
+        }
+
+        /// <summary>
+        /// Hides the combat HUD (hand, stock, reload bar, prompts) so it can't clutter or overlap a screen
+        /// (docs/specs/m3-blue-polish.md). Uses a CanvasGroup, which no HUD view touches, so their own toggles keep working.
+        /// The HUD strip sorts above the screens and stays visible.
+        /// </summary>
+        private void HideCombatHud()
+        {
+            if (CombatHudHidden) return;
+            foreach (var hud in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                // Screen-space only (overlay, or camera space in the screenshot capture); world-space telegraphs stay.
+                if (!hud.isRootCanvas || hud.renderMode == RenderMode.WorldSpace) continue;
+                if (hud == canvas || hud.sortingOrder >= SortingOrder) continue;
+                var group = hud.GetComponent<CanvasGroup>();
+                if (group == null) group = hud.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = 0f;
+                group.blocksRaycasts = false;
+                hiddenHud.Add(group);
+            }
+        }
+
+        private void ShowCombatHud()
+        {
+            foreach (var group in hiddenHud)
+            {
+                if (group == null) continue;
+                group.alpha = 1f;
+                group.blocksRaycasts = true;
+            }
+            hiddenHud.Clear();
         }
 
         private static void EnsureEventSystem()
