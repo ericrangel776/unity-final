@@ -101,11 +101,14 @@ namespace DeckArpg.UI
         {
             var keyboard = Keyboard.current;
             if (keyboard == null || Current == null) return;
-            if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) HandleKey(0);
-            else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame) HandleKey(1);
-            else if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame) HandleKey(2);
-            else if (keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame) HandleKey(3);
-            else if (keyboard.escapeKey.wasPressedThisFrame) HandleBack();
+            // `1`-`9` (top row or numpad). Key.Digit1..Digit9 and Key.Numpad1..Numpad9 are contiguous in the enum.
+            for (int i = 0; i < 9; i++)
+            {
+                if (!keyboard[Key.Digit1 + i].wasPressedThisFrame && !keyboard[Key.Numpad1 + i].wasPressedThisFrame) continue;
+                HandleKey(i);
+                return;
+            }
+            if (keyboard.escapeKey.wasPressedThisFrame) HandleBack();
             else if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) HandleConfirm();
         }
 

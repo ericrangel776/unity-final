@@ -125,6 +125,9 @@ namespace DeckArpg.Editor
             // Screens on the RunUI object are attached by RunScreens.Awake.
             ui.AddComponent<DoorChoiceView>();
             ui.AddComponent<RewardView>();
+            ui.AddComponent<ShopView>();
+            ui.AddComponent<ForgeView>();
+            ui.AddComponent<RestView>();
             foreach (Object view in new Object[] { screens, strip })
             {
                 var so = new SerializedObject(view);
