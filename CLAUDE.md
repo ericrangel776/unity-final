@@ -62,8 +62,6 @@ Close the Editor before batchmode runs (a project can only be open once).
   - Add content folders (`Prefabs/`, `ScriptableObjects/Cards/`, `Art/`, `Audio/`, `Scenes/`) when the
     first asset goes in - git does not track empty folders and Unity churns their `.meta` files.
 - Dependency direction: Core <- Gameplay <- UI. Never reference upward. Namespace = assembly name.
-- `Assets/Settings/` - URP pipeline/renderer assets (PC + Mobile); `Assets/Scenes/SampleScene` - template scene.
-- `Assets/InputSystem_Actions.inputactions` - project-wide input actions (`Player`, `UI` maps).
 - Commit `Assets/`, `Packages/`, `ProjectSettings/` and every `.meta`; `Library/`, `Logs/`, `UserSettings/` are ignored.
 - `docs/specs/` - feature specs written with /spec
 - `docs/notes/CURRENT.md` - running notes for the task in progress (/handoff)
@@ -81,15 +79,8 @@ test command and its latest result, and any failed approaches to avoid.
 ## Lessons learned
 - `Time.timeScale` is global: anything that freezes it must share one owner/saved scale across
   instances, or a second freezer saves `0` as "previous" and locks the game. Restore it in `OnDisable`.
-- In PlayMode tests, `WaitForFixedUpdate` / `Time.time` loops never advance while `timeScale == 0`;
-  wait on frames + `Time.realtimeSinceStartup` with a timeout, and reset `Time.timeScale = 1` in TearDown.
-- A scene a test loads stays loaded for later fixtures, and its live objects (dummy, player, `HitStop`)
-  react to their hitboxes/clashes and cause flaky failures. `ArenaSmokeTests` unloads `M1_Arena` in a
-  `[UnityTearDown]`; any new test that loads a scene must do the same. Wrap batchmode test runs in
-  `timeout` so a hang fails fast.
-- `yield return null` in a PlayMode test resumes after `Update` but before `LateUpdate`, so a view that
-  redraws in `LateUpdate` still shows last frame's value. To compare a view to the state it draws, freeze
-  `Time.timeScale = 0` first (frames still advance) and yield twice.
+- Wrap batchmode test runs in `timeout` so a hang fails fast. PlayMode test-writing gotchas live in
+  `.claude/rules/unity-playmode-tests.md` (loads when working under `Tests/PlayMode`).
 - Batchmode has no window, so Screen Space - Overlay HUDs can't be screenshotted. `HudScreenshotCapture`
   (`[Explicit]`) renders the main camera into a RenderTexture with the canvases switched to Screen Space -
   Camera. Run it alone without `-nographics` (`-testFilter DeckArpg.Tests.PlayMode.HudScreenshotCapture`)
