@@ -17,11 +17,10 @@ namespace DeckArpg.Tests.EditMode
         private const string DummyPrefab = "Assets/_Project/Prefabs/TrainingDummy.prefab";
 
         [Test]
-        public void ArenaScene_IsFirstInBuildSettings()
+        public void ArenaScene_IsInBuildSettings_AfterTheRunScene()
         {
-            var first = EditorBuildSettings.scenes.FirstOrDefault(s => s.enabled);
-            Assert.IsNotNull(first, "No enabled scenes in Build Settings.");
-            Assert.AreEqual(ScenePath, first.path);
+            var paths = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToList();
+            Assert.AreEqual(1, paths.IndexOf(ScenePath), "Build order is M3_Run, M1_Arena (docs/specs/m3-smoke-test.md).");
         }
 
         [Test]

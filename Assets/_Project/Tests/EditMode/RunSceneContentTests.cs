@@ -15,11 +15,13 @@ namespace DeckArpg.Tests.EditMode
         private const string ScenePath = "Assets/_Project/Scenes/M3_Run.unity";
 
         [Test]
-        public void RunScene_IsInBuildSettings_AfterTheArena()
+        public void RunScene_IsFirstInBuildSettings_AndTheTemplateSceneIsOut()
         {
             var paths = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToList();
-            CollectionAssert.Contains(paths, ScenePath);
-            Assert.Greater(paths.IndexOf(ScenePath), 0, "M1_Arena stays first until a title/flow scene exists.");
+            Assert.AreEqual(ScenePath, paths.FirstOrDefault(), "A build opens straight into the run.");
+            CollectionAssert.DoesNotContain(paths, "Assets/Scenes/SampleScene.unity");
+            CollectionAssert.AreEqual(new[] { ScenePath, "Assets/_Project/Scenes/M1_Arena.unity" }, paths,
+                "Must match GreyboxArenaBuilder.BuildOrder.");
         }
 
         [Test]

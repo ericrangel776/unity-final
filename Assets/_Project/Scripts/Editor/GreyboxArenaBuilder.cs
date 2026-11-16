@@ -68,7 +68,7 @@ namespace DeckArpg.Editor
             BuildHud();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
-            AddSceneToBuildSettings(ScenePath, first: true);
+            ApplyBuildOrder();
             AssetDatabase.SaveAssets();
             Debug.Log($"M1 arena built: {ScenePath}");
         }
@@ -111,7 +111,7 @@ namespace DeckArpg.Editor
             BuildRunUi(director);
 
             EditorSceneManager.SaveScene(scene, RunScenePath);
-            AddSceneToBuildSettings(RunScenePath, first: false);
+            ApplyBuildOrder();
             AssetDatabase.SaveAssets();
             Debug.Log($"M3 run scene built: {RunScenePath}");
         }
@@ -347,14 +347,17 @@ namespace DeckArpg.Editor
             fx.AddComponent<ClashImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
         }
 
-        private static void AddSceneToBuildSettings(string path, bool first)
+        /// <summary>Build scene order (docs/specs/m3-smoke-test.md): the run first, then the M1 arena. Only scenes that exist are listed.</summary>
+        public static readonly string[] BuildOrder = { RunScenePath, ScenePath };
+
+        /// <summary>Rewrites Build Settings to <see cref="BuildOrder"/>, so rebuilding either scene keeps the order.</summary>
+        [MenuItem("DeckArpg/Apply Build Scene Order")]
+        public static void ApplyBuildOrder()
         {
-            var scenes = EditorBuildSettings.scenes.ToList();
-            if (scenes.Any(s => s.path == path)) return;
-            var entry = new EditorBuildSettingsScene(path, true);
-            if (first) scenes.Insert(0, entry);
-            else scenes.Add(entry);
-            EditorBuildSettings.scenes = scenes.ToArray();
+            EditorBuildSettings.scenes = BuildOrder
+                .Where(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path) != null)
+                .Select(path => new EditorBuildSettingsScene(path, true))
+                .ToArray();
         }
     }
 }
