@@ -87,6 +87,8 @@ namespace DeckArpg.UI
 
         public override void Back() => Screens.Hide();
 
+        public override bool ValidIn(RunDirectorState state) => state == RunDirectorState.ChoosingDoor;
+
         public static Color FamilyColor(MapFamily family)
         {
             switch (family)

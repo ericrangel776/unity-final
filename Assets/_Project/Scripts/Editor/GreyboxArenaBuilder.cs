@@ -124,6 +124,7 @@ namespace DeckArpg.Editor
             var strip = ui.AddComponent<RunHudStripView>();
             // Screens on the RunUI object are attached by RunScreens.Awake.
             ui.AddComponent<DoorChoiceView>();
+            ui.AddComponent<RewardView>();
             foreach (Object view in new Object[] { screens, strip })
             {
                 var so = new SerializedObject(view);

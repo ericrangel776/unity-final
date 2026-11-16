@@ -108,6 +108,16 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator ChoosingADoorElsewhere_ClosesTheScreen()
+        {
+            yield return WalkIntoDoor();
+            director.ChooseDoor(0); // the Inspector debug menu does this
+            Assert.IsFalse(doors.IsOpen);
+            yield return null;
+            Assert.IsFalse(director.Player.InputBlocked);
+        }
+
+        [UnityTest]
         public IEnumerator Select_OutOfRange_IsIgnored()
         {
             yield return WalkIntoDoor();

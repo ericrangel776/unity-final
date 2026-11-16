@@ -129,6 +129,60 @@ namespace DeckArpg.Tests.EditMode
             }
         }
 
+        // ---- cards ----
+
+        [Test]
+        public void CardValue_AddsUpgrade_ClampedToNine()
+        {
+            var card = CardData.Create("c", 8);
+            Assert.AreEqual("8", RunUiText.CardValue(card));
+            Assert.AreEqual("9", RunUiText.CardValue(card, 1));
+            Assert.AreEqual("9", RunUiText.CardValue(card, 3));
+            UnityEngine.Object.DestroyImmediate(card);
+        }
+
+        [Test]
+        public void CardValue_ZeroCard_StaysZero_EvenUpgraded()
+        {
+            var zero = CardData.Create("z", 1, zeroBreaker: true);
+            Assert.AreEqual("0", RunUiText.CardValue(zero, 1));
+            StringAssert.DoesNotContain("Pre-upgraded", RunUiText.CardDetails(zero, 1));
+            UnityEngine.Object.DestroyImmediate(zero);
+        }
+
+        [Test]
+        public void CardDetails_ListsShapeElement_PremiumAndUpgrade()
+        {
+            var card = CardData.Create("c", 4, CardShape.Throw, Element.Fire, premium: true);
+            var details = RunUiText.CardDetails(card, 1);
+            StringAssert.StartsWith("Throw · Fire", details);
+            StringAssert.Contains("Premium", details);
+            StringAssert.Contains("Pre-upgraded +1", details);
+            StringAssert.DoesNotContain("Pre-upgraded", RunUiText.CardDetails(card));
+            UnityEngine.Object.DestroyImmediate(card);
+        }
+
+        [Test]
+        public void DeckCardLabel_ShowsEffectiveValue_UpgradeAndPremiumTags()
+        {
+            var data = CardData.Create("c", 4, displayName: "Spark");
+            var card = new RuntimeCardInstance(data) { PermanentRunUpgradeMod = 2 };
+            Assert.AreEqual($"Spark  {card.GetEffectiveValue()} +2", RunUiText.DeckCardLabel(card));
+            card.IsPremiumOverride = true;
+            Assert.AreEqual($"Spark  {card.GetEffectiveValue()} +2 P", RunUiText.DeckCardLabel(card));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void RelicNameAndDescription_AreDefinedForEveryRelic()
+        {
+            foreach (RelicId relic in System.Enum.GetValues(typeof(RelicId)))
+            {
+                Assert.AreNotEqual(relic.ToString(), RunUiText.RelicName(relic), $"{relic} has no name");
+                Assert.IsNotEmpty(RunUiText.RelicDescription(relic), $"{relic} has no description");
+            }
+        }
+
         [Test]
         public void RelicShortName_IsDefinedForEveryRelic()
         {

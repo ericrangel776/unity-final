@@ -109,7 +109,60 @@ namespace DeckArpg.UI
         /// <summary>Regular fights always have 2+ enemies (Elite/Boss blurbs don't use this).</summary>
         private static string Enemies(in MapCard card) => $"{RoomIntensity.EnemyCount(card)} enemies";
 
+        // ---- cards (draft, shop, deck lists) ----
+
+        /// <summary>The value a card shows: "0" for a 0-card, else base + <paramref name="upgrade"/> clamped to [1, 9].</summary>
+        public static string CardValue(CardData card, int upgrade = 0) =>
+            card.IsZeroBreaker ? "0" : Core.CardValue.Clamp(card.BaseValue + upgrade).ToString();
+
+        /// <summary>"Strike · Fire", plus "Premium (+2, burns on play)" and "Pre-upgraded +N" lines when they apply.</summary>
+        public static string CardDetails(CardData card, int upgrade = 0)
+        {
+            var sb = new StringBuilder(card.IsZeroBreaker ? "0-card · breaks anything played first" : $"{card.Shape} · {card.Element}");
+            if (card.IsPremium) sb.Append($"\nPremium (+{RuntimeCardInstance.PremiumBonus}, burns on play)");
+            if (upgrade > 0 && !card.IsZeroBreaker) sb.Append($"\nPre-upgraded +{upgrade}");
+            return sb.ToString();
+        }
+
+        /// <summary>One deck card for a list: "Ember Strike 6", with "+N" for run upgrades and "P" for Premium.</summary>
+        public static string DeckCardLabel(RuntimeCardInstance card)
+        {
+            string value = card.IsZeroBreaker ? "0" : card.GetEffectiveValue().ToString();
+            string tags = (card.PermanentRunUpgradeMod > 0 ? $" +{card.PermanentRunUpgradeMod}" : "") +
+                          (card.IsPremium ? " P" : "");
+            return $"{card.Data.DisplayName}  {value}{tags}";
+        }
+
         // ---- relics ----
+
+        public static string RelicName(RelicId relic)
+        {
+            switch (relic)
+            {
+                case RelicId.ShatteredHourglass: return "Shattered Hourglass";
+                case RelicId.AshenSigil: return "Ashen Sigil";
+                case RelicId.IronWillIdol: return "Iron Will Idol";
+                case RelicId.TemperedCoil: return "Tempered Coil";
+                case RelicId.CinderLantern: return "Cinder Lantern";
+                case RelicId.GildedQuill: return "Gilded Quill";
+                default: return relic.ToString();
+            }
+        }
+
+        /// <summary>The effect in one or two lines (numbers from <see cref="RelicRules"/> where they exist).</summary>
+        public static string RelicDescription(RelicId relic)
+        {
+            switch (relic)
+            {
+                case RelicId.ShatteredHourglass: return $"Your 0-breaks return a spent card\nand deal {RelicRules.HourglassPostureDamage:0} posture damage.";
+                case RelicId.AshenSigil: return $"Each Sleight burn: +10% swing speed\nfor the room, heal {RelicRules.AshenSigilHealPerBurn} HP.";
+                case RelicId.IronWillIdol: return "The first Sleight after each reload\ncan't be broken by a 0.";
+                case RelicId.TemperedCoil: return "A Perfect reload restores\n1 burned card.";
+                case RelicId.CinderLantern: return "The first Overburn each room\ncosts no HP.";
+                case RelicId.GildedQuill: return $"Drafts offer +{RelicRules.GildedQuillExtraOptions} card.\nSkipping pays +{RelicRules.GildedQuillExtraSkipBonus} more.";
+                default: return "";
+            }
+        }
 
         public static string RelicShortName(RelicId relic)
         {

@@ -27,6 +27,12 @@ namespace DeckArpg.UI
         /// <summary>Redraw from the run state. Called on show and after every action.</summary>
         public abstract void Refresh();
 
+        /// <summary>
+        /// Whether this screen still applies in <paramref name="state"/>. <see cref="RunScreens"/> hides the open screen
+        /// when the run moves to a state where it doesn't (e.g. the debug menu or a test finishes a reward directly).
+        /// </summary>
+        public virtual bool ValidIn(RunDirectorState state) => true;
+
         /// <summary>Option <paramref name="index"/> (0-based) was chosen.</summary>
         public virtual void Select(int index) { }
 

@@ -44,6 +44,17 @@ namespace DeckArpg.UI
             dim.gameObject.SetActive(false);
 
             foreach (var screen in GetComponents<RunScreen>()) Attach(screen);
+            if (director != null) director.StateChanged += HandleStateChanged;
+        }
+
+        private void OnDestroy()
+        {
+            if (director != null) director.StateChanged -= HandleStateChanged;
+        }
+
+        private void HandleStateChanged(RunDirectorState state)
+        {
+            if (Current != null && !Current.ValidIn(state)) Hide();
         }
 
         /// <summary>Registers a screen added after Awake (tests). Screens on this GameObject are attached automatically.</summary>
