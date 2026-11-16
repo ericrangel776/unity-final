@@ -65,7 +65,10 @@ namespace DeckArpg.Core
         public bool PurpleOffered { get; private set; }
         public bool IsBossRoom => RoomNumber == BossRoom;
 
-        /// <summary>Average Intensity of the combat rooms entered so far (0 if none).</summary>
+        /// <summary>
+        /// Average Intensity of the combat rooms the player chose (0 if none). The boss room is fixed at
+        /// <see cref="BossIntensity"/>, not chosen, so it's left out (M3 review).
+        /// </summary>
         public float AverageIntensity
         {
             get
@@ -73,7 +76,7 @@ namespace DeckArpg.Core
                 int sum = 0, count = 0;
                 foreach (var room in history)
                 {
-                    if (!room.IsCombat) continue;
+                    if (!room.IsCombat || room.Kind == MapCardKind.Boss) continue;
                     sum += room.Number;
                     count++;
                 }

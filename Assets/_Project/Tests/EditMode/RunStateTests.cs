@@ -185,6 +185,29 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(room.Number, run.AverageIntensity, 1e-5f);
         }
 
+        [Test]
+        public void AverageIntensity_LeavesOutTheFixedBossRoom()
+        {
+            var run = NewRun();
+            var chosen = new List<int>();
+            for (int room = 1; room < RunState.BossRoom; room++)
+            {
+                run.DealOffer();
+                var entered = run.EnterRoom(0);
+                if (entered.IsCombat) chosen.Add(entered.Number);
+                run.CompleteRoom(pool);
+            }
+            Assume.That(chosen.Count, Is.GreaterThan(0), "seed 1 should pick at least one fight");
+            float before = run.AverageIntensity;
+
+            run.DealOffer();
+            Assert.AreEqual(MapCardKind.Boss, run.EnterRoom(0).Kind);
+            run.CompleteRoom(pool);
+
+            Assert.AreEqual((float)chosen.Sum() / chosen.Count, run.AverageIntensity, 1e-5f);
+            Assert.AreEqual(before, run.AverageIntensity, 1e-5f, "clearing the boss must not move the average");
+        }
+
         // ---- resources ----
 
         [Test]
