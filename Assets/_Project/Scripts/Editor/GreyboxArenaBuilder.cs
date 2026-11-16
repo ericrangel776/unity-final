@@ -108,11 +108,26 @@ namespace DeckArpg.Editor
             so.FindProperty("enemyPrefab").objectReferenceValue = dummyPrefab.GetComponent<TrainingDummyEnemy>();
             so.FindProperty("player").objectReferenceValue = player.GetComponent<PlayerCombatInput>();
             so.ApplyModifiedPropertiesWithoutUndo();
+            BuildRunUi(director);
 
             EditorSceneManager.SaveScene(scene, RunScenePath);
             AddSceneToBuildSettings(RunScenePath, first: false);
             AssetDatabase.SaveAssets();
             Debug.Log($"M3 run scene built: {RunScenePath}");
+        }
+
+        /// <summary>Run screens + HUD strip (docs/specs/m3-ui.md). The EventSystem is created at runtime by RunScreens.</summary>
+        private static void BuildRunUi(RunDirector director)
+        {
+            var ui = new GameObject("RunUI");
+            var screens = ui.AddComponent<RunScreens>();
+            var strip = ui.AddComponent<RunHudStripView>();
+            foreach (Object view in new Object[] { screens, strip })
+            {
+                var so = new SerializedObject(view);
+                so.FindProperty("director").objectReferenceValue = director;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         private static void BuildHud()

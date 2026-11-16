@@ -41,11 +41,13 @@ run-end summary with a restart. All screens are built in code through `UiFactory
     `PlayerEntered` once per entry. Standing inside when it opens doesn't count. Visible only while open.
   - `RunDirector`: builds the door at runtime (`ExitDoor.Create(doorPosition)`, default `(0, 0, 8)`), opens it
     only in `ChoosingDoor` (in `SetState`), and adds an `ExitDoorEntered` event. The existing debug ⋮ menu stays.
-  - `GreyboxArenaBuilder` (Editor): the `M3_Run` scene gets an `EventSystem` with `InputSystemUIInputModule`
-    and the `RunScreens` object (sub-step 2).
+  - `GreyboxArenaBuilder` (Editor): the `M3_Run` scene gets a `RunUI` object (`RunScreens` + `RunHudStripView`,
+    wired to the director). `RunScreens` creates an `EventSystem` with `InputSystemUIInputModule` at runtime if
+    the scene has none.
 - **UI** (`DeckArpg.UI`)
-  - `RunScreens`: subscribes to `RunDirector`, shows one screen at a time, owns `InputBlocked`, and routes the
-    number keys (`Keyboard.current`) to the open screen.
+  - `RunScreens`: shows one `RunScreen` at a time over a dim, owns `InputBlocked`, and routes the
+    number keys (`Keyboard.current`) to the open screen. The block turns on at `Show` but turns off only in
+    `LateUpdate`, so a `1` that closes a screen can't also play card slot 1 that frame.
   - `RunHudStripView`, `DoorChoiceView`, `RewardView`, `ShopView`, `ForgeView`, `RestView`, `RunEndView`, and a
     shared `DeckListView` (Shop purge + Forge).
   - `RunUiText`: pure string/colour helpers (tier name, pips, family colour, relic short name), unit-testable.
@@ -53,7 +55,7 @@ run-end summary with a restart. All screens are built in code through `UiFactory
 
 ## Sub-steps (one commit each)
 1. Input lock + `ExitDoor` + `RunDirector` door wiring.
-2. `RunScreens` shell + HUD strip + scene builder (EventSystem, `RunScreens`).
+2. `RunScreens` shell + HUD strip + scene builder (`RunUI`).
 3. Door choice screen.
 4. Reward screen (relic-first + draft + skip).
 5. Shop / Forge / Rest panels + `DeckListView`.

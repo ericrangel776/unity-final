@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using DeckArpg.Gameplay;
+using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -148,13 +149,17 @@ namespace DeckArpg.Tests.PlayMode
             yield return Realtime(0.3f); // real time, not frames: batchmode frames are very short
             Assert.Greater(Flat(player.position - start).magnitude, 0.05f, "control: W moves an unblocked player");
 
-            director.Player.InputBlocked = true;
+            // Block the way the game does: through the lock's only owner, by opening a screen.
+            var screens = Object.FindAnyObjectByType<RunScreens>();
+            Assert.IsNotNull(screens, "RunScreens missing from M3_Run.");
+            screens.Show(TestRunScreen.AddTo(screens));
+            Assert.IsTrue(director.Player.InputBlocked);
             yield return null; // the motor may finish the frame it already had input for
             start = player.position;
             yield return Realtime(0.3f);
             Assert.Less(Flat(player.position - start).magnitude, 0.001f, "a blocked player stays put");
 
-            director.Player.InputBlocked = false;
+            screens.Hide();
         }
 
         private static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
