@@ -57,6 +57,78 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual("Ashen x2", RunUiText.Relics(relics, 2));
         }
 
+        // ---- Map Cards ----
+
+        [Test]
+        public void MapCardName_IsDefinedForEveryKind()
+        {
+            foreach (MapCardKind kind in System.Enum.GetValues(typeof(MapCardKind)))
+                Assert.IsFalse(string.IsNullOrEmpty(RunUiText.MapCardName(kind)), $"{kind} has no name");
+        }
+
+        [Test]
+        public void NumberLabel_IsIntensityOnFights_QualityOnBlue()
+        {
+            Assert.AreEqual("INTENSITY", RunUiText.NumberLabel(new MapCard(MapCardKind.Vanguard, 4)));
+            Assert.AreEqual("INTENSITY", RunUiText.NumberLabel(new MapCard(MapCardKind.EliteTrial, 4, EliteTrial.Hexer)));
+            Assert.AreEqual("QUALITY", RunUiText.NumberLabel(new MapCard(MapCardKind.Shop, 4)));
+        }
+
+        [TestCase(1, "Muted ●○○○")]
+        [TestCase(3, "Muted ●○○○")]
+        [TestCase(4, "Steady ●●○○")]
+        [TestCase(7, "Fierce ●●●○")]
+        [TestCase(9, "Frantic ●●●●")]
+        public void TierLine_ShowsTierNameAndPips(int intensity, string expected)
+        {
+            Assert.AreEqual(expected, RunUiText.TierLine(new MapCard(MapCardKind.Hexfire, intensity)));
+        }
+
+        [Test]
+        public void TierLine_IsEmptyForBlue_AndFinalForBoss()
+        {
+            Assert.AreEqual("", RunUiText.TierLine(new MapCard(MapCardKind.Rest, 5)));
+            Assert.AreEqual("Final fight", RunUiText.TierLine(new MapCard(MapCardKind.Boss, RunState.BossIntensity)));
+        }
+
+        [Test]
+        public void Blurb_KindledGround_NamesTheElementAndBuff()
+        {
+            var card = new MapCard(MapCardKind.KindledGround, 5, buffElement: Element.Ice);
+            StringAssert.Contains($"Ice cards +{RoomIntensity.PlayerElementBuff(card)}", RunUiText.MapCardBlurb(card));
+        }
+
+        [Test]
+        public void Blurb_Forge_SaysAndOnlyAtHighQuality()
+        {
+            StringAssert.Contains("or make one Premium", RunUiText.MapCardBlurb(new MapCard(MapCardKind.Forge, 4)));
+            StringAssert.Contains("and make another Premium", RunUiText.MapCardBlurb(new MapCard(MapCardKind.Forge, 8)));
+        }
+
+        [Test]
+        public void Blurb_Elite_NamesTheTrial()
+        {
+            StringAssert.Contains("Counterpuncher",
+                RunUiText.MapCardBlurb(new MapCard(MapCardKind.EliteTrial, 5, EliteTrial.Counterpuncher)));
+        }
+
+        [Test]
+        public void Blurb_CountsTheScaledEnemies()
+        {
+            StringAssert.StartsWith($"{RoomIntensity.EnemyCount(new MapCard(MapCardKind.Vanguard, 7))} enemies",
+                RunUiText.MapCardBlurb(new MapCard(MapCardKind.Vanguard, 7)));
+        }
+
+        [Test]
+        public void Blurb_IsDefinedForEveryKind()
+        {
+            foreach (MapCardKind kind in System.Enum.GetValues(typeof(MapCardKind)))
+            {
+                var trial = kind == MapCardKind.EliteTrial ? EliteTrial.Veiled : EliteTrial.None;
+                Assert.IsNotEmpty(RunUiText.MapCardBlurb(new MapCard(kind, 5, trial)), $"{kind} has no blurb");
+            }
+        }
+
         [Test]
         public void RelicShortName_IsDefinedForEveryRelic()
         {

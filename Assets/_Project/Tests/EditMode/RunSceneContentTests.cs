@@ -44,6 +44,7 @@ namespace DeckArpg.Tests.EditMode
                 var screens = roots.Select(r => r.GetComponent<RunScreens>()).FirstOrDefault(s => s != null);
                 Assert.IsNotNull(screens, "RunScreens missing (rebuild the scene).");
                 Assert.IsNotNull(screens.GetComponent<RunHudStripView>(), "HUD strip missing.");
+                Assert.IsNotNull(screens.GetComponent<DoorChoiceView>(), "Door choice screen missing.");
                 Assert.AreSame(director, new SerializedObject(screens).FindProperty("director").objectReferenceValue,
                     "RunScreens not wired to the director.");
                 Assert.IsTrue(roots.Any(r => r.CompareTag("MainCamera") && r.GetComponent<Camera>() != null), "Main camera missing.");

@@ -28,6 +28,89 @@ namespace DeckArpg.UI
 
         public static string Momentum(int stacks) => "Momentum " + Pips(stacks, Core.Momentum.MaxStacks);
 
+        // ---- Map Cards (door choice) ----
+
+        public static string MapCardName(MapCardKind kind)
+        {
+            switch (kind)
+            {
+                case MapCardKind.Vanguard: return "Vanguard";
+                case MapCardKind.Hexfire: return "Hexfire";
+                case MapCardKind.KindledGround: return "Kindled Ground";
+                case MapCardKind.BountyWind: return "Bounty Wind";
+                case MapCardKind.Shop: return "Wayfarer's Stall";
+                case MapCardKind.Forge: return "Ember Forge";
+                case MapCardKind.Rest: return "Still Waters";
+                case MapCardKind.EliteTrial: return "Elite Trial";
+                case MapCardKind.Boss: return "The Warden";
+                default: return kind.ToString();
+            }
+        }
+
+        /// <summary>What the corner number means: Intensity on fights, Quality on Blue rooms.</summary>
+        public static string NumberLabel(in MapCard card) => card.IsCombat ? "INTENSITY" : "QUALITY";
+
+        public static string TierName(RewardTier tier) => tier.ToString();
+
+        /// <summary>
+        /// The reward line: "Fierce ●●●○" (tier name + 1-4 pips) for fights, "Final fight" for the boss, empty for Blue
+        /// rooms (they have no combat reward).
+        /// </summary>
+        public static string TierLine(in MapCard card)
+        {
+            if (!card.IsCombat) return "";
+            if (card.Kind == MapCardKind.Boss) return "Final fight";
+            var tier = RewardRules.Tier(card.Number);
+            return $"{TierName(tier)} {Pips((int)tier + 1, TierCount)}";
+        }
+
+        private const int TierCount = 4;
+
+        /// <summary>A short description of what the room holds, with its scaled numbers.</summary>
+        public static string MapCardBlurb(in MapCard card)
+        {
+            switch (card.Kind)
+            {
+                case MapCardKind.Vanguard:
+                    return $"{Enemies(card)}, Strike-heavy.\nDraft one rarity higher.";
+                case MapCardKind.Hexfire:
+                    return $"{Enemies(card)} with stronger elemental cards.\nDraft one rarity higher.";
+                case MapCardKind.KindledGround:
+                    return $"{Enemies(card)}.\nYour {card.BuffElement} cards +{RoomIntensity.PlayerElementBuff(card)}. Enemies faster.";
+                case MapCardKind.BountyWind:
+                    return $"{Enemies(card)}.\nCurrency +{RoomIntensity.BountyCurrencyPercent(card) - 100}%. Enemies tankier.";
+                case MapCardKind.Shop:
+                    return $"Buy from {ShopRules.StockCount(card.Number)} cards,\nor pay to purge one.";
+                case MapCardKind.Forge:
+                    return $"Upgrade a card +{ForgeRules.UpgradeAmount(card.Number)}\n" +
+                           (ForgeRules.GrantsBoth(card.Number) ? "and make another Premium." : "or make one Premium.");
+                case MapCardKind.Rest:
+                    return $"Heal {RestRules.HealPercent(card.Number)}% HP,\nor Meditate: +1 Momentum.";
+                case MapCardKind.EliteTrial:
+                    return $"One elite: {card.Trial}.\n{TrialHint(card.Trial)}\nDrops a relic choice.";
+                case MapCardKind.Boss:
+                    return "The floor's guardian.\nBeat it to win the run.";
+                default:
+                    return "";
+            }
+        }
+
+        public static string TrialHint(EliteTrial trial)
+        {
+            switch (trial)
+            {
+                case EliteTrial.Veiled: return "Its cards stay hidden until the swing.";
+                case EliteTrial.Counterpuncher: return "Answers your plays with 0s.";
+                case EliteTrial.Hexer: return "Your broken cards burn.";
+                default: return "";
+            }
+        }
+
+        /// <summary>Regular fights always have 2+ enemies (Elite/Boss blurbs don't use this).</summary>
+        private static string Enemies(in MapCard card) => $"{RoomIntensity.EnemyCount(card)} enemies";
+
+        // ---- relics ----
+
         public static string RelicShortName(RelicId relic)
         {
             switch (relic)
