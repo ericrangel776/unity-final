@@ -57,6 +57,7 @@ namespace DeckArpg.Gameplay
         {
             startingDeck = new List<CardData>(cards);
             seed = newSeed;
+            ReseedReload();
             Reinitialize();
         }
 
@@ -68,8 +69,21 @@ namespace DeckArpg.Gameplay
         {
             runDeck = instances != null ? new List<RuntimeCardInstance>(instances) : null;
             seed = newSeed;
+            ReseedReload();
             Reinitialize();
         }
+
+        /// <summary>
+        /// A seeded deck also seeds its reload bar, from a stream separate from the shuffle's. Seed 0 keeps the
+        /// current random stream.
+        /// </summary>
+        private void ReseedReload()
+        {
+            if (seed != 0 && Reload != null) Reload.Reseed(new System.Random(ReloadSeed(seed)));
+        }
+
+        /// <summary>The reload bar's seed for deck seed <paramref name="deckSeed"/> (not the same stream as the shuffle).</summary>
+        private static int ReloadSeed(int deckSeed) => unchecked(deckSeed * 31 + 17);
 
         /// <summary>
         /// Room modifier added to every card (or only cards of <paramref name="onlyElement"/>) as

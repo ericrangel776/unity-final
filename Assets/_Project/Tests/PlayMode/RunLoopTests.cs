@@ -77,7 +77,32 @@ namespace DeckArpg.Tests.PlayMode
             director.FinishReward();
         }
 
+        /// <summary>Empties the player's draw queue and starts the reload bar; returns its rolls.</summary>
+        private (float, float, ReloadPromptAnchor) RollPlayerReload()
+        {
+            var cycle = playerDeck.Cycle;
+            for (int guard = 0; guard < 100 && cycle.DrawCount > 0; guard++)
+            {
+                int slot = 0;
+                while (slot < DeckCycle.HandSize && cycle.Hand[slot] == null) slot++;
+                Assert.IsTrue(cycle.TryPlay(slot, out _));
+            }
+            Assert.IsTrue(playerDeck.Reload.Begin(), "the reload bar should start on an empty draw queue");
+            var rolls = (playerDeck.Reload.BarDuration, playerDeck.Reload.Target01, playerDeck.Reload.Anchor);
+            playerDeck.Reload.Cancel();
+            return rolls;
+        }
+
         // ---- tests ----
+
+        [Test]
+        public void SeededRestart_ReplaysTheSameReloadBar()
+        {
+            director.RestartRun(5);
+            var first = RollPlayerReload();
+            director.RestartRun(5);
+            Assert.AreEqual(first, RollPlayerReload(), "a seeded run must replay the reload timing too");
+        }
 
         [Test]
         public void Start_DealsFirstOffer_OnStarterDeck()

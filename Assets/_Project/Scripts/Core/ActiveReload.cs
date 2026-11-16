@@ -70,7 +70,7 @@ namespace DeckArpg.Core
     public sealed class ActiveReload
     {
         private readonly DeckCycle deck;
-        private readonly Random rng;
+        private Random rng;
         private bool hasAnchor;
         private int freeOverburnsPerRoom;
         private int freeOverburnsUsed;
@@ -136,6 +136,17 @@ namespace DeckArpg.Core
         {
             OverburnUsesThisRoom = 0;
             freeOverburnsUsed = 0;
+        }
+
+        /// <summary>
+        /// Restarts the bar's random rolls (length, sweet spot, prompt anchor) from <paramref name="random"/>, as if
+        /// new. Keeps subscribers, the boost and Overburn pricing. Used when a run reseeds the deck, so a seeded run
+        /// replays the same reload timing (M3 review).
+        /// </summary>
+        public void Reseed(Random random)
+        {
+            rng = random ?? throw new ArgumentNullException(nameof(random));
+            hasAnchor = false;
         }
 
         /// <summary>Ends any Perfect-reload speed boost now (respawn).</summary>
