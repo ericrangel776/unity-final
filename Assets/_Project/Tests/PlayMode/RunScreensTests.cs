@@ -56,6 +56,18 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [Test]
+        public void Screens_SortAboveEveryCombatHudCanvas()
+        {
+            foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (!canvas.isRootCanvas || canvas.renderMode != RenderMode.ScreenSpaceOverlay) continue;
+                if (canvas == screens.Canvas || canvas.GetComponentInParent<RunHudStripView>() != null) continue;
+                Assert.Less(canvas.sortingOrder, screens.Canvas.sortingOrder, $"{canvas.name} would draw over the run screens");
+            }
+            Assert.Greater(RunHudStripView.SortingOrder, screens.Canvas.sortingOrder, "the strip stays readable over the dim");
+        }
+
+        [Test]
         public void NoScreenOpen_AtRunStart_InputFree()
         {
             Assert.IsNull(screens.Current);

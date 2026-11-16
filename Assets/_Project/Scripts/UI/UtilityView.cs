@@ -34,7 +34,7 @@ namespace DeckArpg.UI
         {
             header = RunWidgets.Header(root, "Header");
             status = RunWidgets.Label(root, "Status", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -160f), new Vector2(1600f, 40f), 28, TextAnchor.MiddleCenter, RunWidgets.Gold);
+                new Vector2(0f, RunWidgets.SubheaderY), new Vector2(1600f, 40f), 28, TextAnchor.MiddleCenter, RunWidgets.Gold);
             RunWidgets.Hint(root).text = HintText;
 
             Tiles = new OptionTile[TileCount];
@@ -47,7 +47,7 @@ namespace DeckArpg.UI
             }
             DeckList = new DeckListView(root, new Vector2(0f, 10f));
             leaveButton = RunWidgets.TextButton(root, "Leave", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
-                new Vector2(20f, 100f), new Vector2(300f, 60f), "Leave", Confirm, out _);
+                new Vector2(20f, RunWidgets.ButtonY), new Vector2(300f, 60f), "Leave", Confirm, out _);
             BuildExtras(root);
             if (Director != null) Director.StateChanged += HandleStateChanged;
         }

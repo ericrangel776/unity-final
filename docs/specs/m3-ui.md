@@ -6,7 +6,8 @@ reward (relic, then draft), use Shop/Forge/Rest, read currency, Momentum and rel
 run-end summary with a restart. All screens are built in code through `UiFactory`, like the M2 HUD.
 
 ## Decisions (user, 2026-11-16)
-- **Input: mouse + number keys.** Every option is a clickable uGUI button, and keys `1`-`4` pick options.
+- **Input: mouse + number keys.** Every option is a clickable uGUI button, and keys `1`-`9` pick options
+  (the Shop stocks up to 5; deck lists for purge/forge are mouse-only since a deck can exceed 9 cards).
   `Esc` backs out, skips or leaves (see each screen). `Enter` = the screen's main button (Continue / Restart).
 - **Physical exit door.** In `ChoosingDoor`, an exit door stands at the far end of the arena. Walking into it
   opens the Map Card choice. `Esc` closes the choice and you can walk around again.
@@ -75,6 +76,17 @@ run-end summary with a restart. All screens are built in code through `UiFactory
   - The HUD strip shows currency/Momentum after a clear.
 - Screens are driven through public view methods (`Select(i)`, `Close()`), not simulated key presses. One test
   covers the key routing by calling `RunScreens.HandleKey(n)`.
+
+## Implementation notes (2026-11-16)
+- **Screens close themselves when the run moves on:** `RunScreen.ValidIn(state)`; `RunScreens` hides the open
+  screen on `StateChanged` if it no longer applies (the debug menu and tests call `FinishReward`/`LeaveUtility`/
+  `ChooseDoor` directly).
+- **Sorting:** run screens at order 30 (above every combat HUD canvas; `DeadlockView` is 11), HUD strip at 40 so it
+  stays readable over the 88% dim. Guarded by `RunScreensTests.Screens_SortAboveEveryCombatHudCanvas`.
+- **Layout bands** (1920x1080 reference, `RunWidgets`): the M2 HUD owns the top ~70 px and the bottom ~250 px, so the
+  strip sits at y -84, headers at -175/-232, buttons at 270 and the hint at 225 from the bottom.
+- The boss door card is named **The Warden** (placeholder; real boss is M4).
+- Screenshots: `HudScreenshotCapture.CaptureM3RunScreens` writes `TestResults/screens/m3_*.png` (11 shots).
 
 ## Out of scope
 Animations/juice for the screens, card art, gamepad navigation, a tooltip for relic effects (M4).

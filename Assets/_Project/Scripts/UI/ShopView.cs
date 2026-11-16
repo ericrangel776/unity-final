@@ -26,7 +26,7 @@ namespace DeckArpg.UI
         protected override void BuildExtras(RectTransform root)
         {
             purgeButton = RunWidgets.TextButton(root, "Purge", new Vector2(0.5f, 0f), new Vector2(1f, 0f),
-                new Vector2(-20f, 100f), new Vector2(360f, 60f), "Purge", TogglePurge, out purgeLabel);
+                new Vector2(-20f, RunWidgets.ButtonY), new Vector2(360f, 60f), "Purge", TogglePurge, out purgeLabel);
         }
 
         protected override void ResetMode() => PurgeMode = false;

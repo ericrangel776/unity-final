@@ -31,6 +31,10 @@ namespace DeckArpg.UI
         public static readonly Color ButtonColor = new Color(0.22f, 0.24f, 0.3f, 1f);
         public static readonly Color Muted = new Color(0.75f, 0.78f, 0.85f);
         public static readonly Color Gold = new Color(1f, 0.85f, 0.35f);
+        public static readonly Color CellColor = new Color(0.32f, 0.35f, 0.45f, 1f);
+
+        /// <summary>Layout bands in the 1920x1080 reference (the M2 HUD owns the top ~70 px and the bottom ~250 px).</summary>
+        public const float HeaderY = -175f, SubheaderY = -232f, ButtonY = 270f, HintY = 225f;
 
         /// <summary>A text label in its own rect, so it can be placed inside a parent.</summary>
         public static Text Label(Transform parent, string name, Vector2 anchor, Vector2 pivot, Vector2 position,
@@ -44,13 +48,17 @@ namespace DeckArpg.UI
 
         /// <summary>A plain text button (Continue, Leave, Skip...).</summary>
         public static Button TextButton(Transform parent, string name, Vector2 anchor, Vector2 pivot, Vector2 position,
-            Vector2 size, string label, Action onClick, out Text labelText)
+            Vector2 size, string label, Action onClick, out Text labelText) =>
+            TextButton(parent, name, anchor, pivot, position, size, label, onClick, out labelText, ButtonColor);
+
+        public static Button TextButton(Transform parent, string name, Vector2 anchor, Vector2 pivot, Vector2 position,
+            Vector2 size, string label, Action onClick, out Text labelText, Color color)
         {
             var image = UiFactory.CreateImage(parent, name, anchor, pivot, position, size, Color.white); // tinted below
             image.raycastTarget = true;
             var button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.colors = Tint(ButtonColor);
+            button.colors = Tint(color);
             if (onClick != null) button.onClick.AddListener(() => onClick());
             labelText = UiFactory.CreateText(image.transform, "Label", 26, TextAnchor.MiddleCenter, Color.white);
             labelText.text = label;
@@ -109,14 +117,14 @@ namespace DeckArpg.UI
         /// <summary>The screen title band at the top of a run screen (below the HUD strip).</summary>
         public static Text Header(Transform root, string name)
         {
-            return Label(root, name, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -100f),
+            return Label(root, name, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, HeaderY),
                 new Vector2(1600f, 60f), 44, TextAnchor.MiddleCenter, Color.white);
         }
 
         /// <summary>The key-hint line at the bottom of a run screen.</summary>
         public static Text Hint(Transform root)
         {
-            return Label(root, "Hint", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 40f),
+            return Label(root, "Hint", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, HintY),
                 new Vector2(1600f, 36f), 22, TextAnchor.MiddleCenter, Muted);
         }
     }

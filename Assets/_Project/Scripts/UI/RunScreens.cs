@@ -15,7 +15,8 @@ namespace DeckArpg.UI
     /// </summary>
     public sealed class RunScreens : MonoBehaviour
     {
-        public const int SortingOrder = 10;
+        /// <summary>Above every combat HUD canvas (the highest, DeadlockView, is 11), so nothing draws over a screen.</summary>
+        public const int SortingOrder = 30;
 
         [Tooltip("Found in the scene if empty.")]
         [SerializeField] private RunDirector director;
@@ -37,7 +38,7 @@ namespace DeckArpg.UI
             canvas = UiFactory.CreateOverlayCanvas(transform, "RunScreensCanvas", SortingOrder);
             // Dims the arena behind an open screen and catches clicks that miss a button.
             var dimImage = UiFactory.CreateImage(canvas.transform, "Dim", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.6f));
+                Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.88f));
             dimImage.raycastTarget = true;
             dim = dimImage.rectTransform;
             Stretch(dim);

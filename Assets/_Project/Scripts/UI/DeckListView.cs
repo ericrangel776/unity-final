@@ -39,7 +39,7 @@ namespace DeckArpg.UI
                 int col = i % Columns, row = i / Columns;
                 var pos = new Vector2(col * (CellSize.x + Gap), -row * (CellSize.y + Gap));
                 buttons[i] = RunWidgets.TextButton(root, $"Card{i + 1}", new Vector2(0f, 1f), new Vector2(0f, 1f), pos,
-                    CellSize, "", () => Pick(index), out labels[i]);
+                    CellSize, "", () => Pick(index), out labels[i], RunWidgets.CellColor);
                 labels[i].fontSize = 22;
             }
             root.gameObject.SetActive(false);

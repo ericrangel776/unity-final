@@ -28,7 +28,7 @@ namespace DeckArpg.UI
                 new Vector2(1000f, 240f), 34, TextAnchor.MiddleCenter, Color.white);
             path = RunWidgets.Label(root, "Path", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -140f),
                 new Vector2(1600f, 80f), 24, TextAnchor.MiddleCenter, RunWidgets.Muted, wrap: true);
-            RunWidgets.TextButton(root, "Restart", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -260f),
+            RunWidgets.TextButton(root, "Restart", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -230f),
                 new Vector2(340f, 70f), "New run", Confirm, out _);
             RunWidgets.Hint(root).text = "Enter or click: start a new run";
             if (Director != null) Director.RunEnded += Open;

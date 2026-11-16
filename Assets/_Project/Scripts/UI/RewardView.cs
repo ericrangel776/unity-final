@@ -60,7 +60,7 @@ namespace DeckArpg.UI
         {
             header = RunWidgets.Header(root, "Header");
             subheader = RunWidgets.Label(root, "Subheader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -160f), new Vector2(1600f, 40f), 28, TextAnchor.MiddleCenter, RunWidgets.Gold);
+                new Vector2(0f, RunWidgets.SubheaderY), new Vector2(1600f, 40f), 28, TextAnchor.MiddleCenter, RunWidgets.Gold);
             RunWidgets.Hint(root).text = "1-4 or click: take   ·   Esc: skip the draft   ·   Enter: continue";
             for (int i = 0; i < MaxOptions; i++)
             {
@@ -69,9 +69,9 @@ namespace DeckArpg.UI
                 tiles[i].Hotkey.text = $"[{i + 1}]";
             }
             skipButton = RunWidgets.TextButton(root, "Skip", new Vector2(0.5f, 0f), new Vector2(1f, 0f),
-                new Vector2(-20f, 100f), new Vector2(300f, 60f), "Skip", Back, out skipLabel);
+                new Vector2(-20f, RunWidgets.ButtonY), new Vector2(300f, 60f), "Skip", Back, out skipLabel);
             continueButton = RunWidgets.TextButton(root, "Continue", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
-                new Vector2(20f, 100f), new Vector2(300f, 60f), "Continue", Confirm, out _);
+                new Vector2(20f, RunWidgets.ButtonY), new Vector2(300f, 60f), "Continue", Confirm, out _);
             if (Director != null) Director.RewardReady += Open;
         }
 

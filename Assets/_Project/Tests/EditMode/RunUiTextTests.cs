@@ -202,13 +202,15 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void DeckCardLabel_ShowsEffectiveValue_UpgradeAndPremiumTags()
+        public void DeckCardLabel_ShowsNameWithUpgradeAndPremiumTags()
         {
-            var data = CardData.Create("c", 4, displayName: "Spark");
-            var card = new RuntimeCardInstance(data) { PermanentRunUpgradeMod = 2 };
-            Assert.AreEqual($"Spark  {card.GetEffectiveValue()} +2", RunUiText.DeckCardLabel(card));
+            var data = CardData.Create("c", 4, displayName: "Spark 4");
+            var card = new RuntimeCardInstance(data);
+            Assert.AreEqual("Spark 4", RunUiText.DeckCardLabel(card));
+            card.PermanentRunUpgradeMod = 2;
+            Assert.AreEqual("Spark 4  +2", RunUiText.DeckCardLabel(card));
             card.IsPremiumOverride = true;
-            Assert.AreEqual($"Spark  {card.GetEffectiveValue()} +2 P", RunUiText.DeckCardLabel(card));
+            Assert.AreEqual("Spark 4  +2  P", RunUiText.DeckCardLabel(card));
             UnityEngine.Object.DestroyImmediate(data);
         }
 

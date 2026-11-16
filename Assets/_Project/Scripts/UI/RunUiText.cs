@@ -141,13 +141,15 @@ namespace DeckArpg.UI
             return sb.ToString();
         }
 
-        /// <summary>One deck card for a list: "Ember Strike 6", with "+N" for run upgrades and "P" for Premium.</summary>
+        /// <summary>
+        /// One deck card for a list: its name (which already carries the base value, e.g. "Strike 2"), plus "+N" for
+        /// run upgrades and "P" for Premium.
+        /// </summary>
         public static string DeckCardLabel(RuntimeCardInstance card)
         {
-            string value = card.IsZeroBreaker ? "0" : card.GetEffectiveValue().ToString();
-            string tags = (card.PermanentRunUpgradeMod > 0 ? $" +{card.PermanentRunUpgradeMod}" : "") +
-                          (card.IsPremium ? " P" : "");
-            return $"{card.Data.DisplayName}  {value}{tags}";
+            string tags = (card.PermanentRunUpgradeMod > 0 ? $"  +{card.PermanentRunUpgradeMod}" : "") +
+                          (card.IsPremium ? "  P" : "");
+            return card.Data.DisplayName + tags;
         }
 
         // ---- relics ----

@@ -39,7 +39,7 @@ namespace DeckArpg.UI
         {
             var canvas = UiFactory.CreateOverlayCanvas(transform, "RunHudCanvas", SortingOrder);
             var rect = UiFactory.CreateImage(canvas.transform, "Strip", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -12f), new Vector2(1400f, 56f), Back).rectTransform;
+                new Vector2(0f, -84f), new Vector2(1400f, 56f), Back).rectTransform;
             strip = rect.gameObject;
 
             room = Field(rect, "Room", 0f, 220f, Color.white);
