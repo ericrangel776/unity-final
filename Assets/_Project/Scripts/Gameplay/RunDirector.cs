@@ -134,6 +134,8 @@ namespace DeckArpg.Gameplay
             ClearEnemies(); // last room's corpses may still be waiting out their removal delay
             player.ResetForNewRoom();
             MovePlayerToSpawn();
+            // Deliberate: HP is restored to what it was when the last room ended. Anything between rooms (Overburn
+            // costs, Ashen Sigil heals from Sleights fired at the door) is undone, so the door isn't a free-heal spot.
             playerStatus.SetHp(Run.Hp);
             PreparePlayerDeck(room);
             RoomStarted?.Invoke(room);
