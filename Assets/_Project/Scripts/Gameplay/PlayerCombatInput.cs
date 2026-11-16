@@ -50,6 +50,12 @@ namespace DeckArpg.Gameplay
         public float ActionRecoverySeconds => actionRecovery / actionSpeedMultiplier;
         /// <summary>Iron Will Idol: the next Sleight fired is zero-proof. Consumed when it fires.</summary>
         public bool NextSleightZeroProof { get; set; }
+        /// <summary>
+        /// While true (a run screen is open) the player can't move, dash, aim, reload or play cards, and buffered
+        /// presses are dropped. Number keys double as menu keys, so they must not reach the card slots.
+        /// Only <c>RunScreens</c> writes this (one owner).
+        /// </summary>
+        public bool InputBlocked { get; set; }
 
         /// <summary>Between rooms: drops buffered inputs, cancels live hitboxes and any pending respawn.</summary>
         public void ResetForNewRoom()
@@ -110,6 +116,13 @@ namespace DeckArpg.Gameplay
             if (status.IsDead)
             {
                 motor.SetMoveInput(Vector2.zero);
+                return;
+            }
+
+            if (InputBlocked)
+            {
+                motor.SetMoveInput(Vector2.zero);
+                buffer.Clear();
                 return;
             }
 

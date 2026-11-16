@@ -34,6 +34,8 @@ namespace DeckArpg.Gameplay
         [SerializeField] private Vector3 playerSpawn = new Vector3(0f, 0f, -6f);
         [SerializeField] private Vector3 enemyCenter = new Vector3(0f, 0f, 4f);
         [SerializeField] private float enemySpread = 3.5f;
+        [Tooltip("Where the exit door stands (built at runtime).")]
+        [SerializeField] private Vector3 doorPosition = new Vector3(0f, 0f, 8f);
 
         [Header("Enemy tuning")]
         [SerializeField] private int enemyBaseHp = 60;
@@ -45,6 +47,7 @@ namespace DeckArpg.Gameplay
         private DeckRuntimeManager playerDeck;
         private CombatActionController playerCombat;
         private RelicEffects playerRelics;
+        private ExitDoor door;
 
         public RunState Run { get; private set; }
         public RunDirectorState State { get; private set; }
@@ -53,6 +56,8 @@ namespace DeckArpg.Gameplay
         public int EnemyBaseHp => enemyBaseHp;
         public PlayerCombatInput Player => player;
         public RelicEffects PlayerRelics => playerRelics;
+        /// <summary>Open only while <see cref="RunDirectorState.ChoosingDoor"/>; walking in raises <see cref="ExitDoorEntered"/>.</summary>
+        public ExitDoor Door => door;
         /// <summary>Spawned enemies of the current room that haven't been removed yet.</summary>
         public IReadOnlyList<TrainingDummyEnemy> Enemies => enemies;
         public CombatReward CurrentReward { get; private set; }
@@ -65,6 +70,8 @@ namespace DeckArpg.Gameplay
         public event Action<CombatReward> RewardReady;
         /// <summary>True on victory, false on defeat.</summary>
         public event Action<bool> RunEnded;
+        /// <summary>The player walked into the open exit door (the UI opens the Map Card choice).</summary>
+        public event Action ExitDoorEntered;
 
         private void Start()
         {
@@ -84,6 +91,9 @@ namespace DeckArpg.Gameplay
             playerStatus.Died += HandlePlayerDied;
             // Added after DeckRuntimeManager's own listener, so a 0-broken card is already set aside here.
             playerCombat.CardBroken += HandlePlayerCardBroken;
+            door = ExitDoor.Create(doorPosition, transform);
+            door.Target = player.transform;
+            door.PlayerEntered += HandleDoorEntered;
 
             if (startOnPlay) StartRun(seed);
         }
@@ -92,6 +102,7 @@ namespace DeckArpg.Gameplay
         {
             if (playerStatus != null) playerStatus.Died -= HandlePlayerDied;
             if (playerCombat != null) playerCombat.CardBroken -= HandlePlayerCardBroken;
+            if (door != null) door.PlayerEntered -= HandleDoorEntered;
         }
 
         // ---- run flow ----
@@ -277,6 +288,11 @@ namespace DeckArpg.Gameplay
             RewardReady?.Invoke(CurrentReward);
         }
 
+        private void HandleDoorEntered()
+        {
+            if (State == RunDirectorState.ChoosingDoor) ExitDoorEntered?.Invoke();
+        }
+
         private void HandlePlayerDied()
         {
             if (State == RunDirectorState.Victory || State == RunDirectorState.Defeat) return;
@@ -314,6 +330,7 @@ namespace DeckArpg.Gameplay
         private void SetState(RunDirectorState state)
         {
             State = state;
+            if (door != null) door.SetOpen(state == RunDirectorState.ChoosingDoor);
             StateChanged?.Invoke(state);
         }
 
