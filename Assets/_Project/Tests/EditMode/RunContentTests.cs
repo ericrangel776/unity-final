@@ -1,0 +1,229 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using DeckArpg.Core;
+using NUnit.Framework;
+using UnityEditor;
+using Object = UnityEngine.Object;
+
+namespace DeckArpg.Tests.EditMode
+{
+    public class RunContentTests
+    {
+        private const string AssetPath = "Assets/_Project/ScriptableObjects/RunContent.asset";
+
+        private readonly List<Object> created = new List<Object>();
+        private int nextId;
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (var o in created) if (o != null) Object.DestroyImmediate(o);
+            created.Clear();
+        }
+
+        private CardData Card(int value, CardShape shape = CardShape.Strike, Element element = Element.Physical,
+            Rarity rarity = Rarity.Common, bool zero = false, string id = null)
+        {
+            var c = CardData.Create(id ?? $"rc_{nextId++}", value, shape, element, zero, rarity: rarity);
+            created.Add(c);
+            return c;
+        }
+
+        private List<CardData> Cards(int count, params int[] values) =>
+            Enumerable.Range(0, count).Select(i => Card(values.Length > 0 ? values[i % values.Length] : 5)).ToList();
+
+        /// <summary>A pool that covers every rarity, shape and element, plus a 0-card, with 15+ cards.</summary>
+        private List<CardData> ValidPool()
+        {
+            var pool = new List<CardData>();
+            var shapes = (CardShape[])Enum.GetValues(typeof(CardShape));
+            var elements = (Element[])Enum.GetValues(typeof(Element));
+            var rarities = (Rarity[])Enum.GetValues(typeof(Rarity));
+            for (int i = 0; i < 15; i++)
+                pool.Add(Card(1 + i % 9, shapes[i % shapes.Length], elements[i % elements.Length], rarities[i % rarities.Length]));
+            pool.Add(Card(1, zero: true, rarity: Rarity.Rare));
+            return pool;
+        }
+
+        private RunContent Content(List<CardData> starter = null, List<CardData> pool = null, List<CardData> mob = null,
+            List<CardData> hex = null, List<CardData> elite = null, List<CardData> boss = null, CardData zero = null,
+            bool noZero = false)
+        {
+            var content = RunContent.Create(starter ?? Cards(10), pool ?? ValidPool(), mob ?? Cards(5),
+                hex ?? Cards(5), elite ?? Cards(6), boss ?? Cards(RunContent.BossDeckSize),
+                noZero ? null : zero ?? Card(1, zero: true));
+            created.Add(content);
+            return content;
+        }
+
+        private static void AssertProblem(RunContent content, string fragment)
+        {
+            var problems = content.Validate();
+            Assert.IsTrue(problems.Any(p => p.Contains(fragment)),
+                $"Expected a problem containing '{fragment}', got: [{string.Join(" | ", problems)}]");
+        }
+
+        // ---- validation rules ----
+
+        [Test]
+        public void Validate_ValidContent_HasNoProblems() => CollectionAssert.IsEmpty(Content().Validate());
+
+        [Test]
+        public void Validate_SmallStarterDeck() => AssertProblem(Content(starter: Cards(5)), "StarterDeck has 5");
+
+        [Test]
+        public void Validate_SmallDraftPool() => AssertProblem(Content(pool: ValidPool().Take(10).ToList()), "DraftPool has 10");
+
+        [Test]
+        public void Validate_DuplicateDraftEntry()
+        {
+            var pool = ValidPool();
+            pool.Add(pool[0]);
+            AssertProblem(Content(pool: pool), "same card twice");
+        }
+
+        [Test]
+        public void Validate_PoolMissingRarity() =>
+            AssertProblem(Content(pool: ValidPool().Where(c => c.Rarity != Rarity.Uncommon).Concat(Cards(5)).ToList()),
+                "no Uncommon");
+
+        [Test]
+        public void Validate_PoolMissingElement() =>
+            AssertProblem(Content(pool: ValidPool().Where(c => c.IsZeroBreaker || c.Element != Element.Ice).Concat(Cards(5)).ToList()),
+                "no Ice");
+
+        [Test]
+        public void Validate_PoolMissingShape() =>
+            AssertProblem(Content(pool: ValidPool().Where(c => c.IsZeroBreaker || c.Shape != CardShape.Arcana).Concat(Cards(5)).ToList()),
+                "no Arcana");
+
+        [Test]
+        public void Validate_PoolWithoutZero() =>
+            AssertProblem(Content(pool: ValidPool().Where(c => !c.IsZeroBreaker).ToList()), "no 0-card");
+
+        [Test]
+        public void Validate_EnemyDeckAtFloor() => AssertProblem(Content(mob: Cards(3)), "MobDeck has 3");
+
+        [Test]
+        public void Validate_EnemyDeckWithZero()
+        {
+            var elite = Cards(5);
+            elite.Add(Card(1, zero: true));
+            AssertProblem(Content(elite: elite), "EliteDeck contains 0-card");
+        }
+
+        [TestCase(14)]
+        [TestCase(16)]
+        public void Validate_BossDeckMustBeExactlyFifteen(int size) =>
+            AssertProblem(Content(boss: Cards(size)), $"BossDeck has {size}");
+
+        [Test]
+        public void Validate_EnemyZeroMissing() => AssertProblem(Content(noZero: true), "EnemyZero is missing");
+
+        [Test]
+        public void Validate_EnemyZeroNotAZero() => AssertProblem(Content(zero: Card(5)), "not a 0-card");
+
+        [Test]
+        public void Validate_DuplicateIdAcrossAssets()
+        {
+            var mob = Cards(4);
+            mob.Add(Card(5, id: "dupe"));
+            var hex = Cards(4);
+            hex.Add(Card(6, id: "dupe"));
+            AssertProblem(Content(mob: mob, hex: hex), "'dupe' is used by two");
+        }
+
+        [Test]
+        public void Validate_SameAssetInTwoListsIsFine()
+        {
+            var shared = Card(5);
+            var mob = Cards(4);
+            mob.Add(shared);
+            var hex = Cards(4);
+            hex.Add(shared);
+            CollectionAssert.IsEmpty(Content(mob: mob, hex: hex).Validate());
+        }
+
+        [Test]
+        public void Validate_DraftPoolCannotHoldEnemyCards()
+        {
+            var pool = ValidPool();
+            var mob = Cards(5);
+            pool.Add(mob[0]);
+            AssertProblem(Content(pool: pool, mob: mob), "is an enemy card");
+        }
+
+        [Test]
+        public void Validate_NullEntry()
+        {
+            var hex = Cards(5);
+            hex.Add(null);
+            AssertProblem(Content(hex: hex), "HexfireDeck has an empty entry");
+        }
+
+        // ---- deck lookup ----
+
+        [TestCase(MapCardKind.Vanguard)]
+        [TestCase(MapCardKind.KindledGround)]
+        [TestCase(MapCardKind.BountyWind)]
+        public void EnemyDeckFor_MobRooms(MapCardKind kind)
+        {
+            var content = Content();
+            Assert.AreSame(content.MobDeck, content.EnemyDeckFor(kind));
+        }
+
+        [Test]
+        public void EnemyDeckFor_SpecialRooms()
+        {
+            var content = Content();
+            Assert.AreSame(content.HexfireDeck, content.EnemyDeckFor(MapCardKind.Hexfire));
+            Assert.AreSame(content.EliteDeck, content.EnemyDeckFor(MapCardKind.EliteTrial));
+            Assert.AreSame(content.BossDeck, content.EnemyDeckFor(MapCardKind.Boss));
+        }
+
+        [TestCase(MapCardKind.Shop)]
+        [TestCase(MapCardKind.Forge)]
+        [TestCase(MapCardKind.Rest)]
+        public void EnemyDeckFor_BlueRoomsThrow(MapCardKind kind) =>
+            Assert.Throws<ArgumentException>(() => Content().EnemyDeckFor(kind));
+
+        // ---- the generated asset (DeckArpg/Build Run Content) ----
+
+        private static RunContent Generated()
+        {
+            var content = AssetDatabase.LoadAssetAtPath<RunContent>(AssetPath);
+            Assert.IsNotNull(content, $"Missing {AssetPath}; run DeckArpg/Build Run Content.");
+            return content;
+        }
+
+        [Test]
+        public void GeneratedContent_IsValid() => CollectionAssert.IsEmpty(Generated().Validate());
+
+        [Test]
+        public void GeneratedPool_HasSeventeenCards_SevenSixFour()
+        {
+            var pool = Generated().DraftPool;
+            Assert.AreEqual(17, pool.Count);
+            Assert.AreEqual(7, pool.Count(c => c.Rarity == Rarity.Common));
+            Assert.AreEqual(6, pool.Count(c => c.Rarity == Rarity.Uncommon));
+            Assert.AreEqual(4, pool.Count(c => c.Rarity == Rarity.Rare));
+        }
+
+        [Test]
+        public void GeneratedStarterDeck_IsTheM1Deck()
+        {
+            var starter = Generated().StarterDeck;
+            Assert.AreEqual(10, starter.Count);
+            Assert.AreEqual(1, starter.Count(c => c.IsZeroBreaker));
+        }
+
+        [Test]
+        public void GeneratedPool_WorksWithTheDraftRoller()
+        {
+            var pool = Generated().DraftPool;
+            for (int seed = 0; seed < 50; seed++)
+                Assert.AreEqual(5, RewardRoller.RollCards(pool, 5, 2, new Random(seed)).Distinct().Count());
+        }
+    }
+}

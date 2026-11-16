@@ -95,13 +95,58 @@ namespace DeckArpg.Gameplay
                 position, fromDeadlock: true));
         }
 
+        /// <summary>
+        /// An attack reached <paramref name="defender"/>'s body while it was winding up <paramref name="telegraph"/>:
+        /// the two cards clash as if the swing were live. Higher breaks the anticipated attack (the hit still lands,
+        /// without a counter bonus); lower breaks the attacker's card; equal cancels the attacker's action. The
+        /// defender spends its card on a win or tie. 0s are not passed here (they only answer live swings).
+        /// </summary>
+        internal static ClashResult ResolveTelegraph(AttackHitbox attacker, CombatActionController defender,
+            in AttackPayload telegraph)
+        {
+            var payload = attacker.Payload;
+            var result = ClashResolver.Resolve(payload, telegraph);
+            var position = (attacker.transform.position + defender.transform.position + Vector3.up * 0.5f) * 0.5f;
+            var attackerOwner = attacker.Owner;
+
+            switch (result.Outcome)
+            {
+                case ClashOutcome.None:
+                    return result;
+                case ClashOutcome.AWins:
+                {
+                    attacker.MarkBroke(defender.Status);
+                    var away = defender.transform.position - attackerOwner.transform.position;
+                    defender.Status.ApplyBreak(CombatMath.BreakMargin(payload, telegraph), away);
+                    attackerOwner.OnClashWon(defender.Status, false);
+                    break;
+                }
+                case ClashOutcome.BWins:
+                {
+                    var away = attackerOwner.transform.position - defender.transform.position;
+                    attackerOwner.OnClashLost(attacker, false, CombatMath.BreakMargin(telegraph, payload), away);
+                    defender.OnClashWon(attackerOwner.Status, false);
+                    break;
+                }
+                case ClashOutcome.Neutral:
+                    attackerOwner.CancelActiveAction();
+                    break;
+            }
+
+            ClashOccurred?.Invoke(new ClashEvent(result, payload, telegraph, position));
+            return result;
+        }
+
         // The loser's break scales with how decisively it lost, and shoves it away from the winner.
         private static void Break(AttackHitbox winner, AttackHitbox loser, bool brokeByZero, int margin)
         {
             var away = loser.Owner.transform.position - winner.Owner.transform.position;
             // The swing that won can still follow through, but the counter is for a separate follow-up.
             winner.MarkBroke(loser.Owner.Status);
+            var winnerOwner = winner.Owner;
+            var loserStatus = loser.Owner.Status;
             loser.Owner.OnClashLost(loser, brokeByZero, CombatMath.ClampMargin(margin), away);
+            winnerOwner.OnClashWon(loserStatus, brokeByZero);
         }
     }
 }

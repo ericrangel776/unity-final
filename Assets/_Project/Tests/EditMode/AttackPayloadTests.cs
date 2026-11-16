@@ -50,6 +50,21 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(Element.Physical, poke.Element);
         }
 
+        [Test]
+        public void Poke_IsFlaggedAsPoke()
+        {
+            Assert.IsTrue(AttackPayload.Poke(1, Team.Player, 5).IsPoke);
+        }
+
+        [Test]
+        public void CardAndSleightPayloads_AreNotPokes()
+        {
+            var valueOne = new AttackPayload(1, Team.Player, 1, false, false, 0, CardShape.Strike, Element.Physical);
+            var sleight = new AttackPayload(1, Team.Player, 12, false, true, 0, CardShape.Strike, Element.Fire);
+            Assert.IsFalse(valueOne.IsPoke, "A Value-1 card is still a card.");
+            Assert.IsFalse(sleight.IsPoke);
+        }
+
         [TestCase(0, 1)]
         [TestCase(14, 9)]
         public void SingleCardPayload_IsClamped(int raw, int expected)

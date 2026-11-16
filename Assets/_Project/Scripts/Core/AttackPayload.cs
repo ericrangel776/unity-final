@@ -23,12 +23,19 @@ namespace DeckArpg.Core
         public readonly int FinisherValue;
         /// <summary>Hits a multi-hit Sleight can land per body; its damage is split across them. 1 for everything else.</summary>
         public readonly int HitCount;
+        /// <summary>Iron Will Idol: an enemy 0 can't break this attack (the attack wins instead). Sleights only.</summary>
+        public readonly bool ZeroProof;
+        /// <summary>The off-deck poke: damage only. It never flinches, shoves, or clashes with a telegraph.</summary>
+        public readonly bool IsPoke;
 
         public float DamageMultiplier => 1f + FinisherValue * SleightRules.MultiplierPerPoint;
 
         public AttackPayload(int ownerId, Team team, int value, bool isZeroBreaker, bool isSleight,
-            int activationTick, CardShape shape, Element element, int finisherValue = 0, int hitCount = 1)
+            int activationTick, CardShape shape, Element element, int finisherValue = 0, int hitCount = 1,
+            bool zeroProof = false, bool isPoke = false)
         {
+            IsPoke = isPoke;
+            ZeroProof = isSleight && zeroProof;
             FinisherValue = isSleight ? Math.Max(0, Math.Min(CardValue.Max, finisherValue)) : 0;
             HitCount = isSleight ? Math.Max(1, hitCount) : 1;
             OwnerId = ownerId;
@@ -52,12 +59,13 @@ namespace DeckArpg.Core
 
         /// <summary>Snapshot of a composed Sleight. Never a zero-breaker: stocked 0s mirror a numbered card.</summary>
         public static AttackPayload FromSleight(in SleightResult sleight, int ownerId, Team team, int activationTick,
-            int hitCount = 1) =>
+            int hitCount = 1, bool zeroProof = false) =>
             new AttackPayload(ownerId, team, sleight.Value, false, true, activationTick, sleight.Shape,
-                sleight.Element, sleight.FinisherValue, hitCount);
+                sleight.Element, sleight.FinisherValue, hitCount, zeroProof);
 
         /// <summary>The always-available off-deck Value 1 poke, so the player is never helpless.</summary>
         public static AttackPayload Poke(int ownerId, Team team, int activationTick) =>
-            new AttackPayload(ownerId, team, PokeValue, false, false, activationTick, CardShape.Strike, Element.Physical);
+            new AttackPayload(ownerId, team, PokeValue, false, false, activationTick, CardShape.Strike, Element.Physical,
+                isPoke: true);
     }
 }

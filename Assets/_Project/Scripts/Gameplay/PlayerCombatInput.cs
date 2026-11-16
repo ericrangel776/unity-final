@@ -31,6 +31,8 @@ namespace DeckArpg.Gameplay
         [Tooltip("Minimum time between card plays; presses during it wait in the input buffer.")]
         [SerializeField] private float actionRecovery = 0.25f;
         [SerializeField] private float respawnDelay = 1.5f;
+        [Tooltip("Off in a run: death ends the run instead of reviving here.")]
+        [SerializeField] private bool respawnOnDeath = true;
 
         private readonly InputBuffer<CombatCommand> buffer = new InputBuffer<CombatCommand>();
         private PlayerMotor motor;
@@ -40,6 +42,29 @@ namespace DeckArpg.Gameplay
         private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload, stock;
         private float recoveryRemaining;
         private float respawnRemaining;
+        private float actionSpeedMultiplier = 1f;
+
+        public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
+        /// <summary>Divides the action lock after each play (Ashen Sigil). 1 = unchanged; values below 1 are raised to 1.</summary>
+        public float ActionSpeedMultiplier { get => actionSpeedMultiplier; set => actionSpeedMultiplier = Mathf.Max(1f, value); }
+        public float ActionRecoverySeconds => actionRecovery / actionSpeedMultiplier;
+        /// <summary>Iron Will Idol: the next Sleight fired is zero-proof. Consumed when it fires.</summary>
+        public bool NextSleightZeroProof { get; set; }
+        /// <summary>
+        /// While true (a run screen is open) the player can't move, dash, aim, reload or play cards, and buffered
+        /// presses are dropped. Number keys double as menu keys, so they must not reach the card slots.
+        /// Only <c>RunScreens</c> writes this (one owner).
+        /// </summary>
+        public bool InputBlocked { get; set; }
+
+        /// <summary>Between rooms: drops buffered inputs, cancels live hitboxes and any pending respawn.</summary>
+        public void ResetForNewRoom()
+        {
+            buffer.Clear();
+            recoveryRemaining = 0f;
+            respawnRemaining = 0f;
+            combat.CancelActiveAction();
+        }
 
         private void Awake()
         {
@@ -87,6 +112,19 @@ namespace DeckArpg.Gameplay
                 if (respawnRemaining <= 0f) Respawn();
                 return;
             }
+            // Without auto-respawn (a run) a dead player stays down until the run restarts.
+            if (status.IsDead)
+            {
+                motor.SetMoveInput(Vector2.zero);
+                return;
+            }
+
+            if (InputBlocked)
+            {
+                motor.SetMoveInput(Vector2.zero);
+                buffer.Clear();
+                return;
+            }
 
             // Before movement/dash: a dash during the frozen Deadlock would grant i-frames through its result.
             if (RouteToDeadlock()) return;
@@ -115,7 +153,7 @@ namespace DeckArpg.Gameplay
             bool canAct = Time.timeScale > 0f && !status.IsStunned && !status.IsDead && !motor.IsDashing
                           && recoveryRemaining <= 0f;
             if (canAct && buffer.TryDequeue(now, out var command) && Execute(command))
-                recoveryRemaining = actionRecovery;
+                recoveryRemaining = ActionRecoverySeconds;
         }
 
         /// <summary>
@@ -217,7 +255,8 @@ namespace DeckArpg.Gameplay
             if (result == StockResult.Fired)
             {
                 var payload = AttackPayload.FromSleight(sleight, status.OwnerId, Team.Player, tick,
-                    SleightRules.HitCount(sleight.Shape));
+                    SleightRules.HitCount(sleight.Shape), NextSleightZeroProof);
+                NextSleightZeroProof = false;
                 combat.SpawnSleight(payload, motor.AimDirection);
                 if (sleight.Shape == CardShape.Strike) motor.TryLunge(motor.AimDirection);
             }
@@ -229,7 +268,7 @@ namespace DeckArpg.Gameplay
             deck.Reload.Cancel();
             combat.CancelActiveAction();
             buffer.Clear();
-            respawnRemaining = respawnDelay;
+            if (respawnOnDeath) respawnRemaining = respawnDelay;
         }
 
         private void Respawn()

@@ -136,5 +136,22 @@ namespace DeckArpg.Tests.EditMode
             Assert.Greater(CombatMath.KnockbackSpeed(low), 0f);
             Assert.Greater(CombatMath.KnockbackSpeed(high), CombatMath.KnockbackSpeed(low));
         }
+
+        [TestCase(0, 1f)]
+        [TestCase(1, 1f)]
+        [TestCase(2, 1f / 1.4f)]
+        [TestCase(3, 1f / 1.8f)]
+        [TestCase(4, 1f / 2.2f)]
+        public void CrowdStunScale_ShrinksWithEachExtraEnemy(int enemies, float expected)
+        {
+            Assert.AreEqual(expected, CombatMath.CrowdStunScale(enemies), 1e-5f);
+        }
+
+        [TestCase(5)]
+        [TestCase(50)]
+        public void CrowdStunScale_FloorsAtMinimum(int enemies)
+        {
+            Assert.AreEqual(CombatMath.MinCrowdStunScale, CombatMath.CrowdStunScale(enemies), 1e-5f);
+        }
     }
 }

@@ -52,7 +52,8 @@ namespace DeckArpg.UI
             if (cam != null) anchor.rotation = cam.transform.rotation;
 
             var card = enemy.CurrentTelegraph;
-            valueText.text = card == null ? "" : card.IsZeroBreaker ? "0" : card.GetEffectiveValue().ToString();
+            valueText.text = card == null ? "" : enemy.IsTelegraphVeiled ? "?"
+                : card.IsZeroBreaker ? "0" : card.GetEffectiveValue().ToString();
             float progress = enemy.TelegraphProgress;
             fill.enabled = card != null;
             fill.rectTransform.sizeDelta = new Vector2(120f, 120f * progress);

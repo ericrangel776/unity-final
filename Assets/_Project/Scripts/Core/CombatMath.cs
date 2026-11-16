@@ -55,6 +55,20 @@ namespace DeckArpg.Core
         /// <summary>Speed (m/s) the loser of a break is shoved away from the winner.</summary>
         public static float BreakShoveSpeed(int margin) => 2f + 0.8f * ClampMargin(margin);
 
+        public const float CrowdStunPerExtraEnemy = 0.4f;
+        public const float MinCrowdStunScale = 0.4f;
+
+        /// <summary>
+        /// Multiplier on the player's break stun: full against one enemy, shrinking as more enemies are alive
+        /// (1 / (1 + 0.4 * (n - 1)), floored at 0.4), so crowds can't stun-lock and 1v1 breaks stay impactful.
+        /// </summary>
+        public static float CrowdStunScale(int enemyCount)
+        {
+            if (enemyCount <= 1) return 1f;
+            float scale = 1f / (1f + CrowdStunPerExtraEnemy * (enemyCount - 1));
+            return scale < MinCrowdStunScale ? MinCrowdStunScale : scale;
+        }
+
         public const float CounterMultiplier = 1.5f;
 
         /// <summary>

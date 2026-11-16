@@ -33,6 +33,9 @@ namespace DeckArpg.Core
             if (a.Team == b.Team) return new ClashResult(ClashOutcome.None, false);
 
             if (a.IsZeroBreaker && b.IsZeroBreaker) return Neutral;
+            // A zero-proof attack (Iron Will Idol) beats a 0 whatever the timing.
+            if (a.IsZeroBreaker && b.ZeroProof) return new ClashResult(ClashOutcome.BWins, false);
+            if (b.IsZeroBreaker && a.ZeroProof) return new ClashResult(ClashOutcome.AWins, false);
             if (a.IsZeroBreaker) return ResolveZero(a.ActivationTick, b.ActivationTick, ClashOutcome.AWins, ClashOutcome.BWins);
             if (b.IsZeroBreaker) return ResolveZero(b.ActivationTick, a.ActivationTick, ClashOutcome.BWins, ClashOutcome.AWins);
 

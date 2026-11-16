@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DeckArpg.Core;
 using UnityEngine;
 
@@ -13,12 +14,28 @@ namespace DeckArpg.Gameplay
     {
         private enum State { Approach, Telegraph, Recover }
 
+        private static readonly HashSet<TrainingDummyEnemy> Registered = new HashSet<TrainingDummyEnemy>();
+
+        /// <summary>Enabled enemies that are alive. Scales the player's break stun (crowds stun less).</summary>
+        public static int LiveCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var e in Registered)
+                    if (e != null && e.status != null && !e.status.IsDead) n++;
+                return n;
+            }
+        }
+
         [SerializeField] private Transform target;
         [SerializeField] private float moveSpeed = 2.5f;
         [SerializeField] private float attackRange = 2.2f;
         [SerializeField] private float telegraphSeconds = 0.7f;
         [SerializeField] private float recoverSeconds = 1.2f;
         [SerializeField] private float respawnDelay = 2f;
+        [Tooltip("Off in a run: a dead enemy is removed instead of coming back.")]
+        [SerializeField] private bool respawnOnDeath = true;
 
         private CharacterController body;
         private CombatActionController combat;
@@ -33,6 +50,14 @@ namespace DeckArpg.Gameplay
         public RuntimeCardInstance CurrentTelegraph { get; private set; }
         /// <summary>0..1 progress through the telegraph wind-up.</summary>
         public float TelegraphProgress => state == State.Telegraph ? 1f - Mathf.Clamp01(timer / telegraphSeconds) : 0f;
+        /// <summary>
+        /// Veiled trial: the telegraphed value stays hidden until this many seconds before the swing (0 = off).
+        /// Absolute time, so room tempo doesn't shrink it.
+        /// </summary>
+        public float VeiledRevealSeconds { get; set; }
+        /// <summary>True while the current telegraph's value should show as <c>?</c>.</summary>
+        public bool IsTelegraphVeiled =>
+            state == State.Telegraph && CurrentTelegraph != null && VeiledRevealSeconds > 0f && timer > VeiledRevealSeconds;
         public CombatantStatus Status => status;
         public DeckRuntimeManager Deck => deck;
 
@@ -40,6 +65,22 @@ namespace DeckArpg.Gameplay
         public event Action TelegraphEnded;
 
         public Transform Target { get => target; set => target = value; }
+        public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
+        public float MoveSpeed => moveSpeed;
+        public float TelegraphSeconds => telegraphSeconds;
+        public float RecoverSeconds => recoverSeconds;
+
+        /// <summary>
+        /// Room tempo: moves faster and winds up/recovers quicker by <paramref name="multiplier"/> (1 = unchanged).
+        /// Call once, right after spawning. The parry window (BodyHitDelay) is not scaled.
+        /// </summary>
+        public void ApplyTempo(float multiplier)
+        {
+            if (multiplier <= 0f) throw new ArgumentOutOfRangeException(nameof(multiplier));
+            moveSpeed *= multiplier;
+            telegraphSeconds /= multiplier;
+            recoverSeconds /= multiplier;
+        }
 
         private void Awake()
         {
@@ -53,6 +94,7 @@ namespace DeckArpg.Gameplay
 
         private void OnEnable()
         {
+            Registered.Add(this);
             status.Died += HandleDied;
             status.Broken += CancelTelegraph;
             status.Flinched += CancelTelegraph;
@@ -60,6 +102,7 @@ namespace DeckArpg.Gameplay
 
         private void OnDisable()
         {
+            Registered.Remove(this);
             status.Died -= HandleDied;
             status.Broken -= CancelTelegraph;
             status.Flinched -= CancelTelegraph;
@@ -81,7 +124,9 @@ namespace DeckArpg.Gameplay
             if (status.IsDead)
             {
                 timer -= Time.deltaTime;
-                if (timer <= 0f) Respawn();
+                if (timer > 0f) return;
+                if (respawnOnDeath) Respawn();
+                else Destroy(gameObject);
                 return;
             }
             // Before the stun check so a flinched dummy still slides back.
@@ -110,6 +155,9 @@ namespace DeckArpg.Gameplay
             }
         }
 
+        /// <summary>Tests: start winding up the first hand card now.</summary>
+        internal void ForceTelegraph() => BeginTelegraph();
+
         private void BeginTelegraph()
         {
             var cycle = deck.Cycle;
@@ -128,6 +176,7 @@ namespace DeckArpg.Gameplay
 
             CurrentTelegraph = cycle.Hand[telegraphSlot];
             state = State.Telegraph;
+            status.FlinchArmor = true; // only a card clash can stop the wind-up
             timer = telegraphSeconds;
             TelegraphStarted?.Invoke(CurrentTelegraph);
         }
@@ -144,6 +193,28 @@ namespace DeckArpg.Gameplay
             timer = recoverSeconds;
         }
 
+        /// <summary>
+        /// <paramref name="incoming"/> reached our body mid wind-up: clash it with the telegraphed card. A higher
+        /// card breaks the anticipated attack, an equal one cancels both, a lower one is broken and we still swing.
+        /// Pokes and 0-cards (either side) don't clash: a 0 only answers a live swing.
+        /// </summary>
+        internal void ResolveTelegraphClash(AttackHitbox incoming)
+        {
+            var telegraph = CurrentTelegraph;
+            if (state != State.Telegraph || telegraph == null || incoming == null || !incoming.IsLive) return;
+            var payload = incoming.Payload;
+            if (payload.Team == Team.Enemy || payload.IsPoke || payload.IsZeroBreaker || telegraph.IsZeroBreaker) return;
+
+            int slot = telegraphSlot;
+            var anticipated = AttackPayload.FromCard(telegraph, status.OwnerId, Team.Enemy, Time.frameCount);
+            var result = ClashSystem.ResolveTelegraph(incoming, combat, anticipated);
+            if (result.Outcome != ClashOutcome.AWins && result.Outcome != ClashOutcome.Neutral) return;
+
+            // The anticipated card is spent (a win's break already ended the telegraph via Broken).
+            deck.Cycle.TryPlay(slot, out _);
+            CancelTelegraph();
+        }
+
         private void CancelTelegraph()
         {
             if (state != State.Telegraph) return;
@@ -155,11 +226,13 @@ namespace DeckArpg.Gameplay
         private void EndTelegraph()
         {
             CurrentTelegraph = null;
+            status.FlinchArmor = false;
             TelegraphEnded?.Invoke();
         }
 
         private void HandleDied()
         {
+            status.FlinchArmor = false;
             CancelTelegraph();
             combat.CancelActiveAction();
             timer = respawnDelay;

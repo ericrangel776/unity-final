@@ -44,6 +44,8 @@ namespace DeckArpg.Gameplay
         public bool IsInvulnerable { get; set; }
         public int OwnerId => gameObject.GetInstanceID();
         public float HitFlinchSeconds { get => hitFlinchSeconds; set => hitFlinchSeconds = Mathf.Max(0f, value); }
+        /// <summary>Set while an enemy winds up a telegraph: hits still damage but can't flinch it out of the attack.</summary>
+        public bool FlinchArmor { get; set; }
         /// <summary>Push from the last body hit, decaying to zero. Movers add this to their motion.</summary>
         public Vector3 KnockbackVelocity { get; private set; }
 
@@ -120,10 +122,11 @@ namespace DeckArpg.Gameplay
 
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
-            var direction = Push(fromDirection, CombatMath.KnockbackSpeed(payload));
+            // A poke is damage only: no shove (can't keep enemies at bay) and no flinch.
+            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, CombatMath.KnockbackSpeed(payload));
             HitTaken?.Invoke(damage, direction);
 
-            if (flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
+            if (payload.IsPoke || FlinchArmor || flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
             stunRemaining = Mathf.Max(stunRemaining, hitFlinchSeconds);
             flinchCooldownRemaining = flinchCooldownSeconds;
             Flinched?.Invoke();
@@ -132,21 +135,41 @@ namespace DeckArpg.Gameplay
         /// <summary>Sets a decaying push along the flattened direction. Returns the unit direction used.</summary>
         private Vector3 Push(Vector3 direction, float speed)
         {
-            direction.y = 0f;
-            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
+            direction = Flatten(direction);
             KnockbackVelocity = direction * speed;
             knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
             return direction;
+        }
+
+        private static Vector3 Flatten(Vector3 direction)
+        {
+            direction.y = 0f;
+            return direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
         }
 
         /// <summary>Card break at the baseline margin with no shove.</summary>
         public void ApplyBreak() => ApplyBreak(CombatMath.BaselineBreakMargin, Vector3.zero);
 
         /// <summary>
+        /// Posture damage from an effect (e.g. Shattered Hourglass). Filling the bar posture-breaks: long stun, bar
+        /// resets. No shove and no counter window. Ignored when dead or for non-positive amounts.
+        /// </summary>
+        public void AddPostureDamage(float amount)
+        {
+            if (IsDead || amount <= 0f) return;
+            Posture += amount;
+            if (Posture < maxPosture) return;
+            Posture = 0f;
+            stunRemaining = Mathf.Max(stunRemaining, postureBreakStunSeconds);
+            Broken?.Invoke();
+        }
+
+        /// <summary>
         /// Called when one of our cards loses a clash: posture damage and stun scaled by how decisively
         /// we lost (<paramref name="margin"/>), plus a shove along <paramref name="awayFromWinner"/>.
+        /// <paramref name="stunScale"/> multiplies the final stun (the player's crowd scaling).
         /// </summary>
-        public void ApplyBreak(int margin, Vector3 awayFromWinner)
+        public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f)
         {
             if (IsDead) return;
             Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin);
@@ -157,9 +180,30 @@ namespace DeckArpg.Gameplay
                 Posture = 0f;
                 stun = postureBreakStunSeconds;
             }
-            stunRemaining = Mathf.Max(stunRemaining, stun);
+            stunRemaining = Mathf.Max(stunRemaining, stun * Mathf.Max(0f, stunScale));
             counterWindowRemaining = counterWindowSeconds;
             Broken?.Invoke();
+        }
+
+        /// <summary>Sets max HP (at least 1) and refills to it. Used when a run scales enemies or syncs the player.</summary>
+        public void SetMaxHp(int value)
+        {
+            maxHp = Mathf.Max(1, value);
+            Hp = maxHp;
+        }
+
+        /// <summary>Sets max posture (at least 1) and clears current posture.</summary>
+        public void SetMaxPosture(float value)
+        {
+            maxPosture = Mathf.Max(1f, value);
+            Posture = 0f;
+        }
+
+        /// <summary>Sets HP without a hit (run HP carry-over). Clamped to [1, max]; ignored when dead.</summary>
+        public void SetHp(int value)
+        {
+            if (IsDead) return;
+            Hp = Mathf.Clamp(value, 1, maxHp);
         }
 
         public void Revive()

@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "DeckArpg.Core",
         "DeckArpg.Gameplay",
+        "DeckArpg.UI",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

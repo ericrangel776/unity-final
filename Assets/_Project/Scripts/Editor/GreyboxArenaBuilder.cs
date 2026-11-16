@@ -21,6 +21,7 @@ namespace DeckArpg.Editor
     public static class GreyboxArenaBuilder
     {
         public const string ScenePath = "Assets/_Project/Scenes/M1_Arena.unity";
+        public const string RunScenePath = "Assets/_Project/Scenes/M3_Run.unity";
         public const string PrefabFolder = "Assets/_Project/Prefabs";
         public const string MaterialFolder = "Assets/_Project/Art/Materials";
         public const string PlayerPrefabPath = PrefabFolder + "/Player.prefab";
@@ -64,6 +65,80 @@ namespace DeckArpg.Editor
             BuildCameras(player.transform);
             BuildClashFx();
 
+            BuildHud();
+
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            ApplyBuildOrder();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"M1 arena built: {ScenePath}");
+        }
+
+        /// <summary>
+        /// The M3 run scene: same arena, cameras, FX and HUD, no fixed dummy; a <see cref="RunDirector"/> spawns
+        /// each room's enemies from <see cref="RunContent"/>. Reuses the M1 prefabs (builds them if missing).
+        /// </summary>
+        [MenuItem("DeckArpg/Build M3 Run Scene")]
+        public static void BuildRunScene()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath) == null ||
+                AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefabPath) == null)
+                Build();
+            var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+            var dummyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefabPath);
+            StarterContentBuilder.BuildRunContent();
+
+            var floorMat = GetOrCreateMaterial("Floor", new Color(0.32f, 0.34f, 0.38f));
+            var wallMat = GetOrCreateMaterial("Wall", new Color(0.2f, 0.21f, 0.25f));
+
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            BuildEnvironment(floorMat, wallMat);
+
+            var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
+            player.transform.position = new Vector3(0f, 0f, -6f);
+
+            BuildCameras(player.transform);
+            BuildClashFx();
+            BuildHud();
+
+            // Load after NewScene: switching scenes unloads assets loaded earlier, leaving a dead reference.
+            var content = AssetDatabase.LoadAssetAtPath<RunContent>(StarterContentBuilder.RunContentPath);
+            var director = new GameObject("RunDirector").AddComponent<RunDirector>();
+            var so = new SerializedObject(director);
+            so.FindProperty("content").objectReferenceValue = content;
+            so.FindProperty("enemyPrefab").objectReferenceValue = dummyPrefab.GetComponent<TrainingDummyEnemy>();
+            so.FindProperty("player").objectReferenceValue = player.GetComponent<PlayerCombatInput>();
+            so.ApplyModifiedPropertiesWithoutUndo();
+            BuildRunUi(director);
+
+            EditorSceneManager.SaveScene(scene, RunScenePath);
+            ApplyBuildOrder();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"M3 run scene built: {RunScenePath}");
+        }
+
+        /// <summary>Run screens + HUD strip (docs/specs/m3-ui.md). The EventSystem is created at runtime by RunScreens.</summary>
+        private static void BuildRunUi(RunDirector director)
+        {
+            var ui = new GameObject("RunUI");
+            var screens = ui.AddComponent<RunScreens>();
+            var strip = ui.AddComponent<RunHudStripView>();
+            // Screens on the RunUI object are attached by RunScreens.Awake.
+            ui.AddComponent<DoorChoiceView>();
+            ui.AddComponent<RewardView>();
+            ui.AddComponent<ShopView>();
+            ui.AddComponent<ForgeView>();
+            ui.AddComponent<RestView>();
+            ui.AddComponent<RunEndView>();
+            foreach (Object view in new Object[] { screens, strip })
+            {
+                var so = new SerializedObject(view);
+                so.FindProperty("director").objectReferenceValue = director;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        private static void BuildHud()
+        {
             var hud = new GameObject("HUD");
             hud.AddComponent<HandHudView>();
             hud.AddComponent<ClashFeedbackView>();
@@ -72,11 +147,6 @@ namespace DeckArpg.Editor
             hud.AddComponent<StockView>();
             hud.AddComponent<ReloadBarView>();
             hud.AddComponent<SpeedLinesView>();
-
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AddSceneToBuildSettings(ScenePath);
-            AssetDatabase.SaveAssets();
-            Debug.Log($"M1 arena built: {ScenePath}");
         }
 
         private static void BuildEnvironment(Material floorMat, Material wallMat)
@@ -277,12 +347,17 @@ namespace DeckArpg.Editor
             fx.AddComponent<ClashImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
         }
 
-        private static void AddSceneToBuildSettings(string path)
+        /// <summary>Build scene order (docs/specs/m3-smoke-test.md): the run first, then the M1 arena. Only scenes that exist are listed.</summary>
+        public static readonly string[] BuildOrder = { RunScenePath, ScenePath };
+
+        /// <summary>Rewrites Build Settings to <see cref="BuildOrder"/>, so rebuilding either scene keeps the order.</summary>
+        [MenuItem("DeckArpg/Apply Build Scene Order")]
+        public static void ApplyBuildOrder()
         {
-            var scenes = EditorBuildSettings.scenes.ToList();
-            if (scenes.Any(s => s.path == path)) return;
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
-            EditorBuildSettings.scenes = scenes.ToArray();
+            EditorBuildSettings.scenes = BuildOrder
+                .Where(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path) != null)
+                .Select(path => new EditorBuildSettingsScene(path, true))
+                .ToArray();
         }
     }
 }

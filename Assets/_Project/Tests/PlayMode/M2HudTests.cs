@@ -213,8 +213,59 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.IsFalse(barView.IsBarVisible);
             Assert.AreEqual("PERFECT!", barView.GradeText);
+            yield return MovePlayer(Vector3.forward, frames: 8);
             Assert.IsTrue(speedView.IsActive);
             Assert.AreEqual(0.6f, speedView.Alpha, 0.05f);
+        }
+
+        // 1 m per frame stays above full-strength speed even at Unity's maximum frame delta.
+        private IEnumerator MovePlayer(Vector3 direction, int frames)
+        {
+            for (int i = 0; i < frames; i++)
+            {
+                deck.transform.position += direction;
+                yield return null;
+            }
+        }
+
+        private void GrantPerfectBoost()
+        {
+            EmptyDrawQueue();
+            deck.Reload.Begin();
+            deck.Reload.Tick(deck.Reload.Target01 * deck.Reload.BarDuration);
+            Assert.AreEqual(ReloadGrade.Perfect, deck.Reload.Press());
+        }
+
+        [UnityTest]
+        public IEnumerator SpeedLines_WithBoost_HiddenWhileStandingStill()
+        {
+            GrantPerfectBoost();
+            for (int i = 0; i < 5; i++) yield return null;
+
+            Assert.Greater(deck.Reload.BoostRemaining, 0f, "Setup: the boost is running.");
+            Assert.IsFalse(speedView.IsActive, "No lines while the player stands still.");
+            Assert.AreEqual(0f, speedView.Alpha);
+        }
+
+        [UnityTest]
+        public IEnumerator SpeedLines_FollowThePlayer_AndStreamBehindItsMovement()
+        {
+            GrantPerfectBoost();
+            yield return MovePlayer(Vector3.right, frames: 8);
+            yield return null; // let LateUpdate place the streaks at the latest position
+
+            Assert.IsTrue(speedView.IsActive);
+            Assert.Greater(Vector3.Dot(speedView.TrailDirection, Vector3.left), 0.95f, "Trail points against movement.");
+            var player = deck.transform.position;
+            float along = 0f;
+            for (int i = 0; i < speedView.LineCount; i++)
+            {
+                var offset = speedView.LineCenter(i) - player;
+                offset.y = 0f;
+                Assert.Less(offset.magnitude, 4f, $"Line {i} should stay around the player.");
+                along += Vector3.Dot(offset, Vector3.right);
+            }
+            Assert.Less(along / speedView.LineCount, 0f, "On average the streaks sit behind the player.");
         }
 
         [UnityTest]

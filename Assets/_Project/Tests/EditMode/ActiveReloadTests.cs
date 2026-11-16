@@ -41,6 +41,27 @@ namespace DeckArpg.Tests.EditMode
         /// <summary>Advances the running bar from 0 to <paramref name="progress01"/> of its rolled duration.</summary>
         private void TickToProgress(float progress01) => reload.Tick(progress01 * reload.BarDuration);
 
+        // ---- seeding ----
+
+        [Test]
+        public void Reseed_SameSeed_RepeatsTheRolls()
+        {
+            reload.Reseed(new Random(99));
+            StartBar();
+            var first = (reload.BarDuration, reload.Target01, reload.Anchor);
+            reload.Cancel();
+
+            reload.Reseed(new Random(99));
+            Assert.IsTrue(reload.Begin());
+            Assert.AreEqual(first, (reload.BarDuration, reload.Target01, reload.Anchor));
+        }
+
+        [Test]
+        public void Reseed_Null_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => reload.Reseed(null));
+        }
+
         // ---- grading (normalized to the bar) ----
 
         [TestCase(0.60f, ReloadGrade.Perfect)]

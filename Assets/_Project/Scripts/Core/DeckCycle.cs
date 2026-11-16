@@ -17,6 +17,19 @@ namespace DeckArpg.Core
         Fired     // 3rd card: the Sleight was composed and the stock emptied
     }
 
+    /// <summary>Why a card was burned (relics react to some causes only).</summary>
+    public enum BurnCause
+    {
+        /// <summary>Fired in a Sleight (slot 1, or Premium in any slot).</summary>
+        Sleight,
+        /// <summary>A Premium card played on its own.</summary>
+        Premium,
+        /// <summary>Slot 1 of a partial stock cracked by a Card Break.</summary>
+        StockCracked,
+        /// <summary>Burned by an effect (e.g. the Hexer trial).</summary>
+        Effect
+    }
+
     public sealed class DeckCycle
     {
         public const int HandSize = 3;
@@ -33,6 +46,8 @@ namespace DeckArpg.Core
 
         /// <summary>Raised after any change to the piles or hand.</summary>
         public event Action Changed;
+        /// <summary>Raised as each card is burned, before <see cref="Changed"/>.</summary>
+        public event Action<RuntimeCardInstance, BurnCause> CardBurned;
 
         public IReadOnlyList<RuntimeCardInstance> Hand => hand;
         public RuntimeCardInstance ParrySlot { get; private set; }
@@ -41,6 +56,8 @@ namespace DeckArpg.Core
         public int BurnedCount => burned.Count;
         public int DeletedThisCycleCount => deletedThisCycle.Count;
         public int ZeroReserveCount => zeroReserve.Count;
+        /// <summary>0-cards ready to play right now: the Parry slot plus the reserve behind it.</summary>
+        public int ZerosReady => (ParrySlot != null ? 1 : 0) + zeroReserve.Count;
         public IReadOnlyList<RuntimeCardInstance> DiscardPile => discard;
         public IReadOnlyList<RuntimeCardInstance> BurnedPile => burned;
         /// <summary>Cards stocked toward the next Sleight, in slot order (0-2 entries).</summary>
@@ -86,14 +103,17 @@ namespace DeckArpg.Core
             Changed?.Invoke();
         }
 
-        /// <summary>Plays the card in <paramref name="slot"/>: it goes to discard and the next card is drawn into that slot.</summary>
+        /// <summary>
+        /// Plays the card in <paramref name="slot"/>: it goes to discard (Premium: burned, Floor of 3 permitting)
+        /// and the next card is drawn into that slot.
+        /// </summary>
         public bool TryPlay(int slot, out RuntimeCardInstance card)
         {
             card = null;
             if (slot < 0 || slot >= HandSize || hand[slot] == null) return false;
 
             card = hand[slot];
-            discard.Add(card);
+            DiscardOrBurnPremium(card);
             hand[slot] = DrawNext();
             Changed?.Invoke();
             return true;
@@ -105,7 +125,7 @@ namespace DeckArpg.Core
             card = ParrySlot;
             if (card == null) return false;
 
-            discard.Add(card);
+            DiscardOrBurnPremium(card);
             ParrySlot = zeroReserve.Count > 0 ? zeroReserve.Dequeue() : null;
             Changed?.Invoke();
             return true;
@@ -147,7 +167,7 @@ namespace DeckArpg.Core
             bool burnFirst = SleightRules.CanBurn(CyclingCardCount);
             for (int i = 0; i < stock.Count; i++)
             {
-                if (i == 0 && burnFirst) Burn(stock[i]);
+                if (i == 0 && burnFirst) Burn(stock[i], BurnCause.StockCracked);
                 else discard.Add(stock[i]);
             }
             ClearStock();
@@ -183,9 +203,19 @@ namespace DeckArpg.Core
             }
 
             sleight = SleightRules.Compose(stock);
-            if (SleightRules.CanBurn(CyclingCardCount)) Burn(stock[0]);
-            else discard.Add(stock[0]);
-            for (int i = 1; i < stock.Count; i++) discard.Add(stock[i]);
+            // Slot 1 always tries to burn; Premium cards in any slot do too. Count down as cards burn
+            // so several burns in one Sleight still stop at the Floor of 3.
+            int cycling = CyclingCardCount;
+            for (int i = 0; i < stock.Count; i++)
+            {
+                bool wantsBurn = i == 0 || stock[i].IsPremium;
+                if (wantsBurn && SleightRules.CanBurn(cycling))
+                {
+                    Burn(stock[i], BurnCause.Sleight);
+                    cycling--;
+                }
+                else discard.Add(stock[i]);
+            }
             ClearStock();
             Changed?.Invoke();
             return StockResult.Fired;
@@ -209,10 +239,55 @@ namespace DeckArpg.Core
             return count;
         }
 
-        private void Burn(RuntimeCardInstance card)
+        /// <summary>
+        /// A single-played card goes to discard, unless it's Premium and the Floor of 3 allows a burn.
+        /// Call it while the card is still counted as cycling (before it leaves its slot).
+        /// </summary>
+        private void DiscardOrBurnPremium(RuntimeCardInstance card)
+        {
+            if (card.IsPremium && SleightRules.CanBurn(CyclingCardCount)) Burn(card, BurnCause.Premium);
+            else discard.Add(card);
+        }
+
+        private void Burn(RuntimeCardInstance card, BurnCause cause)
         {
             card.IsBurnedThisFight = true;
             burned.Add(card);
+            CardBurned?.Invoke(card, cause);
+        }
+
+        /// <summary>
+        /// Shattered Hourglass: a random discard card goes to the bottom of the draw queue (straight into an empty
+        /// hand slot if the queue was empty). Returns it, or null if no discard card qualifies.
+        /// 0-cards are never returned: the 0 that just won is already in the discard when the relic fires, so it
+        /// could hand itself back and parry forever (M3 review).
+        /// </summary>
+        public RuntimeCardInstance ReturnRandomSpentToDrawQueue() => MoveRandomToDrawQueue(discard, card => !card.IsZeroBreaker);
+
+        /// <summary>
+        /// Tempered Coil: a random burned card is restored (no longer burned) to the bottom of the draw queue, or an
+        /// empty hand slot. Returns it, or null if nothing is burned.
+        /// </summary>
+        public RuntimeCardInstance RestoreRandomBurnedToDrawQueue() => MoveRandomToDrawQueue(burned, null);
+
+        /// <summary>Moves a random card of <paramref name="pile"/> that passes <paramref name="eligible"/> (null = any).</summary>
+        private RuntimeCardInstance MoveRandomToDrawQueue(List<RuntimeCardInstance> pile, Predicate<RuntimeCardInstance> eligible)
+        {
+            var candidates = eligible == null ? pile : pile.FindAll(eligible);
+            if (candidates.Count == 0) return null;
+            var card = candidates[rng.Next(candidates.Count)];
+            pile.Remove(card);
+            card.IsBurnedThisFight = false;
+            if (card.IsZeroBreaker)
+            {
+                // 0-cards never sit in the draw queue.
+                if (ParrySlot == null) ParrySlot = card;
+                else zeroReserve.Enqueue(card);
+            }
+            else drawQueue.Enqueue(card);
+            FillEmptySlots();
+            Changed?.Invoke();
+            return card;
         }
 
         private void ClearStock()
@@ -246,6 +321,25 @@ namespace DeckArpg.Core
         {
             if (card == null || !RemoveFromCycle(card)) return false;
             deletedThisCycle.Add(card);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// Burns <paramref name="card"/> for the room from wherever it sits in the cycle (discard, set aside by a
+        /// 0-break, hand or draw queue). The Floor of 3 applies; a card set aside this cycle still counts toward
+        /// it because it would come back on reload. Returns false if blocked, already burned or not in the cycle.
+        /// </summary>
+        public bool BurnFromCycle(RuntimeCardInstance card)
+        {
+            if (card == null || card.IsBurnedThisFight || stock.Contains(card)) return false;
+            bool setAside = deletedThisCycle.Contains(card);
+            int cycling = CyclingCardCount + (setAside ? 1 : 0);
+            if (!SleightRules.CanBurn(cycling)) return false;
+
+            if (setAside) deletedThisCycle.Remove(card);
+            else if (!RemoveFromCycle(card)) return false;
+            Burn(card, BurnCause.Effect);
             Changed?.Invoke();
             return true;
         }

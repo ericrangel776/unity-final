@@ -64,6 +64,8 @@ namespace DeckArpg.Gameplay
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
         public event Action<RuntimeCardInstance, bool> CardBroken;
         public event Action<AttackHitbox> HitboxSpawned;
+        /// <summary>One of our attacks broke an enemy card: the loser, and whether we broke it with a 0.</summary>
+        public event Action<CombatantStatus, bool> ClashWon;
 
         private void Awake()
         {
@@ -169,9 +171,13 @@ namespace DeckArpg.Gameplay
         {
             sources.TryGetValue(loser, out var card);
             CancelActiveAction();
-            Status.ApplyBreak(margin, awayFromWinner);
+            // The player's stun shrinks as more enemies are alive, so crowds can't stun-lock.
+            float stunScale = Status.Team == Team.Player ? CombatMath.CrowdStunScale(TrainingDummyEnemy.LiveCount) : 1f;
+            Status.ApplyBreak(margin, awayFromWinner, stunScale);
             CardBroken?.Invoke(card, brokeByZero);
         }
+
+        internal void OnClashWon(CombatantStatus loser, bool brokeByZero) => ClashWon?.Invoke(loser, brokeByZero);
 
         internal void Unregister(AttackHitbox hb)
         {
