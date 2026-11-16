@@ -128,6 +128,7 @@ namespace DeckArpg.Editor
             ui.AddComponent<ShopView>();
             ui.AddComponent<ForgeView>();
             ui.AddComponent<RestView>();
+            ui.AddComponent<RunEndView>();
             foreach (Object view in new Object[] { screens, strip })
             {
                 var so = new SerializedObject(view);

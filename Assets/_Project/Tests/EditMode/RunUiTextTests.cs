@@ -129,6 +129,45 @@ namespace DeckArpg.Tests.EditMode
             }
         }
 
+        // ---- run end ----
+
+        private static RunState NewRun(TestCards cards, out System.Collections.Generic.List<CardData> pool)
+        {
+            var deck = new System.Collections.Generic.List<CardData>();
+            for (int i = 1; i <= 8; i++) deck.Add(cards.Data(i));
+            pool = new System.Collections.Generic.List<CardData> { cards.Data(5), cards.Data(6), cards.Data(7) };
+            var run = new RunState(deck, 60, seed: 3);
+            run.DealOffer();
+            return run;
+        }
+
+        [Test]
+        public void RunEndStats_BeforeAnyRoom_AreEmpty()
+        {
+            var cards = new TestCards();
+            var run = NewRun(cards, out _);
+            Assert.AreEqual(0, RunUiText.RoomsCleared(run));
+            Assert.AreEqual("-", RunUiText.AverageIntensity(run));
+            Assert.AreEqual("", RunUiText.Path(run));
+            Assert.AreEqual(0, RunUiText.RoomsCleared(null));
+            cards.DestroyAll();
+        }
+
+        [Test]
+        public void RoomsCleared_DoesNotCountTheRoomInProgress()
+        {
+            var cards = new TestCards();
+            var run = NewRun(cards, out var pool);
+            var room = run.EnterRoom(0);
+            Assert.AreEqual(0, RunUiText.RoomsCleared(run), "died in room 1");
+            run.CompleteRoom(pool);
+            Assert.AreEqual(1, RunUiText.RoomsCleared(run));
+            Assert.AreEqual(room.Number.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+                RunUiText.AverageIntensity(run));
+            Assert.AreEqual($"{RunUiText.MapCardName(room.Kind)} {room.Number}", RunUiText.Path(run));
+            cards.DestroyAll();
+        }
+
         // ---- cards ----
 
         [Test]

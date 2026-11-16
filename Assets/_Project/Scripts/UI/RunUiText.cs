@@ -109,6 +109,23 @@ namespace DeckArpg.UI
         /// <summary>Regular fights always have 2+ enemies (Elite/Boss blurbs don't use this).</summary>
         private static string Enemies(in MapCard card) => $"{RoomIntensity.EnemyCount(card)} enemies";
 
+        // ---- run end ----
+
+        /// <summary>Rooms finished: every entered room, minus the one the player died in (still in progress).</summary>
+        public static int RoomsCleared(RunState run) =>
+            run == null ? 0 : run.History.Count - (run.Phase == RunPhase.InRoom ? 1 : 0);
+
+        /// <summary>"5.3", or "-" when no fight was entered (AverageIntensity is 0 then).</summary>
+        public static string AverageIntensity(RunState run) =>
+            run == null || run.AverageIntensity <= 0f ? "-" : run.AverageIntensity.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
+        /// <summary>The rooms taken, in order: "Vanguard 2 > Ember Forge 4 > ...".</summary>
+        public static string Path(RunState run)
+        {
+            if (run == null || run.History.Count == 0) return "";
+            return string.Join("  >  ", run.History.Select(r => $"{MapCardName(r.Kind)} {r.Number}"));
+        }
+
         // ---- cards (draft, shop, deck lists) ----
 
         /// <summary>The value a card shows: "0" for a 0-card, else base + <paramref name="upgrade"/> clamped to [1, 9].</summary>
