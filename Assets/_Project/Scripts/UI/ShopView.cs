@@ -5,47 +5,54 @@ using UnityEngine.UI;
 namespace DeckArpg.UI
 {
     /// <summary>
-    /// Wayfarer's Stall: buy stock cards (`1`-`5`/click), or Purge: pick a deck card to remove for the purge cost.
-    /// `Esc` leaves purge mode, then leaves the shop.
+    /// Wayfarer's Stall (docs/specs/m3-blue-polish.md): buy a stock card in one step (`1`-`5`/click). Cards you can't
+    /// afford are dimmed and say how much is missing. Purge opens the deck list: select a card, see the cost, Confirm.
     /// </summary>
     public sealed class ShopView : UtilityView
     {
         public const int MaxStock = 5;
         private Button purgeButton;
         private Text purgeLabel;
+        private bool usedThisVisit;
 
-        public bool PurgeMode { get; private set; }
+        /// <summary>Choosing a card to remove.</summary>
+        public bool PurgeMode => InCardList;
         public bool CanPurge => purgeButton.gameObject.activeSelf && purgeButton.interactable;
         public string PurgeText => purgeLabel.text;
 
         private ShopVisit Shop => Director != null ? Director.CurrentShop : null;
         protected override bool HasVisit => Shop != null;
         protected override int TileCount => MaxStock;
-        protected override string HintText => "1-5 or click: buy   ·   Purge: remove a card   ·   Esc/Enter: leave";
+        protected override string RoomNoun => "the Shop";
+        protected override bool Used => usedThisVisit;
+        protected override string TopPrompt => "Buy a card, or remove one from your deck";
+        protected override string TopHint => "1-5 or click: buy   ·   Purge: remove a card   ·   Enter: leave";
+        protected override string CardPrompt => $"Choose a card to remove ({Shop.PurgeCost(Director.Run)} currency)";
 
         protected override void BuildExtras(RectTransform root)
         {
-            purgeButton = RunWidgets.TextButton(root, "Purge", new Vector2(0.5f, 0f), new Vector2(1f, 0f),
-                new Vector2(-20f, RunWidgets.ButtonY), new Vector2(360f, 60f), "Purge", TogglePurge, out purgeLabel);
+            purgeButton = RunWidgets.TextButton(root, "Purge", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(-SlotX, RunWidgets.ButtonY), ButtonSize, "Purge", TogglePurge, out purgeLabel);
         }
 
-        protected override void ResetMode() => PurgeMode = false;
+        protected override void ResetMode()
+        {
+            base.ResetMode();
+            usedThisVisit = false;
+        }
 
-        protected override void Redraw()
+        protected override Button ExtraButton => purgeButton;
+
+        protected override void RedrawTop()
         {
             var shop = Shop;
             var run = Director.Run;
             int cost = shop.PurgeCost(run);
-            bool purgeAllowed = ShopRules.CanPurge(run.Deck.Count) && run.Currency >= cost;
-            purgeLabel.text = PurgeMode ? "Back to stock" : $"Purge a card ({cost})";
-            purgeButton.interactable = PurgeMode || purgeAllowed;
-
-            if (PurgeMode)
-            {
-                HideTiles();
-                DeckList.Show(run.Deck, _ => purgeAllowed, Purge);
-                return;
-            }
+            purgeButton.interactable = ShopRules.CanPurge(run.Deck.Count) && run.Currency >= cost;
+            // A disabled Purge says why, so the button never just "doesn't work".
+            if (!ShopRules.CanPurge(run.Deck.Count)) purgeLabel.text = $"Purge (deck at minimum {ShopRules.MinDeckSize})";
+            else if (run.Currency < cost) purgeLabel.text = $"Purge {cost} (need {cost - run.Currency} more)";
+            else purgeLabel.text = $"Purge a card ({cost})";
 
             int count = Mathf.Min(shop.Stock.Count, MaxStock);
             ShowTiles(count);
@@ -55,47 +62,54 @@ namespace DeckArpg.UI
                 var card = shop.Stock[i];
                 int price = ShopRules.Price(card.Rarity);
                 bool sold = shop.IsSold(i);
-                RunWidgets.Paint(tile, sold ? RunWidgets.ButtonColor : RewardView.RarityColor(card.Rarity));
-                tile.Button.interactable = !sold && run.Currency >= price;
+                bool affordable = run.Currency >= price;
+                var color = sold ? RunWidgets.ButtonColor : RewardView.RarityColor(card.Rarity);
+                // Unaffordable cards stay clickable (the click explains the shortfall) but look dimmed.
+                RunWidgets.Paint(tile, sold || affordable ? color : Color.Lerp(color, new Color(0.1f, 0.1f, 0.12f), 0.6f));
+                tile.Button.interactable = !sold;
                 tile.Badge.text = RunUiText.CardValue(card);
                 tile.BadgeLabel.text = card.Rarity.ToString().ToUpperInvariant();
                 tile.Title.text = card.DisplayName;
                 tile.Body.text = RunUiText.CardDetails(card);
-                tile.Footer.text = sold ? "SOLD" : $"{price} currency";
+                tile.Footer.text = sold ? "SOLD" : affordable ? $"{price} currency" : $"{price}  ·  need {price - run.Currency} more";
+                tile.Footer.color = sold || affordable ? RunWidgets.Gold : RunWidgets.Warning;
             }
         }
 
-        /// <summary>Buys stock card <paramref name="index"/> (ignored in purge mode, when sold or unaffordable).</summary>
+        /// <summary>Buys stock card <paramref name="index"/>, or says why it can't. Ignored in the card list.</summary>
         public override void Select(int index)
         {
-            if (!HasVisit || PurgeMode) return;
-            Shop.TryBuy(index, Director.Run);
+            var shop = Shop;
+            if (!HasVisit || InCardList || index < 0 || index >= Mathf.Min(shop.Stock.Count, MaxStock)) return;
+            var card = shop.Stock[index];
+            int price = ShopRules.Price(card.Rarity);
+            if (shop.IsSold(index)) SetMessage($"{card.DisplayName} is already sold", warning: true);
+            else if (shop.TryBuy(index, Director.Run))
+            {
+                usedThisVisit = true;
+                SetMessage($"Bought {card.DisplayName} (-{price})");
+            }
+            else SetMessage(RunUiText.Shortfall(price, Director.Run.Currency), warning: true);
             Refresh();
         }
 
+        /// <summary>The Purge button: opens the card list (or closes it).</summary>
         public void TogglePurge()
         {
             if (!HasVisit) return;
-            PurgeMode = !PurgeMode;
-            Refresh();
+            if (InCardList) Back();
+            else if (purgeButton.interactable) OpenCardList();
         }
 
-        private void Purge(RuntimeCardInstance card)
-        {
-            if (Shop.TryPurge(card, Director.Run)) PurgeMode = false;
-            Refresh();
-        }
+        protected override string CardPreview(RuntimeCardInstance card) =>
+            RunUiText.PurgePreview(card, Shop.PurgeCost(Director.Run), Director.Run.Deck.Count);
 
-        public override void Back()
+        protected override string ApplyCard(RuntimeCardInstance card)
         {
-            if (PurgeMode) TogglePurge();
-            else Confirm();
-        }
-
-        public override void Confirm()
-        {
-            PurgeMode = false;
-            base.Confirm();
+            int cost = Shop.PurgeCost(Director.Run);
+            if (!Shop.TryPurge(card, Director.Run)) return null;
+            usedThisVisit = true;
+            return $"Removed {card.Data.DisplayName} (-{cost})";
         }
     }
 }

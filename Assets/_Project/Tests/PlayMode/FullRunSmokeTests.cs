@@ -197,13 +197,34 @@ namespace DeckArpg.Tests.PlayMode
                     screens.HandleKey(0); // buy if affordable; either way the screen stays up
                     break;
                 case MapCardKind.Forge:
-                    AssertOpen<ForgeView>($"Room {room} forge");
+                    var forge = AssertOpen<ForgeView>($"Room {room} forge");
+                    screens.HandleKey(0); // upgrade: opens the card list
+                    Assert.IsTrue(forge.InCardList);
+                    int pick = -1;
+                    for (int i = 0; i < forge.Deck.Count && pick < 0; i++) if (forge.Deck.IsEnabled(i)) pick = i;
+                    Assert.GreaterOrEqual(pick, 0, "No upgradable card in the deck list.");
+                    var card = director.Run.Deck[pick];
+                    int before = card.PermanentRunUpgradeMod;
+                    forge.Deck.Pick(pick);  // select (a click)
+                    screens.HandleConfirm(); // apply
+                    Assert.Greater(card.PermanentRunUpgradeMod, before, "Select + Enter should upgrade the card.");
+                    Assert.IsFalse(forge.InCardList);
                     break;
                 default:
                     Assert.Fail($"Unexpected Blue room {kind}.");
                     break;
             }
+            var view = (UtilityView)screens.Current;
+            screens.HandleBack();
+            Assert.AreEqual(RunDirectorState.Utility, director.State, $"Room {room}: Esc must never leave a room.");
             screens.HandleConfirm();
+            if (director.State == RunDirectorState.Utility)
+            {
+                // Only an unused room (a shop we couldn't afford) asks before leaving.
+                Assert.AreEqual(MapCardKind.Shop, kind, $"Room {room}: a used room should leave on the first Enter.");
+                Assert.IsTrue(view.LeaveWarned);
+                screens.HandleConfirm();
+            }
             Assert.AreEqual(RunDirectorState.ChoosingDoor, director.State, $"Room {room}: Enter should leave.");
         }
 

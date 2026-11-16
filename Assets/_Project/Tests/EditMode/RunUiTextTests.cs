@@ -214,6 +214,70 @@ namespace DeckArpg.Tests.EditMode
             UnityEngine.Object.DestroyImmediate(data);
         }
 
+        // ---- Blue-room previews (docs/specs/m3-blue-polish.md) ----
+
+        [Test]
+        public void DeckValue_AddsUpgradesAndPremium_ClampedToNine()
+        {
+            var data = CardData.Create("c", 7, displayName: "Strike 7");
+            var card = new RuntimeCardInstance(data);
+            Assert.AreEqual(7, RunUiText.DeckValue(card));
+            Assert.AreEqual(9, RunUiText.DeckValue(card, 1, asPremium: true), "7 + 1 + 2 clamps to 9");
+            card.PermanentRunUpgradeMod = 1;
+            Assert.AreEqual(8, RunUiText.DeckValue(card));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void DeckCell_ShowsValueNameKind_AndTheBlockedReason()
+        {
+            var data = CardData.Create("c", 4, CardShape.Arcana, Element.Ice, displayName: "Frost 4");
+            var card = new RuntimeCardInstance(data) { PermanentRunUpgradeMod = 2 };
+            Assert.AreEqual("6   Frost 4  +2   ·   Arcana · Ice", RunUiText.DeckCell(card));
+            Assert.AreEqual("6   Frost 4  +2   ·   Arcana · Ice   (already Premium)", RunUiText.DeckCell(card, "already Premium"));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void Previews_ShowTheChange()
+        {
+            var data = CardData.Create("c", 4, displayName: "Strike 4");
+            var card = new RuntimeCardInstance(data);
+            Assert.AreEqual("Strike 4: 4 -> 6", RunUiText.UpgradePreview(card, 2));
+            Assert.AreEqual("Strike 4: 4 -> 6, burns when played", RunUiText.PremiumPreview(card));
+            Assert.AreEqual("Remove Strike 4: -40 currency, deck 10 -> 9", RunUiText.PurgePreview(card, 40, 10));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [TestCase(80, 50, "Need 30 more currency")]
+        [TestCase(50, 50, "")]
+        [TestCase(30, 50, "")]
+        public void Shortfall_SaysHowMuchIsMissing(int price, int currency, string expected)
+        {
+            Assert.AreEqual(expected, RunUiText.Shortfall(price, currency));
+        }
+
+        [Test]
+        public void BlockedReasons_ExplainZeroCardsMaxValueAndPremium()
+        {
+            var zeroData = CardData.Create("z", 0, zeroBreaker: true);
+            var highData = CardData.Create("h", 9);
+            var okData = CardData.Create("o", 4);
+            var zero = new RuntimeCardInstance(zeroData);
+            var high = new RuntimeCardInstance(highData);
+            var ok = new RuntimeCardInstance(okData);
+
+            Assert.AreEqual("0-cards can't change", RunUiText.UpgradeBlockedReason(zero));
+            Assert.AreEqual("0-cards can't change", RunUiText.PremiumBlockedReason(zero));
+            Assert.AreEqual("already at 9", RunUiText.UpgradeBlockedReason(high));
+            Assert.IsNull(RunUiText.UpgradeBlockedReason(ok));
+            Assert.IsNull(RunUiText.PremiumBlockedReason(ok));
+            ok.IsPremiumOverride = true;
+            Assert.AreEqual("already Premium", RunUiText.PremiumBlockedReason(ok));
+
+            foreach (var d in new[] { zeroData, highData, okData }) UnityEngine.Object.DestroyImmediate(d);
+        }
+
         [Test]
         public void RelicNameAndDescription_AreDefinedForEveryRelic()
         {

@@ -107,13 +107,22 @@ namespace DeckArpg.Tests.PlayMode
             var shop = Object.FindAnyObjectByType<ShopView>();
             shop.Refresh();
             yield return Capture(dir, "m3_6_shop");
+            screens.HandleKey(0); // buy: feedback line
+            yield return Capture(dir, "m3_6b_shop_bought");
             shop.TogglePurge();
             yield return Capture(dir, "m3_7_shop_purge");
+            shop.Deck.Pick(1);
+            yield return Capture(dir, "m3_7b_shop_purge_selected");
 
             RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.Forge);
             yield return Capture(dir, "m3_8_forge");
             screens.HandleKey(0);
             yield return Capture(dir, "m3_9_forge_upgrade_list");
+            var forge = Object.FindAnyObjectByType<ForgeView>();
+            for (int i = 0; i < forge.Deck.Count; i++) if (forge.Deck.IsEnabled(i)) { forge.Deck.Pick(i); break; }
+            yield return Capture(dir, "m3_9b_forge_selected");
+            screens.HandleConfirm();
+            yield return Capture(dir, "m3_9c_forge_done");
 
             RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.Rest);
             yield return Capture(dir, "m3_10_rest");

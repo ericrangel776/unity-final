@@ -152,6 +152,54 @@ namespace DeckArpg.UI
             return card.Data.DisplayName + tags;
         }
 
+        // ---- Blue rooms (docs/specs/m3-blue-polish.md) ----
+
+        /// <summary>The card's value outside a fight: base + run upgrades + Premium, clamped to [1, 9]. 0-cards are 0.</summary>
+        public static int DeckValue(RuntimeCardInstance card, int extraUpgrade = 0, bool asPremium = false)
+        {
+            if (card.IsZeroBreaker) return 0;
+            int premium = card.IsPremium || asPremium ? RuntimeCardInstance.PremiumBonus : 0;
+            return Core.CardValue.Clamp(card.Data.BaseValue + card.PermanentRunUpgradeMod + extraUpgrade + premium);
+        }
+
+        /// <summary>A deck-list cell: "6  Strike 4  +2  ·  Strike · Physical", plus "  (reason)" when it can't be chosen.</summary>
+        public static string DeckCell(RuntimeCardInstance card, string blockedReason = null)
+        {
+            string kind = card.IsZeroBreaker ? "0-card" : $"{card.Data.Shape} · {card.Data.Element}";
+            string text = $"{DeckValue(card)}   {DeckCardLabel(card)}   ·   {kind}";
+            return string.IsNullOrEmpty(blockedReason) ? text : $"{text}   ({blockedReason})";
+        }
+
+        /// <summary>"Strike 4: 4 -> 6".</summary>
+        public static string UpgradePreview(RuntimeCardInstance card, int amount) =>
+            $"{card.Data.DisplayName}: {DeckValue(card)} -> {DeckValue(card, amount)}";
+
+        /// <summary>"Frost 4: 4 -> 6, burns when played".</summary>
+        public static string PremiumPreview(RuntimeCardInstance card) =>
+            $"{card.Data.DisplayName}: {DeckValue(card)} -> {DeckValue(card, asPremium: true)}, burns when played";
+
+        /// <summary>"Remove Ember 3: -40 currency, deck 10 -> 9".</summary>
+        public static string PurgePreview(RuntimeCardInstance card, int cost, int deckCount) =>
+            $"Remove {card.Data.DisplayName}: -{cost} currency, deck {deckCount} -> {deckCount - 1}";
+
+        /// <summary>"Need 30 more currency" (empty when affordable).</summary>
+        public static string Shortfall(int price, int currency) =>
+            currency >= price ? "" : $"Need {price - currency} more currency";
+
+        /// <summary>Why a card can't be upgraded (null if it can).</summary>
+        public static string UpgradeBlockedReason(RuntimeCardInstance card)
+        {
+            if (card.IsZeroBreaker) return "0-cards can't change";
+            return ForgeRules.CanUpgrade(card) ? null : $"already at {Core.CardValue.Max}";
+        }
+
+        /// <summary>Why a card can't be made Premium (null if it can).</summary>
+        public static string PremiumBlockedReason(RuntimeCardInstance card)
+        {
+            if (card.IsZeroBreaker) return "0-cards can't change";
+            return card.IsPremium ? "already Premium" : null;
+        }
+
         // ---- relics ----
 
         public static string RelicName(RelicId relic)

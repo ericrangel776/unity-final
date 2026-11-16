@@ -133,6 +133,10 @@ namespace DeckArpg.Core
         public bool CanStillUpgrade => upgraded == null && (premiumed == null || ForgeRules.GrantsBoth(Quality));
         public bool CanStillMakePremium => premiumed == null && (upgraded == null || ForgeRules.GrantsBoth(Quality));
         public bool IsDone => !CanStillUpgrade && !CanStillMakePremium;
+        /// <summary>The card upgraded this visit (null if none). At Quality 7-9 it can't also be made Premium.</summary>
+        public RuntimeCardInstance UpgradedCard => upgraded;
+        /// <summary>The card made Premium this visit (null if none). At Quality 7-9 it can't also be upgraded.</summary>
+        public RuntimeCardInstance PremiumCard => premiumed;
 
         public ForgeVisit(int quality)
         {

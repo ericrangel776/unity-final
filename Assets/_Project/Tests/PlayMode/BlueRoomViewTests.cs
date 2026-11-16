@@ -62,6 +62,8 @@ namespace DeckArpg.Tests.PlayMode
         public void Shop_ShowsStockWithPrices()
         {
             var shop = Enter<ShopView>(MapCardKind.Shop);
+            director.Run.AddCurrency(500); // affordable: the footer is just the price
+            shop.Refresh();
             var stock = director.CurrentShop.Stock;
             for (int i = 0; i < stock.Count; i++)
             {
@@ -87,20 +89,25 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(deck + 1, director.Run.Deck.Count);
             Assert.AreEqual("SOLD", shop.Tile(0).Footer.text);
             Assert.IsFalse(shop.Tile(0).Interactable);
+            Assert.AreEqual($"Bought {card.DisplayName} (-{ShopRules.Price(card.Rarity)})", shop.MessageText);
+            Assert.IsFalse(shop.MessageIsWarning);
         }
 
         [Test]
-        public void Shop_CantAfford_DisablesTheTile_AndBuysNothing()
+        public void Shop_CantAfford_ShowsTheShortfall_AndBuysNothing()
         {
             var shop = Enter<ShopView>(MapCardKind.Shop);
             director.Run.TrySpend(director.Run.Currency); // broke
             shop.Refresh();
             int deck = director.Run.Deck.Count;
+            int price = ShopRules.Price(director.CurrentShop.Stock[0].Rarity);
+            StringAssert.Contains($"need {price} more", shop.Tile(0).Footer.text);
 
             screens.HandleKey(0);
 
-            Assert.IsFalse(shop.Tile(0).Interactable);
             Assert.AreEqual(deck, director.Run.Deck.Count);
+            Assert.AreEqual($"Need {price} more currency", shop.MessageText);
+            Assert.IsTrue(shop.MessageIsWarning);
         }
 
         [Test]
@@ -118,12 +125,37 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(shop.PurgeMode);
             Assert.IsTrue(shop.Deck.Visible);
             Assert.AreEqual(deck, shop.Deck.Count);
+            StringAssert.Contains($"({cost} currency)", shop.PromptText);
             shop.Deck.Pick(0);
+            Assert.IsTrue(shop.Deck.IsSelected(0));
+            Assert.AreEqual(deck, director.Run.Deck.Count, "a click only selects");
+            Assert.AreEqual(RunUiText.PurgePreview(target, cost, deck), shop.MessageText);
+            Assert.IsTrue(shop.CanConfirmCard);
+
+            screens.HandleConfirm();
 
             Assert.AreEqual(deck - 1, director.Run.Deck.Count);
             Assert.IsFalse(director.Run.OwnsCard(target));
             Assert.AreEqual(currency - cost, director.Run.Currency);
             Assert.IsFalse(shop.PurgeMode, "back to the stock after a purge");
+            Assert.AreEqual($"Removed {target.Data.DisplayName} (-{cost})", shop.MessageText);
+        }
+
+        [Test]
+        public void Shop_PurgeConfirm_WithNothingSelected_ChangesNothing()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            director.Run.AddCurrency(500);
+            shop.Refresh();
+            int deck = director.Run.Deck.Count;
+            shop.TogglePurge();
+            Assert.IsFalse(shop.CanConfirmCard);
+
+            screens.HandleConfirm();
+
+            Assert.AreEqual(deck, director.Run.Deck.Count);
+            Assert.IsTrue(shop.PurgeMode);
+            Assert.IsTrue(shop.MessageIsWarning);
         }
 
         [Test]
@@ -137,7 +169,7 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [Test]
-        public void Shop_EscInPurgeMode_ReturnsToStock_ThenLeaves()
+        public void Shop_EscInPurgeMode_ReturnsToStock_AndNeverLeaves()
         {
             var shop = Enter<ShopView>(MapCardKind.Shop);
             director.Run.AddCurrency(500);
@@ -149,8 +181,20 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(shop.IsOpen);
 
             screens.HandleBack();
-            Assert.IsFalse(shop.IsOpen);
-            Assert.AreEqual(RunDirectorState.ChoosingDoor, director.State);
+            Assert.IsTrue(shop.IsOpen, "Esc never leaves a room");
+            Assert.AreEqual(RunDirectorState.Utility, director.State);
+        }
+
+        [Test]
+        public void Shop_Hints_MatchTheMode()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            director.Run.AddCurrency(500);
+            shop.Refresh();
+            StringAssert.Contains("buy", shop.HintText);
+            shop.TogglePurge();
+            StringAssert.DoesNotContain("buy", shop.HintText);
+            StringAssert.Contains("Choose a card to remove", shop.PromptText);
         }
 
         // ---- forge ----
@@ -170,8 +214,12 @@ namespace DeckArpg.Tests.PlayMode
             int before = card.PermanentRunUpgradeMod;
 
             forge.Deck.Pick(index);
+            Assert.AreEqual(before, card.PermanentRunUpgradeMod, "a click only selects");
+            Assert.AreEqual(RunUiText.UpgradePreview(card, amount), forge.MessageText);
+            screens.HandleConfirm();
 
             Assert.AreEqual(before + amount, card.PermanentRunUpgradeMod);
+            Assert.AreEqual($"{card.Data.DisplayName} is now {RunUiText.DeckValue(card)}", forge.MessageText);
             Assert.AreEqual(ForgeView.Mode.Actions, forge.CurrentMode);
             Assert.IsFalse(forge.Tile(0).Interactable, "one upgrade per visit");
             Assert.AreEqual(ForgeRules.GrantsBoth(director.CurrentForge.Quality), forge.Tile(1).Interactable,
@@ -188,6 +236,8 @@ namespace DeckArpg.Tests.PlayMode
             var card = director.Run.Deck[index];
 
             forge.Deck.Pick(index);
+            Assert.IsFalse(card.IsPremium, "a click only selects");
+            screens.HandleConfirm();
 
             Assert.IsTrue(card.IsPremium);
             Assert.IsFalse(forge.Tile(1).Interactable);
@@ -202,6 +252,25 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(ForgeView.Mode.Actions, forge.CurrentMode);
             Assert.IsTrue(forge.IsOpen);
             Assert.IsFalse(forge.Deck.Visible);
+            screens.HandleBack();
+            Assert.IsTrue(forge.IsOpen, "Esc never leaves a room");
+        }
+
+        [Test]
+        public void Forge_ZeroCards_AreGreyedOutWithAReason()
+        {
+            var forge = Enter<ForgeView>(MapCardKind.Forge);
+            screens.HandleKey(0);
+            var deck = director.Run.Deck;
+            bool sawZero = false;
+            for (int i = 0; i < forge.Deck.Count; i++)
+            {
+                if (!deck[i].IsZeroBreaker) continue;
+                sawZero = true;
+                Assert.IsFalse(forge.Deck.IsEnabled(i));
+                StringAssert.Contains("0-cards can't change", forge.Deck.Label(i));
+            }
+            if (!sawZero) Assert.Inconclusive("Starter deck has no 0-card to check.");
         }
 
         // ---- rest ----
@@ -216,6 +285,7 @@ namespace DeckArpg.Tests.PlayMode
             screens.HandleKey(0);
 
             Assert.AreEqual(Math.Min(director.Run.MaxHp, 10 + heal), director.Run.Hp);
+            StringAssert.StartsWith($"Healed {Math.Min(director.Run.MaxHp, 10 + heal) - 10} HP", rest.MessageText);
             Assert.AreEqual(0, rest.Chosen);
             Assert.IsFalse(rest.Tile(0).Interactable);
             Assert.IsFalse(rest.Tile(1).Interactable, "only one choice");
@@ -238,11 +308,56 @@ namespace DeckArpg.Tests.PlayMode
         public IEnumerator Rest_Leave_DealsTheNextDoor_AndFreesInput()
         {
             var rest = Enter<RestView>(MapCardKind.Rest);
+            screens.HandleKey(0); // used, so Leave doesn't ask
             screens.HandleConfirm();
             Assert.IsFalse(rest.IsOpen);
             Assert.AreEqual(RunDirectorState.ChoosingDoor, director.State);
             yield return null;
             Assert.IsFalse(director.Player.InputBlocked);
+        }
+
+        [Test]
+        public void Rest_LeavingUnused_AsksOnce_ThenLeaves()
+        {
+            var rest = Enter<RestView>(MapCardKind.Rest);
+
+            screens.HandleConfirm();
+            Assert.IsTrue(rest.IsOpen, "the first Leave on an unused room only warns");
+            Assert.IsTrue(rest.LeaveWarned);
+            Assert.IsTrue(rest.MessageIsWarning);
+            StringAssert.Contains("Leave without using", rest.MessageText);
+
+            screens.HandleConfirm();
+            Assert.IsFalse(rest.IsOpen);
+            Assert.AreEqual(RunDirectorState.ChoosingDoor, director.State);
+        }
+
+        [Test]
+        public void Rest_EscNeverLeaves()
+        {
+            var rest = Enter<RestView>(MapCardKind.Rest);
+            screens.HandleBack();
+            Assert.IsTrue(rest.IsOpen);
+            Assert.AreEqual(RunDirectorState.Utility, director.State);
+        }
+
+        [UnityTest]
+        public IEnumerator CombatHud_IsHiddenWhileTheScreenIsOpen_AndBackAfterLeaving()
+        {
+            Enter<RestView>(MapCardKind.Rest);
+            var hand = Object.FindAnyObjectByType<HandHudView>();
+            Assert.IsNotNull(hand, "HandHudView missing from M3_Run.");
+            var group = hand.GetComponentInChildren<Canvas>().GetComponent<CanvasGroup>();
+            Assert.IsTrue(screens.CombatHudHidden);
+            Assert.IsNotNull(group);
+            Assert.AreEqual(0f, group.alpha);
+
+            screens.HandleKey(0);
+            screens.HandleConfirm();
+            yield return null;
+
+            Assert.IsFalse(screens.CombatHudHidden);
+            Assert.AreEqual(1f, group.alpha);
         }
 
         [Test]
