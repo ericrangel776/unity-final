@@ -258,22 +258,25 @@ namespace DeckArpg.Core
 
         /// <summary>
         /// Shattered Hourglass: a random discard card goes to the bottom of the draw queue (straight into an empty
-        /// hand slot if the queue was empty). Returns it, or null if the discard is empty.
+        /// hand slot if the queue was empty). Returns it, or null if no discard card qualifies.
+        /// 0-cards are never returned: the 0 that just won is already in the discard when the relic fires, so it
+        /// could hand itself back and parry forever (M3 review).
         /// </summary>
-        public RuntimeCardInstance ReturnRandomSpentToDrawQueue() => MoveRandomToDrawQueue(discard);
+        public RuntimeCardInstance ReturnRandomSpentToDrawQueue() => MoveRandomToDrawQueue(discard, card => !card.IsZeroBreaker);
 
         /// <summary>
         /// Tempered Coil: a random burned card is restored (no longer burned) to the bottom of the draw queue, or an
         /// empty hand slot. Returns it, or null if nothing is burned.
         /// </summary>
-        public RuntimeCardInstance RestoreRandomBurnedToDrawQueue() => MoveRandomToDrawQueue(burned);
+        public RuntimeCardInstance RestoreRandomBurnedToDrawQueue() => MoveRandomToDrawQueue(burned, null);
 
-        private RuntimeCardInstance MoveRandomToDrawQueue(List<RuntimeCardInstance> pile)
+        /// <summary>Moves a random card of <paramref name="pile"/> that passes <paramref name="eligible"/> (null = any).</summary>
+        private RuntimeCardInstance MoveRandomToDrawQueue(List<RuntimeCardInstance> pile, Predicate<RuntimeCardInstance> eligible)
         {
-            if (pile.Count == 0) return null;
-            int i = rng.Next(pile.Count);
-            var card = pile[i];
-            pile.RemoveAt(i);
+            var candidates = eligible == null ? pile : pile.FindAll(eligible);
+            if (candidates.Count == 0) return null;
+            var card = candidates[rng.Next(candidates.Count)];
+            pile.Remove(card);
             card.IsBurnedThisFight = false;
             if (card.IsZeroBreaker)
             {

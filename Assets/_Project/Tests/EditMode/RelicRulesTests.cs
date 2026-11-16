@@ -292,6 +292,36 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void ReturnRandomSpent_OnlyTheWinningZeroInDiscard_ReturnsNothing()
+        {
+            // Regression (M3 review): the parried 0 is discarded before the clash resolves, so Hourglass could hand
+            // the same 0 straight back to the empty Parry slot and loop forever.
+            var list = cards.Numbered(1, 2, 3, 4, 5);
+            list.Add(cards.Zero());
+            deck.Initialize(list, new Random(42));
+            Assert.IsTrue(deck.TryPlayParry(out var zero));
+            Assert.IsNull(deck.ParrySlot);
+
+            Assert.IsNull(deck.ReturnRandomSpentToDrawQueue());
+            Assert.IsNull(deck.ParrySlot, "the 0 must not come back");
+            Assert.AreEqual(1, deck.DiscardCount);
+            Assert.IsTrue(zero.IsZeroBreaker);
+        }
+
+        [Test]
+        public void ReturnRandomSpent_SkipsZeros_AndReturnsANumberedCard()
+        {
+            var list = cards.Numbered(1, 2, 3, 4, 5);
+            list.Add(cards.Zero());
+            deck.Initialize(list, new Random(42));
+            deck.TryPlay(0, out var played);
+            deck.TryPlayParry(out _);
+
+            Assert.AreSame(played, deck.ReturnRandomSpentToDrawQueue());
+            Assert.IsNull(deck.ParrySlot);
+        }
+
+        [Test]
         public void RestoreRandomBurned_UnburnsIntoTheDrawQueue()
         {
             Init(1, 2, 3, 4, 5, 6, 7);
