@@ -367,6 +367,28 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [Test]
+        public void SkipToBoss_LandsInTheBossFight()
+        {
+            director.RestartRun(5);
+            Assert.IsTrue(director.DebugSkipToBoss());
+            Assert.AreEqual(RunDirectorState.Fighting, director.State);
+            Assert.IsTrue(director.Run.IsBossRoom);
+            Assert.IsNotNull(director.Boss);
+            Assert.Greater(director.Run.Deck.Count, 10, "drafted cards on the way");
+        }
+
+        [Test]
+        public void SkipToBoss_AfterAFinishedRun_StartsANewOne()
+        {
+            director.RestartRun(5);
+            director.DebugSkipToBoss();
+            director.DebugDefeatAllEnemies();
+            Assert.AreEqual(RunDirectorState.Victory, director.State);
+            Assert.IsTrue(director.DebugSkipToBoss());
+            Assert.IsNotNull(director.Boss);
+        }
+
+        [Test]
         public void WrongStateCalls_Throw()
         {
             Assert.Throws<InvalidOperationException>(() => director.FinishReward());

@@ -368,6 +368,42 @@ namespace DeckArpg.Gameplay
         [ContextMenu("Run/Leave Utility Room")] private void DebugLeaveUtility() => LeaveUtility();
         [ContextMenu("Run/Restart")] private void DebugRestart() => RestartRun();
 
+        /// <summary>
+        /// Playtesting: plays the run forward into the boss fight. Earlier fights are debug-cleared, the first draft card
+        /// and relic are taken (so the deck looks like a real run's) and Blue rooms are left. Starts a run if needed; a
+        /// finished run is restarted. Returns false if the boss wasn't reached.
+        /// </summary>
+        [ContextMenu("Run/Skip To Boss")]
+        public bool DebugSkipToBoss()
+        {
+            if (Run == null || State == RunDirectorState.Victory || State == RunDirectorState.Defeat) StartRun();
+            for (int step = 0; step < 50; step++)
+            {
+                switch (State)
+                {
+                    case RunDirectorState.ChoosingDoor:
+                        ChooseDoor(0);
+                        break;
+                    case RunDirectorState.Fighting:
+                        if (Boss != null) return true;
+                        DebugDefeatAllEnemies();
+                        break;
+                    case RunDirectorState.Reward:
+                        if (CurrentReward.RelicOptions != null && CurrentReward.RelicOptions.Count > 0) ChooseRelic(0);
+                        while (CurrentReward.PicksMade < CurrentReward.PicksAllowed && CurrentReward.TryPick(0, Run)) { }
+                        FinishReward();
+                        break;
+                    case RunDirectorState.Utility:
+                        LeaveUtility();
+                        break;
+                    default:
+                        StartRun();
+                        break;
+                }
+            }
+            return State == RunDirectorState.Fighting && Boss != null;
+        }
+
         [ContextMenu("Run/Defeat All Enemies")]
         public void DebugDefeatAllEnemies()
         {
