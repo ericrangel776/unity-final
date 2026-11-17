@@ -141,6 +141,7 @@ namespace DeckArpg.Editor
         {
             var hud = new GameObject("HUD");
             hud.AddComponent<HandHudView>();
+            hud.AddComponent<DrawQueueStripView>();
             hud.AddComponent<ClashFeedbackView>();
             hud.AddComponent<CardShatterView>();
             hud.AddComponent<DeadlockView>();
