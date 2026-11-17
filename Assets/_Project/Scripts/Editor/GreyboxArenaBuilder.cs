@@ -122,6 +122,7 @@ namespace DeckArpg.Editor
             var ui = new GameObject("RunUI");
             var screens = ui.AddComponent<RunScreens>();
             var strip = ui.AddComponent<RunHudStripView>();
+            var bossHud = ui.AddComponent<BossHudView>();
             // Screens on the RunUI object are attached by RunScreens.Awake.
             ui.AddComponent<DoorChoiceView>();
             ui.AddComponent<RewardView>();
@@ -129,7 +130,7 @@ namespace DeckArpg.Editor
             ui.AddComponent<ForgeView>();
             ui.AddComponent<RestView>();
             ui.AddComponent<RunEndView>();
-            foreach (Object view in new Object[] { screens, strip })
+            foreach (Object view in new Object[] { screens, strip, bossHud })
             {
                 var so = new SerializedObject(view);
                 so.FindProperty("director").objectReferenceValue = director;

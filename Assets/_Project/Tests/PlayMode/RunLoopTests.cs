@@ -343,6 +343,9 @@ namespace DeckArpg.Tests.PlayMode
                             Assert.AreSame(boss, director.Boss);
                             Assert.AreSame(boss, spawnedBoss);
                             Assert.IsNotNull(director.Enemies[0].Deck.Cycle.SpacingRule, "Spacing set before the deal.");
+                            var hud = Object.FindAnyObjectByType<DeckArpg.UI.BossHudView>();
+                            Assert.IsNotNull(hud, "M3_Run has a boss HUD.");
+                            Assert.AreSame(boss, hud.Boss, "the boss HUD binds on BossSpawned");
                         }
                         else if (director.Run.CurrentRoom.IsCombat)
                         {
