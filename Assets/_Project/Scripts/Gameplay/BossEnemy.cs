@@ -308,6 +308,18 @@ namespace DeckArpg.Gameplay
 
         // ---- Tests ----
 
+        /// <summary>
+        /// Cuts the wind-up short and fires the Sleight now (a player Sleight tied it: both go off for the Big Deadlock).
+        /// Returns the first live Sleight hitbox, or null if nothing fired.
+        /// </summary>
+        internal AttackHitbox FireNow()
+        {
+            if (State != BossState.SleightWindup) return null;
+            FireSleight();
+            foreach (var hb in sleightHitboxes) if (hb != null && hb.IsLive) return hb;
+            return null;
+        }
+
         /// <summary>Tests: start a Sleight wind-up now (needs a full hand).</summary>
         internal bool ForceSleight() => BeginSleight();
 

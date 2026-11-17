@@ -230,7 +230,11 @@ namespace DeckArpg.Gameplay
                 enemy.Status.SetMaxHp(maxHp);
                 enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * postureScale);
                 // Before the deal: the boss sets its 9-spacing rule on the deck cycle.
-                if (room.Kind == MapCardKind.Boss) Boss = enemy.gameObject.AddComponent<BossEnemy>();
+                if (room.Kind == MapCardKind.Boss)
+                {
+                    Boss = enemy.gameObject.AddComponent<BossEnemy>();
+                    enemy.gameObject.AddComponent<BossSleightClash>().Watch(playerCombat);
+                }
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 enemy.Deck.SetStartingDeck(deck, NextSeed());
                 ApplyTrial(enemy, room);

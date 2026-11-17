@@ -137,6 +137,10 @@ namespace DeckArpg.Gameplay
             return result;
         }
 
+        /// <summary>Reports a Big Deadlock's outcome (already applied by the boss clash) to clash listeners.</summary>
+        internal static void ReportBig(ClashOutcome outcome, in AttackPayload player, in AttackPayload boss, Vector3 position) =>
+            ClashOccurred?.Invoke(new ClashEvent(new ClashResult(outcome, false), player, boss, position, fromDeadlock: true));
+
         // The loser's break scales with how decisively it lost, and shoves it away from the winner.
         private static void Break(AttackHitbox winner, AttackHitbox loser, bool brokeByZero, int margin)
         {

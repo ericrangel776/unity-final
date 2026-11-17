@@ -33,14 +33,25 @@ namespace DeckArpg.Core
         public const float GoodTolerance = 0.15f;
         public const int PerfectBonus = 3;
         public const int GoodBonus = 1;
+        /// <summary>Real-time length of the Big Deadlock (boss Sleight vs player Sleight tie, M4).</summary>
+        public const float BigWindowSeconds = 1.5f;
         /// <summary>Chance the enemy commits its first hand card.</summary>
         public const double EnemyCommitChance = 0.4;
 
         /// <summary>Grade for a press <paramref name="pressOffset"/> seconds after the Deadlock started.</summary>
-        public static DeadlockGrade Grade(float pressOffset)
+        public static DeadlockGrade Grade(float pressOffset) => Grade(pressOffset, WindowSeconds);
+
+        /// <summary>When the ring meets the target in a window of <paramref name="windowSeconds"/> (same proportion).</summary>
+        public static float TargetFor(float windowSeconds) => TargetTime * windowSeconds / WindowSeconds;
+
+        /// <summary>
+        /// Grade in a window of <paramref name="windowSeconds"/>: the target scales with the window, the tolerances
+        /// don't (a longer window is easier to read, not easier to hit).
+        /// </summary>
+        public static DeadlockGrade Grade(float pressOffset, float windowSeconds)
         {
-            if (float.IsNaN(pressOffset) || pressOffset < 0f || pressOffset > WindowSeconds) return DeadlockGrade.Miss;
-            float error = Math.Abs(pressOffset - TargetTime);
+            if (float.IsNaN(pressOffset) || pressOffset < 0f || pressOffset > windowSeconds) return DeadlockGrade.Miss;
+            float error = Math.Abs(pressOffset - TargetFor(windowSeconds));
             if (error <= PerfectTolerance) return DeadlockGrade.Perfect;
             if (error <= GoodTolerance) return DeadlockGrade.Good;
             return DeadlockGrade.Miss;

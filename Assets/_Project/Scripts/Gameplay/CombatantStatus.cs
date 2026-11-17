@@ -90,7 +90,14 @@ namespace DeckArpg.Gameplay
         /// <paramref name="canCounter"/> is false for the swing that broke our card, so only a separate
         /// follow-up gets the counter bonus. Returns false if the hit was ignored (i-frames, dead, or friendly).
         /// </summary>
-        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection, bool canCounter = true)
+        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection, bool canCounter = true) =>
+            TakeHit(payload, fromDirection, canCounter, nonLethal: false);
+
+        /// <summary>
+        /// As <see cref="TakeHit(in AttackPayload, Vector3, bool)"/>; with <paramref name="nonLethal"/> the damage is
+        /// capped so at least 1 HP remains (a lost Big Deadlock is heavy but never kills).
+        /// </summary>
+        public bool TakeHit(in AttackPayload payload, Vector3 fromDirection, bool canCounter, bool nonLethal)
         {
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
@@ -103,6 +110,7 @@ namespace DeckArpg.Gameplay
                 damage = CombatMath.CounterDamage(damage);
                 counterWindowRemaining = 0f;
             }
+            if (nonLethal) damage = BossRules.NonLethalDamage(damage, Hp);
             Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
             if (counter) CounterHit?.Invoke(this, damage);

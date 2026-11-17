@@ -16,10 +16,13 @@ namespace DeckArpg.Gameplay
         /// <summary>AWins = player wins, BWins = enemy wins, Neutral = tie.</summary>
         public readonly ClashOutcome Outcome;
         public readonly Vector3 Position;
+        /// <summary>A Big Deadlock (boss Sleight tie): "winner takes all" instead of a Card Break.</summary>
+        public readonly bool IsBig;
 
         public DeadlockResult(DeadlockGrade playerGrade, int playerCommittedValue, int playerPower, DeadlockGrade enemyGrade,
-            int enemyCommittedValue, int enemyPower, ClashOutcome outcome, Vector3 position)
+            int enemyCommittedValue, int enemyPower, ClashOutcome outcome, Vector3 position, bool isBig = false)
         {
+            IsBig = isBig;
             PlayerGrade = playerGrade;
             PlayerCommittedValue = playerCommittedValue;
             PlayerPower = playerPower;
@@ -52,6 +55,7 @@ namespace DeckArpg.Gameplay
         private DeckRuntimeManager enemyDeck;
         private float startTime;
         private (DeadlockGrade grade, bool commit) enemyRoll;
+        private Action<ClashOutcome> bigApply;
 
         /// <summary>The scene's controller (the most recently enabled one).</summary>
         public static DeadlockController Current { get; private set; }
@@ -64,13 +68,19 @@ namespace DeckArpg.Gameplay
         public (DeadlockGrade grade, bool commit)? EnemyRollOverride { get; set; }
 
         public bool IsActive { get; private set; }
+        /// <summary>The running Deadlock is a Big one (boss Sleight tie).</summary>
+        public bool IsBig { get; private set; }
+        /// <summary>Length of the running window (1 s, or 1.5 s for a Big Deadlock).</summary>
+        public float WindowSeconds { get; private set; } = DeadlockRules.WindowSeconds;
+        /// <summary>When the ring meets the target in the running window.</summary>
+        public float TargetTime => DeadlockRules.TargetFor(WindowSeconds);
         public bool HasPlayerSubmitted { get; private set; }
         public DeadlockGrade PlayerGrade { get; private set; }
         public int PlayerCommittedValue { get; private set; }
         public Vector3 Position { get; private set; }
         public float Elapsed => IsActive ? Now - startTime : 0f;
         /// <summary>0..1 through the window.</summary>
-        public float Progress => Mathf.Clamp01(Elapsed / DeadlockRules.WindowSeconds);
+        public float Progress => Mathf.Clamp01(Elapsed / WindowSeconds);
         /// <summary>The player's current hand, for the UI hint (empty if the player has no deck).</summary>
         public DeckCycle PlayerCycle => playerDeck != null ? playerDeck.Cycle : null;
 
@@ -97,7 +107,17 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>Starts a Deadlock if <paramref name="a"/> and <paramref name="b"/> are an eligible tie.</summary>
-        internal bool TryBegin(AttackHitbox a, AttackHitbox b, Vector3 position)
+        internal bool TryBegin(AttackHitbox a, AttackHitbox b, Vector3 position) =>
+            Begin(a, b, position, DeadlockRules.WindowSeconds, null);
+
+        /// <summary>
+        /// Big Deadlock: a player Sleight tied a boss Sleight. Longer window; instead of a Card Break the outcome is
+        /// handed to <paramref name="apply"/> ("winner takes all", see <c>BossSleightClash</c>).
+        /// </summary>
+        internal bool TryBeginBig(AttackHitbox player, AttackHitbox boss, Vector3 position, Action<ClashOutcome> apply) =>
+            apply != null && Begin(player, boss, position, DeadlockRules.BigWindowSeconds, apply);
+
+        private bool Begin(AttackHitbox a, AttackHitbox b, Vector3 position, float window, Action<ClashOutcome> apply)
         {
             if (IsActive || !isActiveAndEnabled || a == null || b == null) return false;
             if (a.Payload.IsZeroBreaker || b.Payload.IsZeroBreaker) return false; // 0s keep their own rules
@@ -112,13 +132,16 @@ namespace DeckArpg.Gameplay
             EnemyRollOverride = null;
 
             IsActive = true;
+            IsBig = apply != null;
+            bigApply = apply;
+            WindowSeconds = window;
             HasPlayerSubmitted = false;
             PlayerGrade = DeadlockGrade.Miss;
             PlayerCommittedValue = 0;
             Position = position;
             startTime = Now;
             // Freeze the world for the whole window; the result's own hit-stop extends it.
-            hitStop.Freeze(DeadlockRules.WindowSeconds + 0.1f);
+            hitStop.Freeze(WindowSeconds + 0.1f);
             Started?.Invoke(this);
             return true;
         }
@@ -131,7 +154,7 @@ namespace DeckArpg.Gameplay
         {
             if (!IsActive || HasPlayerSubmitted) return false;
             HasPlayerSubmitted = true;
-            PlayerGrade = DeadlockRules.Grade(Now - startTime);
+            PlayerGrade = DeadlockRules.Grade(Now - startTime, WindowSeconds);
 
             int slot = DeadlockRules.SlotIndex(choice);
             var cycle = PlayerCycle;
@@ -145,7 +168,7 @@ namespace DeckArpg.Gameplay
 
         private void Update()
         {
-            if (IsActive && Now - startTime >= DeadlockRules.WindowSeconds) Finish(abort: false);
+            if (IsActive && Now - startTime >= WindowSeconds) Finish(abort: false);
         }
 
         private void Finish(bool abort)
@@ -160,12 +183,20 @@ namespace DeckArpg.Gameplay
             int enemyPower = DeadlockRules.Power(enemyRoll.grade, enemyCommitted);
             var outcome = abort ? ClashOutcome.Neutral : DeadlockRules.Resolve(playerPower, enemyPower);
 
-            Resolved?.Invoke(new DeadlockResult(PlayerGrade, PlayerCommittedValue, playerPower, enemyRoll.grade,
-                enemyCommitted, enemyPower, outcome, Position));
-            ClashSystem.ResolveDeadlock(playerHitbox, enemyHitbox, outcome, Math.Abs(playerPower - enemyPower), Position);
-
+            bool big = IsBig;
+            var apply = bigApply;
+            var player = playerHitbox;
+            var enemy = enemyHitbox;
             playerHitbox = enemyHitbox = null;
             playerDeck = enemyDeck = null;
+            bigApply = null;
+            IsBig = false;
+            WindowSeconds = DeadlockRules.WindowSeconds;
+
+            Resolved?.Invoke(new DeadlockResult(PlayerGrade, PlayerCommittedValue, playerPower, enemyRoll.grade,
+                enemyCommitted, enemyPower, outcome, Position, big));
+            if (big) apply(outcome);
+            else ClashSystem.ResolveDeadlock(player, enemy, outcome, Math.Abs(playerPower - enemyPower), Position);
         }
 
         // The enemy commits its first usable hand card if its roll said so.

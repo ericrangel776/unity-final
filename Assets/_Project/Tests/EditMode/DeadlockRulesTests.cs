@@ -105,5 +105,27 @@ namespace DeckArpg.Tests.EditMode
             Assert.Less(DeadlockRules.TargetTime + DeadlockRules.GoodTolerance, DeadlockRules.WindowSeconds);
             Assert.Greater(DeadlockRules.TargetTime - DeadlockRules.GoodTolerance, 0f);
         }
+
+        [Test]
+        public void BigWindow_TargetScalesWithTheWindow()
+        {
+            float target = DeadlockRules.TargetFor(DeadlockRules.BigWindowSeconds);
+            Assert.AreEqual(DeadlockRules.TargetTime * 1.5f, target, 1e-5f);
+            Assert.AreEqual(DeadlockGrade.Perfect, DeadlockRules.Grade(target, DeadlockRules.BigWindowSeconds));
+            Assert.AreEqual(DeadlockGrade.Good, DeadlockRules.Grade(target + 0.1f, DeadlockRules.BigWindowSeconds));
+            Assert.AreEqual(DeadlockGrade.Miss, DeadlockRules.Grade(DeadlockRules.TargetTime, DeadlockRules.BigWindowSeconds));
+        }
+
+        [Test]
+        public void BigWindow_PressAfterTheWindowMisses() =>
+            Assert.AreEqual(DeadlockGrade.Miss,
+                DeadlockRules.Grade(DeadlockRules.BigWindowSeconds + 0.01f, DeadlockRules.BigWindowSeconds));
+
+        [Test]
+        public void BigWindow_GoodBandFitsInside()
+        {
+            float target = DeadlockRules.TargetFor(DeadlockRules.BigWindowSeconds);
+            Assert.Less(target + DeadlockRules.GoodTolerance, DeadlockRules.BigWindowSeconds);
+        }
     }
 }
