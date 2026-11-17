@@ -65,6 +65,8 @@ namespace DeckArpg.Gameplay
 
         /// <summary>Any combatant took a counter hit: the victim and the boosted damage. For global feedback.</summary>
         public static event Action<CombatantStatus, int> CounterHit;
+        /// <summary>Any combatant took a damaging body hit: the victim and the damage. For global feedback (SFX).</summary>
+        public static event Action<CombatantStatus, int> AnyHitTaken;
 
         private void Awake()
         {
@@ -114,6 +116,7 @@ namespace DeckArpg.Gameplay
             Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
             if (counter) CounterHit?.Invoke(this, damage);
+            if (damage > 0) AnyHitTaken?.Invoke(this, damage);
             if (Hp == 0)
             {
                 Died?.Invoke();

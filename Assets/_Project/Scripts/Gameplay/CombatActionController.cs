@@ -64,6 +64,8 @@ namespace DeckArpg.Gameplay
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
         public event Action<RuntimeCardInstance, bool> CardBroken;
         public event Action<AttackHitbox> HitboxSpawned;
+        /// <summary>Any combatant spawned a hitbox (global feedback such as SFX).</summary>
+        public static event Action<AttackHitbox> AnyHitboxSpawned;
         /// <summary>One of our attacks broke an enemy card: the loser, and whether we broke it with a 0.</summary>
         public event Action<CombatantStatus, bool> ClashWon;
 
@@ -144,6 +146,7 @@ namespace DeckArpg.Gameplay
             active.Add(hb);
             if (source != null) sources[hb] = source;
             HitboxSpawned?.Invoke(hb);
+            AnyHitboxSpawned?.Invoke(hb);
             return hb;
         }
 

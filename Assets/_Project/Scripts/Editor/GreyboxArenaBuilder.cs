@@ -149,6 +149,7 @@ namespace DeckArpg.Editor
             hud.AddComponent<StockView>();
             hud.AddComponent<ReloadBarView>();
             hud.AddComponent<SpeedLinesView>();
+            new GameObject("Audio").AddComponent<AudioService>();
         }
 
         private static void BuildEnvironment(Material floorMat, Material wallMat)

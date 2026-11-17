@@ -68,6 +68,9 @@ namespace DeckArpg.Gameplay
             if (direction.sqrMagnitude > 0.0001f) AimDirection = direction.normalized;
         }
 
+        /// <summary>A dash started (SFX).</summary>
+        public event System.Action Dashed;
+
         public bool TryDash()
         {
             if (IsDashing || dashCooldownRemaining > 0f || status.IsStunned || status.IsDead) return false;
@@ -78,6 +81,7 @@ namespace DeckArpg.Gameplay
             dashCooldownRemaining = dashCooldown + dashDuration;
             status.IsInvulnerable = true;
             lungeRemaining = 0f; // dashing out of a lunge cancels it
+            Dashed?.Invoke();
             return true;
         }
 
