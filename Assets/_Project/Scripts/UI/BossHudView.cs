@@ -141,7 +141,7 @@ namespace DeckArpg.UI
             stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);
             stateText.color = boss.State == BossState.SleightWindup ? SleightColor
                 : boss.State == BossState.ReloadWindow ? ReloadColor
-                : boss.State == BossState.Exhausted ? ExhaustedColor : Color.white;
+                : boss.State == BossState.Exhausted ? ExhaustedColor : new Color(0.7f, 0.7f, 0.75f);
 
             var cycle = boss.Deck.Cycle;
             int inHand = 0;

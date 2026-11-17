@@ -154,7 +154,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(BossCycleEnd.ReloadWindow, end);
             Assert.AreEqual(BossState.ReloadWindow, boss.State);
             Assert.AreEqual(BossRules.ReloadPostureMultiplier, boss.Status.PostureTakenMultiplier);
-            Assert.AreEqual(1f, boss.Status.DamageTakenMultiplier);
+            Assert.AreEqual(BossRules.ReloadWindowDamageMultiplier, boss.Status.DamageTakenMultiplier, "full damage in the window");
             Assert.AreEqual(0, cycle.DrawCount, "no instant reload: the window is punishable");
             Assert.IsNull(boss.Body.CurrentTelegraph);
 
@@ -190,7 +190,7 @@ namespace DeckArpg.Tests.PlayMode
             boss.ForceStateEnd();
             yield return null;
             Assert.AreEqual(BossState.Idle, boss.State);
-            Assert.AreEqual(1f, boss.Status.DamageTakenMultiplier);
+            Assert.AreEqual(BossRules.GuardDamageMultiplier, boss.Status.DamageTakenMultiplier, "back to guarded");
             Assert.AreEqual(15, cycle.CyclingCardCount);
         }
 
@@ -249,6 +249,70 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(BossState.Idle, boss.State);
             Assert.AreEqual(1f, boss.Status.DamageTakenMultiplier);
             Assert.AreEqual(1f, boss.Status.PostureTakenMultiplier);
+        }
+
+        [Test]
+        public void Idle_IsGuarded()
+        {
+            Assert.AreEqual(BossRules.GuardDamageMultiplier, boss.Status.DamageTakenMultiplier);
+            var hit = PlayerHit(6);
+            int before = boss.Status.Hp;
+            boss.Status.TakeHit(hit);
+            Assert.AreEqual(Mathf.RoundToInt(CombatMath.Damage(hit) * BossRules.GuardDamageMultiplier), before - boss.Status.Hp);
+        }
+
+        [Test]
+        public void SleightResetsTheCountSinceTheLastOne()
+        {
+            Assert.IsFalse(boss.TryTakeTurn());
+            Assert.AreEqual(1, boss.AttacksSinceSleight);
+            Assert.IsFalse(boss.TryTakeTurn());
+            Assert.IsTrue(boss.TryTakeTurn()); // the default policy is the pattern: 3rd attack
+            Assert.AreEqual(0, boss.AttacksSinceSleight);
+        }
+
+        /// <summary>Records what the boss passes to its policy.</summary>
+        private sealed class SpyPolicy : IBossAttackPolicy
+        {
+            public BossTurnContext Last;
+            public BossAction Next(in BossTurnContext context) { Last = context; return BossAction.Swing; }
+        }
+
+        [UnityTest]
+        public IEnumerator Policy_SeesThePlayersOpenings()
+        {
+            var player = new GameObject("SpyPlayer");
+            spawned.Add(player);
+            var playerStatus = player.AddComponent<CombatantStatus>();
+            playerStatus.Team = Team.Player;
+            var playerDeck = player.AddComponent<DeckRuntimeManager>();
+            var cards = new List<CardData>();
+            for (int i = 0; i < 4; i++)
+            {
+                var c = CardData.Create($"spy_{i}", 3 + i);
+                cards.Add(c);
+                spawned.Add(c);
+            }
+            playerDeck.SetStartingDeck(cards, newSeed: 1); // no 0-cards
+            boss.Body.Target = player.transform;
+            var spy = new SpyPolicy();
+            boss.Policy = spy;
+            yield return null;
+
+            boss.TryTakeTurn();
+            Assert.AreEqual(0, spy.Last.PlayerZerosReady);
+            Assert.IsFalse(spy.Last.PlayerReloading);
+            int sum = 0;
+            foreach (var c in cycle.Hand) if (c != null) sum += c.GetEffectiveValue();
+            Assert.AreEqual(sum, spy.Last.HandSum);
+
+            while (playerDeck.Cycle.OldestSlot >= 0) playerDeck.Cycle.TryPlay(playerDeck.Cycle.OldestSlot, out _);
+            Assert.IsTrue(playerDeck.Reload.Begin());
+            playerStatus.ApplyBreak();
+            boss.TryTakeTurn();
+            Assert.IsTrue(spy.Last.PlayerReloading);
+            Assert.IsTrue(spy.Last.PlayerStunned);
+            Assert.AreEqual(1, spy.Last.AttacksSinceSleight);
         }
 
         [Test]

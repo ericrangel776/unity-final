@@ -238,7 +238,10 @@ namespace DeckArpg.Gameplay
                     enemy.gameObject.AddComponent<BossStateFx>();
                 }
                 enemy.Deck.SetRoomValueMod(valueBonus);
-                enemy.Deck.SetStartingDeck(deck, NextSeed());
+                int deckSeed = NextSeed();
+                enemy.Deck.SetStartingDeck(deck, deckSeed);
+                // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
+                if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);
 
                 var captured = enemy;

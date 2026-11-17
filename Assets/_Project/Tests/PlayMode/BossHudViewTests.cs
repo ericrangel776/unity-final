@@ -69,7 +69,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(view.Pips.All(p => p == BossPip.Left));
             Assert.AreEqual("15 left", view.CounterText);
             Assert.AreEqual(1f, view.HpFill01, 1e-4f);
-            Assert.AreEqual("", view.StateText);
+            Assert.AreEqual("GUARDED", view.StateText);
         }
 
         [UnityTest]

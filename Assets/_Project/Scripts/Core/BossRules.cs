@@ -19,6 +19,12 @@ namespace DeckArpg.Core
         /// <summary>0-deleted cards in one cycle that turn the reload into Exhausted.</summary>
         public const int ExhaustDeleteThreshold = 4;
         public const float ReloadPostureMultiplier = 1.5f;
+        /// <summary>
+        /// HP damage the boss takes outside its punish windows (playtest-bot finding: card spam killed it in ~20 s, before
+        /// its first reload). The reload window takes full damage and Exhausted double, so the windows are where it dies.
+        /// </summary>
+        public const float GuardDamageMultiplier = 0.35f;
+        public const float ReloadWindowDamageMultiplier = 1f;
         /// <summary>Applied to both HP and posture damage while Exhausted.</summary>
         public const float ExhaustedDamageMultiplier = 2f;
         public const float SleightWindupSeconds = 1.5f;

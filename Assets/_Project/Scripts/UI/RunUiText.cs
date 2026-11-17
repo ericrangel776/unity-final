@@ -295,7 +295,8 @@ namespace DeckArpg.UI
             return string.Join(" · ", parts);
         }
 
-        /// <summary>The boss state label: "SLEIGHT 15", "RELOADING 1.2s", "EXHAUSTED 3.4s", or "" when it just fights.</summary>
+        /// <summary>The boss state label: "SLEIGHT 15", "RELOADING 1.2s", "EXHAUSTED 3.4s", or "GUARDED" while it just fights
+        /// (it takes reduced damage outside its punish windows).</summary>
         public static string BossState(Gameplay.BossState state, float remaining, int sleightValue)
         {
             if (remaining < 0f) remaining = 0f;
@@ -304,7 +305,7 @@ namespace DeckArpg.UI
                 case Gameplay.BossState.SleightWindup: return $"SLEIGHT {sleightValue}";
                 case Gameplay.BossState.ReloadWindow: return $"RELOADING {remaining:0.0}s";
                 case Gameplay.BossState.Exhausted: return $"EXHAUSTED {remaining:0.0}s";
-                default: return "";
+                default: return "GUARDED";
             }
         }
     }

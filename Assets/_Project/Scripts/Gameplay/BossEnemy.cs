@@ -35,6 +35,9 @@ namespace DeckArpg.Gameplay
         private readonly List<RuntimeCardInstance> sleightCards = new List<RuntimeCardInstance>(SleightRules.StockSize);
         private readonly List<AttackHitbox> sleightHitboxes = new List<AttackHitbox>();
         private bool capturingSleight;
+        private Transform playerTransform;
+        private DeckRuntimeManager playerDeck;
+        private CombatantStatus playerStatus;
 
         public IBossAttackPolicy Policy { get; set; } = new PatternBossPolicy();
         public BossState State { get; private set; }
@@ -44,6 +47,8 @@ namespace DeckArpg.Gameplay
         public float StateDuration { get; private set; }
         /// <summary>Attacks started this fight (swings and Sleights).</summary>
         public int AttackCount { get; private set; }
+        /// <summary>Attacks started since the last Sleight (all of them before the first).</summary>
+        public int AttacksSinceSleight { get; private set; }
         /// <summary>The Sleight being wound up (stock + reserved card), or null.</summary>
         public SleightResult? PendingSleight { get; private set; }
         /// <summary>The cards of the last fired Sleight (for a 0-break delete), slot order.</summary>
@@ -79,6 +84,7 @@ namespace DeckArpg.Gameplay
             body.TurnHook = this;
             // Set before the deck is dealt (RunDirector adds the boss first), so the first shuffle is spaced too.
             deck.Cycle.SpacingRule = card => !card.IsZeroBreaker && card.GetEffectiveValue() == CardValue.Max;
+            ApplyGuard();
         }
 
         private void OnEnable()
@@ -86,6 +92,7 @@ namespace DeckArpg.Gameplay
             status.Broken += HandleBroken;
             status.Died += HandleDied;
             combat.HitboxSpawned += HandleHitboxSpawned;
+            if (State == BossState.Idle && !status.IsDead) ApplyGuard();
         }
 
         private void OnDisable()
@@ -125,11 +132,36 @@ namespace DeckArpg.Gameplay
             foreach (var c in cycle.Hand) if (c != null) handCount++;
             if (handCount == 0) return false; // the body calls OnOutOfCards
 
-            float hp = status.MaxHp > 0 ? status.Hp / (float)status.MaxHp : 0f;
-            var action = Policy.Next(new BossTurnContext(AttackCount, handCount, hp));
+            var action = Policy.Next(Context(handCount));
             AttackCount++;
-            if (action != BossAction.Sleight || handCount < SleightRules.StockSize) return false;
-            return BeginSleight();
+            if (action != BossAction.Sleight || handCount < SleightRules.StockSize || !BeginSleight())
+            {
+                AttacksSinceSleight++;
+                return false;
+            }
+            AttacksSinceSleight = 0;
+            return true;
+        }
+
+        /// <summary>What the policy sees: the boss hand and the player's openings (its 0s, reload bar, stun).</summary>
+        private BossTurnContext Context(int handCount)
+        {
+            int sum = 0;
+            foreach (var c in deck.Cycle.Hand) if (c != null) sum += c.GetEffectiveValue();
+            CachePlayer();
+            int zeros = playerDeck != null ? playerDeck.Cycle.ZerosReady : 1;
+            bool reloading = playerDeck != null && playerDeck.Reload != null && playerDeck.Reload.State != ReloadState.Idle;
+            bool stunned = playerStatus != null && playerStatus.IsStunned;
+            float hp = status.MaxHp > 0 ? status.Hp / (float)status.MaxHp : 0f;
+            return new BossTurnContext(AttackCount, handCount, hp, sum, AttacksSinceSleight, zeros, reloading, stunned);
+        }
+
+        private void CachePlayer()
+        {
+            if (body.Target == playerTransform && (playerTransform == null || playerDeck != null)) return;
+            playerTransform = body.Target;
+            playerDeck = playerTransform != null ? playerTransform.GetComponent<DeckRuntimeManager>() : null;
+            playerStatus = playerTransform != null ? playerTransform.GetComponent<CombatantStatus>() : null;
         }
 
         public void OnOutOfCards()
@@ -140,6 +172,7 @@ namespace DeckArpg.Gameplay
             if (end == BossCycleEnd.Exhausted) BeginExhausted();
             else
             {
+                status.DamageTakenMultiplier = BossRules.ReloadWindowDamageMultiplier;
                 status.PostureTakenMultiplier = BossRules.ReloadPostureMultiplier;
                 SetState(BossState.ReloadWindow, BossRules.ReloadWindowSeconds);
             }
@@ -260,7 +293,7 @@ namespace DeckArpg.Gameplay
 
         private void EndStagger()
         {
-            ResetMultipliers();
+            ApplyGuard();
             var cycle = deck.Cycle;
             if (reloadPending || (cycle.OldestSlot < 0 && cycle.DrawCount == 0)) cycle.Reload();
             reloadPending = false;
@@ -276,6 +309,15 @@ namespace DeckArpg.Gameplay
             SetState(BossState.Idle, 0f);
         }
 
+        /// <summary>Normal fighting: guarded (reduced HP damage), normal posture damage.</summary>
+        private void ApplyGuard()
+        {
+            if (status == null) return;
+            status.DamageTakenMultiplier = BossRules.GuardDamageMultiplier;
+            status.PostureTakenMultiplier = 1f;
+        }
+
+        /// <summary>Unguarded (death, component removed).</summary>
         private void ResetMultipliers()
         {
             if (status == null) return;

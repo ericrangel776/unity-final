@@ -137,6 +137,8 @@ namespace DeckArpg.Gameplay
         private void ApplyBig(ClashOutcome outcome, AttackHitbox playerHb, AttackPayload playerPayload,
             AttackPayload bossPayload, Vector3 position)
         {
+            // The Deadlock can finish after we're gone (it aborts when its controller is disabled, e.g. on scene unload).
+            if (this == null || boss == null) return;
             var playerOwner = playerHb != null ? playerHb.Owner : player;
             switch (outcome)
             {
@@ -148,7 +150,11 @@ namespace DeckArpg.Gameplay
                         playerPayload.Value + bossPayload.Value, false, true, Time.frameCount, playerPayload.Shape,
                         playerPayload.Element, playerPayload.FinisherValue, 1);
                     var away = playerOwner != null ? boss.transform.position - playerOwner.transform.position : Vector3.zero;
+                    // Winner takes all: the combined hit ignores the boss's guard.
+                    float guard = boss.Status.DamageTakenMultiplier;
+                    boss.Status.DamageTakenMultiplier = Mathf.Max(1f, guard);
                     boss.Status.TakeHit(combined, away, canCounter: false);
+                    boss.Status.DamageTakenMultiplier = guard;
                     if (!boss.Status.IsDead) boss.ForceExhausted();
                     break;
                 }

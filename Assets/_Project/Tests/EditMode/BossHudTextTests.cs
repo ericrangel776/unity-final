@@ -45,7 +45,7 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual("0 left · 12 spent · 2 deleted · 1 burned",
                 RunUiText.BossCounter(0, 0, 12, 2, 1, 4, showHint: false));
 
-        [TestCase(BossState.Idle, 0f, 0, "")]
+        [TestCase(BossState.Idle, 0f, 0, "GUARDED")]
         [TestCase(BossState.SleightWindup, 1.2f, 17, "SLEIGHT 17")]
         [TestCase(BossState.ReloadWindow, 1.23f, 0, "RELOADING 1.2s")]
         [TestCase(BossState.Exhausted, 3.96f, 0, "EXHAUSTED 4.0s")]
