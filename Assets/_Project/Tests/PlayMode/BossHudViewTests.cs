@@ -96,7 +96,8 @@ namespace DeckArpg.Tests.PlayMode
             StringAssert.StartsWith("RELOADING", view.StateText);
             Assert.AreEqual(14, view.Pips.Count(p => p == BossPip.Spent));
             Assert.AreEqual(1, view.Pips.Count(p => p == BossPip.Deleted));
-            StringAssert.Contains("3 more = EXHAUSTED", view.CounterText);
+            StringAssert.Contains("1 deleted", view.CounterText);
+            StringAssert.DoesNotContain("more = EXHAUSTED", view.CounterText, "the cycle already ended");
         }
 
         [UnityTest]

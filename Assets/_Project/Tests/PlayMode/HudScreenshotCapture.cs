@@ -139,6 +139,53 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"M3 screenshots written to {dir}");
         }
 
+        /// <summary>The M4 boss fight (docs/specs/m4-overview.md): boss HUD, FX states and the draw-order strip, as m4_*.png.</summary>
+        [UnityTest]
+        public IEnumerator CaptureM4Boss()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+            director.RestartRun(3);
+
+            // Walk the run to the boss room (debug-clearing every fight).
+            for (int guard = 0; guard < 20 && director.Boss == null; guard++)
+            {
+                switch (director.State)
+                {
+                    case RunDirectorState.ChoosingDoor: director.ChooseDoor(0); break;
+                    case RunDirectorState.Fighting: director.DebugDefeatAllEnemies(); break;
+                    case RunDirectorState.Reward: director.FinishReward(); break;
+                    case RunDirectorState.Utility: director.LeaveUtility(); break;
+                }
+                yield return null;
+            }
+            var boss = director.Boss;
+            Assert.IsNotNull(boss, "Never reached the boss room.");
+            // Frame the boss: stand just in front of it (the camera follows the player).
+            RunTestHelpers.Place(director.Player, boss.transform.position + new Vector3(0f, 0f, -3.5f));
+            yield return null;
+            yield return null;
+            yield return Capture(dir, "m4_1_boss_hud_and_queue_strip");
+
+            Assert.IsTrue(boss.ForceSleight(), "Setup: the boss needs a full hand.");
+            yield return Capture(dir, "m4_2_boss_sleight_windup");
+
+            boss.ForceStateEnd();
+            yield return null; // fires
+            var cycle = boss.Deck.Cycle;
+            while (cycle.OldestSlot >= 0) cycle.TryPlay(cycle.OldestSlot, out _);
+            for (int i = 0; i < 2 && cycle.DiscardCount > 0; i++) cycle.DeleteFromCurrentCycle(cycle.DiscardPile[0]);
+            boss.ForceCycleEnd();
+            yield return Capture(dir, "m4_3_boss_reload_window");
+
+            boss.ForceExhausted();
+            yield return Capture(dir, "m4_4_boss_exhausted");
+            Debug.Log($"M4 screenshots written to {dir}");
+        }
+
         [UnityTest]
         public IEnumerator CaptureM2HudStates()
         {

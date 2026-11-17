@@ -19,7 +19,8 @@ namespace DeckArpg.UI
         private const float Width = 760f;
         private const int PipCount = RunContent.BossDeckSize;
 
-        private static readonly Color Back = new Color(0.05f, 0.06f, 0.08f, 0.8f);
+        // See-through: the boss often stands right under the bar with the isometric camera.
+        private static readonly Color Back = new Color(0.05f, 0.06f, 0.08f, 0.55f);
         private static readonly Color HpColor = new Color(0.85f, 0.2f, 0.2f);
         private static readonly Color PostureColor = new Color(1f, 0.8f, 0.3f);
         private static readonly Color BarBack = new Color(0.15f, 0.15f, 0.15f, 0.9f);
@@ -94,6 +95,7 @@ namespace DeckArpg.UI
                 handCards[i] = UiFactory.CreateImage(rect, $"BossCard{i + 1}", new Vector2(0f, 1f), new Vector2(0f, 1f),
                     new Vector2(16f + i * 52f, -72f), new Vector2(46f, 64f), EmptyCard);
                 handValues[i] = UiFactory.CreateText(handCards[i].transform, "Value", 30, TextAnchor.MiddleCenter, Color.white);
+                AddReadableOutline(handValues[i]);
             }
 
             // Deck counter: 15 pips and a line of text.
@@ -157,8 +159,17 @@ namespace DeckArpg.UI
                 cycle.DeletedThisCycleCount, cycle.BurnedCount));
             for (int i = 0; i < PipCount; i++)
                 pips[i].color = i < pipState.Count ? PipColor(pipState[i]) : BarBack;
+            bool midCycle = boss.State == BossState.Idle || boss.State == BossState.SleightWindup;
             counterText.text = RunUiText.BossCounter(left, cycle.StockCount, cycle.DiscardCount,
-                cycle.DeletedThisCycleCount, cycle.BurnedCount, BossRules.ExhaustDeleteThreshold);
+                cycle.DeletedThisCycleCount, cycle.BurnedCount, BossRules.ExhaustDeleteThreshold, midCycle);
+        }
+
+        /// <summary>A dark outline so white numbers stay readable on light (Physical) cards.</summary>
+        public static void AddReadableOutline(Text text)
+        {
+            var outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            outline.effectDistance = new Vector2(1.5f, -1.5f);
         }
 
         public static Color PipColor(BossPip pip)

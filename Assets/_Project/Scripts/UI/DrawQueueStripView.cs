@@ -104,7 +104,9 @@ namespace DeckArpg.UI
                 var image = UiFactory.CreateImage(row, $"Chip{chips.Count + 1}", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
                     Vector2.zero, new Vector2(MaxChipWidth, ChipHeight), Color.white);
                 chips.Add(image);
-                chipTexts.Add(UiFactory.CreateText(image.transform, "Value", 16, TextAnchor.MiddleCenter, Color.white));
+                var value = UiFactory.CreateText(image.transform, "Value", 16, TextAnchor.MiddleCenter, Color.white);
+                BossHudView.AddReadableOutline(value);
+                chipTexts.Add(value);
                 var outline = image.gameObject.AddComponent<Outline>();
                 outline.effectColor = PremiumOutline;
                 outline.effectDistance = new Vector2(2f, 2f);

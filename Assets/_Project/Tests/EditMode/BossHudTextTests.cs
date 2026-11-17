@@ -40,6 +40,11 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual("0 left · 10 spent · 4 deleted: EXHAUSTED at reload · 1 burned",
                 RunUiText.BossCounter(0, 0, 10, 4, 1, 4));
 
+        [Test]
+        public void BossCounter_AfterTheCycleEnded_DropsTheHint() =>
+            Assert.AreEqual("0 left · 12 spent · 2 deleted · 1 burned",
+                RunUiText.BossCounter(0, 0, 12, 2, 1, 4, showHint: false));
+
         [TestCase(BossState.Idle, 0f, 0, "")]
         [TestCase(BossState.SleightWindup, 1.2f, 17, "SLEIGHT 17")]
         [TestCase(BossState.ReloadWindow, 1.23f, 0, "RELOADING 1.2s")]

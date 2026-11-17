@@ -275,13 +275,18 @@ namespace DeckArpg.UI
             return pips;
         }
 
-        /// <summary>"9 left · 3 spent · 2 deleted (2 more = EXHAUSTED)". Parts that are 0 are left out, except "left".</summary>
-        public static string BossCounter(int left, int stocked, int spent, int deleted, int burned, int exhaustThreshold)
+        /// <summary>
+        /// "9 left · 3 spent · 2 deleted (2 more = EXHAUSTED)". Parts that are 0 are left out, except "left". The Exhausted
+        /// hint is only shown mid-cycle (<paramref name="showHint"/>): once the cycle has ended it no longer applies.
+        /// </summary>
+        public static string BossCounter(int left, int stocked, int spent, int deleted, int burned, int exhaustThreshold,
+            bool showHint = true)
         {
             var parts = new List<string> { $"{left} left" };
             if (stocked > 0) parts.Add($"{stocked} stocked");
             if (spent > 0) parts.Add($"{spent} spent");
-            if (deleted > 0)
+            if (deleted > 0 && !showHint) parts.Add($"{deleted} deleted");
+            else if (deleted > 0)
             {
                 int more = exhaustThreshold - deleted;
                 parts.Add(more > 0 ? $"{deleted} deleted ({more} more = EXHAUSTED)" : $"{deleted} deleted: EXHAUSTED at reload");

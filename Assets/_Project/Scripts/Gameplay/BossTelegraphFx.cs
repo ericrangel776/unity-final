@@ -5,7 +5,7 @@ namespace DeckArpg.Gameplay
     /// <summary>
     /// Boss wind-up readability (docs/specs/m4-overview.md): a ground warning ring with an inner ring that grows to meet
     /// it as the swing comes, and for Sleights a distinct purple style plus a big overhead "SLEIGHT 15" label (the normal
-    /// card value already shows overhead via the telegraph view). The FX root is unparented so the boss's scale doesn't
+    /// card value already shows overhead via the telegraph view), drawn on the ring's near edge so it stays on screen. The FX root is unparented so the boss's scale doesn't
     /// distort it, and is destroyed with the boss.
     /// </summary>
     [RequireComponent(typeof(BossEnemy))]
@@ -13,7 +13,7 @@ namespace DeckArpg.Gameplay
     {
         public const float Radius = 3.2f;
         private const int Segments = 64;
-        private const float LabelHeight = 4.6f;
+        private const float LabelHeight = 0.6f;
         public static readonly Color SwingColor = new Color(1f, 0.3f, 0.2f, 0.9f);
         public static readonly Color SleightColor = new Color(0.75f, 0.35f, 1f, 1f);
 
@@ -82,8 +82,12 @@ namespace DeckArpg.Gameplay
             if (sleight)
             {
                 label.text = boss.PendingSleight.HasValue ? $"SLEIGHT {boss.PendingSleight.Value.Value}" : "SLEIGHT";
-                label.transform.position = transform.position + Vector3.up * LabelHeight;
+                // On the ring's near edge (toward the camera): above the boss it would leave the top of the screen.
                 var cam = Camera.main;
+                var toward = cam != null ? -cam.transform.forward : Vector3.back;
+                toward.y = 0f;
+                toward = toward.sqrMagnitude > 0.0001f ? toward.normalized : Vector3.back;
+                label.transform.position = transform.position + toward * Radius + Vector3.up * LabelHeight;
                 if (cam != null) label.transform.rotation = cam.transform.rotation;
                 float pop = 1f + 0.15f * Mathf.Sin(Time.unscaledTime * 14f);
                 label.transform.localScale = Vector3.one * pop;
