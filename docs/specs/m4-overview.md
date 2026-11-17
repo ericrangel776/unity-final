@@ -38,6 +38,31 @@ Target: a decent player beats the boss in **90-150 s**.
   (no audio assets, no new packages).
 - **Done when:** tests + reviewed screenshots + a manual boss playtest checklist pass.
 
+## Tuning changes after the bot measurements (user, 2026-11-17)
+`BossFightMeasurement` (an `[Explicit]` PlayMode fixture) plays 6 seeded runs to the boss and lets `BossFightBot` (scripted
+"decent player": 0.15 s reactions, imperfect timing, 0-parries, telegraph answers, all-in during punish windows) fight it
+in real time. Results land in `TestResults/bossfight.txt`.
+
+| Setup | Bot result | Fight time | Notes |
+| --- | --- | --- | --- |
+| 630 HP, no guard | 4 wins / 6 | 16-23 s | Card spam (~30 dmg/s) killed the boss before its first reload: 0 reload windows, 0 Exhausted. |
+| 630 HP, guard 35% | 4 / 6 | 27-32 s | Every win came in the first Exhausted. |
+| 1710 HP, guard | 0 / 6 | 27-59 s | The bot (100 HP) lasts ~40 s at full boss damage. |
+| 1710 HP, guard, boss deals 50% | 1 / 6 | 41-71 s | Losses end with the boss at 551-956 HP. |
+
+Decisions from these results:
+- **Guard:** the boss takes 35% HP damage outside its punish windows, 100% in the reload window, 200% when Exhausted
+  (`BossRules.GuardDamageMultiplier`). HUD label `GUARDED`. The Big Deadlock's combined hit ignores the guard.
+- **Boss damage dealt x0.5** (`BossRules.DamageDealtMultiplier`, stamped on its hitboxes via
+  `CombatActionController.OutgoingDamageScale` / `AttackPayload.DamageScale`). Card values and clashes are unchanged.
+- **Boss HP 1900%** (1710 at the base 60, Intensity 7).
+- **Natural boss AI** (`NaturalBossPolicy`, used in runs; the pattern policy stays the component default for tests):
+  base 15% Sleight chance, +35% if the player has no 0 ready, +30% if the player is reloading or stunned, +4% per hand-sum
+  point above 15 (max +30%), +10% per attack beyond 3 since the last Sleight, capped at 90%; never twice in a row; needs a
+  full hand. Seeded from the boss deck seed.
+- **Open:** the bot isn't a human. It deals damage faster than a person likely would (longer human fights) and defends
+  worse (shorter ones), so fight length and difficulty are decided in the manual playtest below.
+
 ## Assumptions (not asked; change in a sub-spec if wrong)
 - The boss has **no 0-card** of its own (it never parries). Its "player rules" are hand, queue, Sleights,
   Floor of 3, burns and clamping.
@@ -48,7 +73,7 @@ Target: a decent player beats the boss in **90-150 s**.
 - Single player cards hitting the boss during a *Sleight* wind-up use the normal telegraph-clash rule against the sum,
   so they always lose (break). Only a player Sleight can clash a wind-up.
 - `0`s still never clash telegraphs (2026-11-14 decision). Against a boss Sleight a 0 works only *after* activation.
-- Boss HP/posture start from today's boss numbers and are tuned in step 8 to hit 90-150 s.
+- Boss HP/posture start from today's boss numbers and are tuned in step 8 to hit 90-150 s (see the tuning section above).
 
 ## Out of scope
 - A "natural" boss decision AI (hand-value or phase-based). Only the `IBossAttackPolicy` seam and the pattern policy.
