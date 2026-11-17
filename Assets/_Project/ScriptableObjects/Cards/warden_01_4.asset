@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2da138edc98b28042a365e99c1c946b2, type: 3}
-  m_Name: warden_05_5
+  m_Name: warden_01_4
   m_EditorClassIdentifier: DeckArpg.Core::DeckArpg.Core.CardData
-  cardId: warden_05_5
-  displayName: Warden 5
+  cardId: warden_01_4
+  displayName: Warden 4
   isZeroBreaker: 0
-  baseValue: 5
+  baseValue: 4
   shape: 0
   element: 0
   isHeal: 0

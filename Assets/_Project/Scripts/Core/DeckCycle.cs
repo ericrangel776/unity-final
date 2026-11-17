@@ -41,8 +41,12 @@ namespace DeckArpg.Core
         private readonly List<RuntimeCardInstance> burned = new List<RuntimeCardInstance>();
         private readonly List<RuntimeCardInstance> deletedThisCycle = new List<RuntimeCardInstance>();
         private readonly List<RuntimeCardInstance> stock = new List<RuntimeCardInstance>(SleightRules.StockSize);
+        private readonly long[] drawStamp = new long[HandSize];
+        private long drawCounter;
         private float stockIdleSeconds;
         private Random rng = new Random(0);
+        /// <summary>Last card that left the hand by play or Sleight (spacing across a reload).</summary>
+        private RuntimeCardInstance lastPlayed;
 
         /// <summary>Raised after any change to the piles or hand.</summary>
         public event Action Changed;
@@ -50,6 +54,28 @@ namespace DeckArpg.Core
         public event Action<RuntimeCardInstance, BurnCause> CardBurned;
 
         public IReadOnlyList<RuntimeCardInstance> Hand => hand;
+        /// <summary>The draw queue in order, next card first (read-only peek, for the draw-order strip).</summary>
+        public IEnumerable<RuntimeCardInstance> DrawOrder => drawQueue;
+        /// <summary>
+        /// Optional: cards matching this are never back to back in the draw order, also across a reload
+        /// (boss 9s). Applied every time cards are shuffled into the queue. Null = plain shuffle.
+        /// </summary>
+        public Func<RuntimeCardInstance, bool> SpacingRule { get; set; }
+
+        /// <summary>
+        /// The non-empty hand slot whose card was drawn earliest, or -1. Playing this slot each time makes the play
+        /// order follow the draw order (the boss does this so its spaced shuffle holds).
+        /// </summary>
+        public int OldestSlot
+        {
+            get
+            {
+                int best = -1;
+                for (int i = 0; i < HandSize; i++)
+                    if (hand[i] != null && (best < 0 || drawStamp[i] < drawStamp[best])) best = i;
+                return best;
+            }
+        }
         public RuntimeCardInstance ParrySlot { get; private set; }
         public int DrawCount => drawQueue.Count;
         public int DiscardCount => discard.Count;
@@ -94,6 +120,7 @@ namespace DeckArpg.Core
             stock.Clear();
             stockIdleSeconds = 0f;
             ParrySlot = null;
+            lastPlayed = null;
             Array.Clear(hand, 0, hand.Length);
 
             var list = new List<RuntimeCardInstance>();
@@ -114,7 +141,8 @@ namespace DeckArpg.Core
 
             card = hand[slot];
             DiscardOrBurnPremium(card);
-            hand[slot] = DrawNext();
+            lastPlayed = card;
+            DrawInto(slot);
             Changed?.Invoke();
             return true;
         }
@@ -142,7 +170,8 @@ namespace DeckArpg.Core
             if (slot < 0 || slot >= HandSize || hand[slot] == null) return StockResult.Rejected;
 
             var card = hand[slot];
-            hand[slot] = DrawNext();
+            DrawInto(slot);
+            lastPlayed = card;
             return AddToStock(card, out sleight);
         }
 
@@ -326,6 +355,27 @@ namespace DeckArpg.Core
         }
 
         /// <summary>
+        /// A boss Sleight broken by a 0: each of its cards is set aside until the next reload, from discard or, for a
+        /// slot-1 card that already burned, from the burned pile (the 0-break turns that burn into a delete).
+        /// Returns how many cards were set aside.
+        /// </summary>
+        public int DeleteSleight(IReadOnlyList<RuntimeCardInstance> cards)
+        {
+            if (cards == null) return 0;
+            int count = 0;
+            foreach (var card in cards)
+            {
+                if (card == null || deletedThisCycle.Contains(card)) continue;
+                if (burned.Remove(card)) card.IsBurnedThisFight = false;
+                else if (!RemoveFromCycle(card)) continue;
+                deletedThisCycle.Add(card);
+                count++;
+            }
+            if (count > 0) Changed?.Invoke();
+            return count;
+        }
+
+        /// <summary>
         /// Burns <paramref name="card"/> for the room from wherever it sits in the cycle (discard, set aside by a
         /// 0-break, hand or draw queue). The Floor of 3 applies; a card set aside this cycle still counts toward
         /// it because it would come back on reload. Returns false if blocked, already burned or not in the cycle.
@@ -351,7 +401,7 @@ namespace DeckArpg.Core
             for (int i = 0; i < HandSize; i++)
             {
                 if (hand[i] != card) continue;
-                hand[i] = DrawNext();
+                DrawInto(i);
                 return true;
             }
 
@@ -370,6 +420,16 @@ namespace DeckArpg.Core
                 int j = rng.Next(i + 1);
                 (cards[i], cards[j]) = (cards[j], cards[i]);
             }
+            if (SpacingRule != null)
+            {
+                // Only the queue part is spaced: 0-cards never enter it.
+                var numbered = cards.FindAll(c => !c.IsZeroBreaker);
+                var queued = new List<RuntimeCardInstance>(drawQueue);
+                var previous = queued.Count > 0 ? queued[queued.Count - 1] : NewestInHand() ?? lastPlayed;
+                CardSpacing.SpreadApart(numbered, SpacingRule, previous != null && SpacingRule(previous), rng);
+                numbered.AddRange(cards.FindAll(c => c.IsZeroBreaker));
+                cards = numbered;
+            }
             // 0-cards never enter the draw queue: they go straight to the Parry slot / reserve.
             foreach (var c in cards)
             {
@@ -382,7 +442,22 @@ namespace DeckArpg.Core
         private void FillEmptySlots()
         {
             for (int i = 0; i < HandSize; i++)
-                if (hand[i] == null) hand[i] = DrawNext();
+                if (hand[i] == null) DrawInto(i);
+        }
+
+        private void DrawInto(int slot)
+        {
+            hand[slot] = DrawNext();
+            drawStamp[slot] = ++drawCounter;
+        }
+
+        /// <summary>The hand card drawn last (it's played just before the queue continues), or null.</summary>
+        private RuntimeCardInstance NewestInHand()
+        {
+            int best = -1;
+            for (int i = 0; i < HandSize; i++)
+                if (hand[i] != null && (best < 0 || drawStamp[i] > drawStamp[best])) best = i;
+            return best < 0 ? null : hand[best];
         }
 
         private RuntimeCardInstance DrawNext() => drawQueue.Count > 0 ? drawQueue.Dequeue() : null;

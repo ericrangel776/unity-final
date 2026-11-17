@@ -85,6 +85,8 @@ namespace DeckArpg.Tests.EditMode
         [TestCase(MapCardKind.Vanguard, 9, 2)]
         [TestCase(MapCardKind.Hexfire, 1, 1)]
         [TestCase(MapCardKind.Hexfire, 9, 3)]
+        [TestCase(MapCardKind.Boss, 7, 0)]
+        [TestCase(MapCardKind.Boss, 9, 0)]
         public void EnemyCardValueBonus(MapCardKind kind, int n, int expected) =>
             Assert.AreEqual(expected, RoomIntensity.EnemyCardValueBonus(Room(kind, n)));
 

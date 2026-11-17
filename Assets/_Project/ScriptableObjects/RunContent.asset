@@ -61,19 +61,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e32300bc85dc83a4a9a7f609fe816823, type: 2}
   - {fileID: 11400000, guid: d6b8e0df4dde31a4fb52aeefb75a394a, type: 2}
   bossDeck:
-  - {fileID: 11400000, guid: 20507a4d42188694b88491495c5721e8, type: 2}
+  - {fileID: 11400000, guid: 2734f5a17a73f0f4095b50492f4814df, type: 2}
   - {fileID: 11400000, guid: d10707cc1b7c3d94fb65bfa3a9ecc6f6, type: 2}
-  - {fileID: 11400000, guid: 610983ff0bda0394c80cc60bfe882876, type: 2}
+  - {fileID: 11400000, guid: 30dd08bdfe3e9ff478c67e0e17275246, type: 2}
   - {fileID: 11400000, guid: 2958381ac7e357c45b627a52947161f2, type: 2}
-  - {fileID: 11400000, guid: 988b62e62041dcd43b6a63d17a36e059, type: 2}
+  - {fileID: 11400000, guid: 674ce685cf916334592b14b1c8717e1f, type: 2}
   - {fileID: 11400000, guid: cdad3d904fb14ab4c9950e1fda1f8f49, type: 2}
   - {fileID: 11400000, guid: 092dc722b55de0b47a15a360e9088d93, type: 2}
-  - {fileID: 11400000, guid: 72b5ef5988b1bcf43b569220dd00c8fd, type: 2}
+  - {fileID: 11400000, guid: c6d666b83c140624cb89761c9d6b8ede, type: 2}
   - {fileID: 11400000, guid: 9481653fa8ea59944b320506d3c6ebd1, type: 2}
   - {fileID: 11400000, guid: e1646df4ab3caac48aa043cc0c5b4adf, type: 2}
-  - {fileID: 11400000, guid: 4ccc3196cb97b074ca8bf0c7c5baca9f, type: 2}
+  - {fileID: 11400000, guid: 82e031fb132b3dc4b86633a9539de791, type: 2}
   - {fileID: 11400000, guid: e1f72fa6b2551804a8421c6eff81f7e3, type: 2}
-  - {fileID: 11400000, guid: 7a669c832e0584640829e0ad5debc032, type: 2}
+  - {fileID: 11400000, guid: 01095b72237348b4aa35e92405f8bf53, type: 2}
   - {fileID: 11400000, guid: ca1b28923cfb0db408f59bac1301f7c9, type: 2}
   - {fileID: 11400000, guid: deb31144f688c3549aa6dd7fcf28a7d4, type: 2}
   enemyZero: {fileID: 11400000, guid: 05ff79c317a38d642aa0fae2ee96b4b4, type: 2}
