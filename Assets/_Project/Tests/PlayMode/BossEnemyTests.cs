@@ -251,6 +251,22 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(1f, boss.Status.PostureTakenMultiplier);
         }
 
+        [UnityTest]
+        public IEnumerator BossAttacks_DealHalfDamage()
+        {
+            yield return null;
+            Assert.AreEqual(BossRules.DamageDealtMultiplier, boss.Combat.OutgoingDamageScale);
+            AttackHitbox fired = null;
+            boss.Combat.HitboxSpawned += hb => fired = hb;
+            Assert.IsTrue(boss.ForceSleight());
+            int sum = boss.PendingSleight.Value.Value;
+            boss.ForceStateEnd();
+            yield return null;
+            Assert.IsNotNull(fired);
+            Assert.AreEqual(BossRules.DamageDealtMultiplier, fired.Payload.DamageScale);
+            Assert.AreEqual(sum, fired.Payload.Value, "the value (and so every clash) is unchanged");
+        }
+
         [Test]
         public void Idle_IsGuarded()
         {

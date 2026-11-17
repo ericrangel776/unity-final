@@ -371,11 +371,12 @@ namespace DeckArpg.Gameplay
         [ContextMenu("Run/Defeat All Enemies")]
         public void DebugDefeatAllEnemies()
         {
-            // One overwhelming Sleight hit each (Sleight values aren't clamped to 9).
+            // Overwhelming Sleight hits (values aren't clamped to 9), repeated so a guarded boss still goes down.
             var payload = new AttackPayload(playerStatus.OwnerId, Team.Player, 999, false, true, Time.frameCount,
                 CardShape.Strike, Element.Physical);
             foreach (var e in enemies.ToArray())
-                if (e != null && !e.Status.IsDead) e.Status.TakeHit(payload);
+                for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
+                    e.Status.TakeHit(payload);
         }
     }
 }

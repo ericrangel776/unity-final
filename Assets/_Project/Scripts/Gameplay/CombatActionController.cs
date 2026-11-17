@@ -60,6 +60,8 @@ namespace DeckArpg.Gameplay
             }
         }
         public float BodyHitDelay { get => bodyHitDelay; set => bodyHitDelay = Mathf.Max(0f, value); }
+        /// <summary>Stamped onto every payload we spawn (<see cref="AttackPayload.DamageScale"/>). 1 = normal; the boss uses 0.5.</summary>
+        public float OutgoingDamageScale { get; set; } = 1f;
 
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
         public event Action<RuntimeCardInstance, bool> CardBroken;
@@ -120,6 +122,8 @@ namespace DeckArpg.Gameplay
             if (aimDirection.sqrMagnitude < 0.0001f) aimDirection = transform.forward;
             aimDirection.Normalize();
 
+            var stamped = OutgoingDamageScale != 1f && OutgoingDamageScale > 0f
+                ? payload.WithDamageScale(OutgoingDamageScale) : payload;
             var go = new GameObject($"Hitbox_{payload.Shape}_{payload.Value}");
             go.layer = gameObject.layer;
             var hb = go.AddComponent<AttackHitbox>();
@@ -129,17 +133,17 @@ namespace DeckArpg.Gameplay
             {
                 case CardShape.Throw:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
-                    hb.InitSphere(this, payload, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
+                    hb.InitSphere(this, stamped, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
                     break;
                 case CardShape.Arcana:
                     go.transform.SetParent(transform, false);
                     go.transform.position = origin;
-                    hb.InitSphere(this, payload, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
+                    hb.InitSphere(this, stamped, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
                     break;
                 default:
                     go.transform.SetParent(transform, false);
                     go.transform.SetPositionAndRotation(origin + aimDirection * strikeReach, Quaternion.LookRotation(aimDirection));
-                    hb.InitBox(this, payload, strikeSize * scale, strikeDuration, bodyHitDelay, showHitboxes);
+                    hb.InitBox(this, stamped, strikeSize * scale, strikeDuration, bodyHitDelay, showHitboxes);
                     break;
             }
 

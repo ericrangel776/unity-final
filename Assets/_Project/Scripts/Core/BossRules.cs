@@ -25,6 +25,11 @@ namespace DeckArpg.Core
         /// </summary>
         public const float GuardDamageMultiplier = 0.35f;
         public const float ReloadWindowDamageMultiplier = 1f;
+        /// <summary>
+        /// Damage the boss's attacks deal (bot measurement: at full damage a player lasts ~40 s, too short for a 90-150 s
+        /// fight). Card values and clashes are unchanged; only the HP damage that lands.
+        /// </summary>
+        public const float DamageDealtMultiplier = 0.5f;
         /// <summary>Applied to both HP and posture damage while Exhausted.</summary>
         public const float ExhaustedDamageMultiplier = 2f;
         public const float SleightWindupSeconds = 1.5f;

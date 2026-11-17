@@ -165,7 +165,8 @@ namespace DeckArpg.Gameplay
                     {
                         playerOwner.CancelActiveAction();
                         var full = new AttackPayload(bossPayload.OwnerId, Team.Enemy, bossPayload.Value, false, true,
-                            Time.frameCount, bossPayload.Shape, bossPayload.Element, bossPayload.FinisherValue, 1);
+                            Time.frameCount, bossPayload.Shape, bossPayload.Element, bossPayload.FinisherValue, 1)
+                            .WithDamageScale(bossPayload.DamageScale);
                         var away = playerOwner.transform.position - boss.transform.position;
                         playerOwner.Status.TakeHit(full, away, canCounter: false, nonLethal: true);
                     }

@@ -82,6 +82,7 @@ namespace DeckArpg.Gameplay
             status = GetComponent<CombatantStatus>();
             combat = GetComponent<CombatActionController>();
             body.TurnHook = this;
+            combat.OutgoingDamageScale = BossRules.DamageDealtMultiplier;
             // Set before the deck is dealt (RunDirector adds the boss first), so the first shuffle is spaced too.
             deck.Cycle.SpacingRule = card => !card.IsZeroBreaker && card.GetEffectiveValue() == CardValue.Max;
             ApplyGuard();

@@ -27,6 +27,13 @@ namespace DeckArpg.Core
         public readonly bool ZeroProof;
         /// <summary>The off-deck poke: damage only. It never flinches, shoves, or clashes with a telegraph.</summary>
         public readonly bool IsPoke;
+        private readonly float damageScale;
+
+        /// <summary>
+        /// Scales the HP damage this attack deals (the boss deals half, M4 tuning). Card values and clashes are unaffected.
+        /// 1 by default; a default-constructed payload also reads as 1.
+        /// </summary>
+        public float DamageScale => damageScale > 0f ? damageScale : 1f;
 
         public float DamageMultiplier => 1f + FinisherValue * SleightRules.MultiplierPerPoint;
 
@@ -48,6 +55,20 @@ namespace DeckArpg.Core
             ActivationTick = activationTick;
             Shape = shape;
             Element = element;
+            damageScale = 1f;
+        }
+
+        private AttackPayload(in AttackPayload source, float scale)
+        {
+            this = source;
+            damageScale = scale;
+        }
+
+        /// <summary>A copy that deals <paramref name="scale"/> x damage (must be positive).</summary>
+        public AttackPayload WithDamageScale(float scale)
+        {
+            if (!(scale > 0f)) throw new ArgumentOutOfRangeException(nameof(scale));
+            return new AttackPayload(this, scale);
         }
 
         public static AttackPayload FromCard(RuntimeCardInstance card, int ownerId, Team team, int activationTick)

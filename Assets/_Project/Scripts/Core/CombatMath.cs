@@ -12,6 +12,15 @@ namespace DeckArpg.Core
         /// </summary>
         public static int Damage(in AttackPayload payload)
         {
+            int damage = UnscaledDamage(payload);
+            float scale = payload.DamageScale;
+            if (damage <= 0 || scale == 1f) return damage;
+            // A scaled hit still deals at least 1.
+            return System.Math.Max(1, (int)System.Math.Round(damage * scale, System.MidpointRounding.AwayFromZero));
+        }
+
+        private static int UnscaledDamage(in AttackPayload payload)
+        {
             if (payload.IsZeroBreaker) return 0;
             int baseDamage = payload.Value * DamagePerPoint;
             if (!payload.IsSleight) return baseDamage;

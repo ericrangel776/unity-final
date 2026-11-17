@@ -45,14 +45,15 @@ namespace DeckArpg.Core
 
         public const int EliteHpPercent = 250;
         /// <summary>
-        /// Boss size class. M4 tuning: 700% (630 HP at the base 60) aims at a 90-150 s fight for a decent player now that
-        /// the boss has punish windows (reload window, Exhausted 2x); the M3 placeholder was 400%.
+        /// Boss size class (M3 placeholder: 400%). M4 tuning from BossFightMeasurement (scripted bot, guarded boss): about
+        /// 10 dmg/s while guarded plus ~240 per Exhausted window, one boss cycle every ~25-30 s, so ~1700 HP aims at a
+        /// 90-150 s fight (1710 HP at the base 60 and Intensity 7).
         /// </summary>
-        public const int BossHpPercent = 700;
+        public const int BossHpPercent = 1900;
 
         /// <summary>
         /// One enemy's max HP: <paramref name="baseHp"/> x <see cref="EnemyHpPercent"/> x size class
-        /// (Elite 250%, Boss 700%), rounded half up, at least 1.
+        /// (Elite 250%, Boss 1900%), rounded half up, at least 1.
         /// </summary>
         public static int EnemyMaxHp(int baseHp, in MapCard room)
         {
