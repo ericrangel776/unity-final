@@ -234,6 +234,8 @@ namespace DeckArpg.Gameplay
                 {
                     Boss = enemy.gameObject.AddComponent<BossEnemy>();
                     enemy.gameObject.AddComponent<BossSleightClash>().Watch(playerCombat);
+                    enemy.gameObject.AddComponent<BossTelegraphFx>();
+                    enemy.gameObject.AddComponent<BossStateFx>();
                 }
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 enemy.Deck.SetStartingDeck(deck, NextSeed());
