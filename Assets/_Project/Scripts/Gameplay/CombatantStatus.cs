@@ -46,6 +46,10 @@ namespace DeckArpg.Gameplay
         public float HitFlinchSeconds { get => hitFlinchSeconds; set => hitFlinchSeconds = Mathf.Max(0f, value); }
         /// <summary>Set while an enemy winds up a telegraph: hits still damage but can't flinch it out of the attack.</summary>
         public bool FlinchArmor { get; set; }
+        /// <summary>Multiplies HP damage taken from hits (boss Exhausted: 2). 1 = normal.</summary>
+        public float DamageTakenMultiplier { get; set; } = 1f;
+        /// <summary>Multiplies posture damage taken from breaks and effects (boss reload window / Exhausted). 1 = normal.</summary>
+        public float PostureTakenMultiplier { get; set; } = 1f;
         /// <summary>Push from the last body hit, decaying to zero. Movers add this to their motion.</summary>
         public Vector3 KnockbackVelocity { get; private set; }
 
@@ -91,6 +95,7 @@ namespace DeckArpg.Gameplay
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
             int damage = CombatMath.Damage(payload);
+            if (DamageTakenMultiplier != 1f) damage = Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier));
             // 0-damage hits (0-cards) and the breaking swing itself don't spend the counter window.
             bool counter = canCounter && damage > 0 && IsCounterWindowOpen;
             if (counter)
@@ -157,7 +162,7 @@ namespace DeckArpg.Gameplay
         public void AddPostureDamage(float amount)
         {
             if (IsDead || amount <= 0f) return;
-            Posture += amount;
+            Posture += amount * PostureTakenMultiplier;
             if (Posture < maxPosture) return;
             Posture = 0f;
             stunRemaining = Mathf.Max(stunRemaining, postureBreakStunSeconds);
@@ -172,7 +177,7 @@ namespace DeckArpg.Gameplay
         public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f)
         {
             if (IsDead) return;
-            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin);
+            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin) * PostureTakenMultiplier;
             float stun = breakStunSeconds * CombatMath.BreakStunScale(margin);
             if (awayFromWinner != Vector3.zero) Push(awayFromWinner, CombatMath.BreakShoveSpeed(margin));
             if (Posture >= maxPosture)
@@ -208,6 +213,8 @@ namespace DeckArpg.Gameplay
 
         public void Revive()
         {
+            DamageTakenMultiplier = 1f;
+            PostureTakenMultiplier = 1f;
             Hp = maxHp;
             Posture = 0f;
             stunRemaining = 0f;

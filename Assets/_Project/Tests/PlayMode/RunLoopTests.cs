@@ -323,7 +323,9 @@ namespace DeckArpg.Tests.PlayMode
         {
             director.RestartRun(9);
             bool? ended = null;
+            BossEnemy spawnedBoss = null;
             director.RunEnded += victory => ended = victory;
+            director.BossSpawned += b => spawnedBoss = b;
 
             for (int guard = 0; guard < 20 && director.State != RunDirectorState.Victory; guard++)
             {
@@ -336,6 +338,16 @@ namespace DeckArpg.Tests.PlayMode
                             Assert.AreEqual(1, director.Enemies.Count);
                             Assert.Greater(director.Enemies[0].transform.localScale.x, 1f);
                             Assert.AreEqual(RunContent.BossDeckSize, director.Enemies[0].Deck.Cycle.CyclingCardCount);
+                            var boss = director.Enemies[0].GetComponent<BossEnemy>();
+                            Assert.IsNotNull(boss, "The boss room spawns a BossEnemy.");
+                            Assert.AreSame(boss, director.Boss);
+                            Assert.AreSame(boss, spawnedBoss);
+                            Assert.IsNotNull(director.Enemies[0].Deck.Cycle.SpacingRule, "Spacing set before the deal.");
+                        }
+                        else if (director.Run.CurrentRoom.IsCombat)
+                        {
+                            Assert.IsNull(director.Boss);
+                            Assert.IsTrue(director.Enemies.All(e => e.GetComponent<BossEnemy>() == null), "Mobs have no boss brain.");
                         }
                         break;
                     case RunDirectorState.Fighting: director.DebugDefeatAllEnemies(); break;

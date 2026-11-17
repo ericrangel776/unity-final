@@ -60,6 +60,10 @@ namespace DeckArpg.Gameplay
         public ExitDoor Door => door;
         /// <summary>Spawned enemies of the current room that haven't been removed yet.</summary>
         public IReadOnlyList<TrainingDummyEnemy> Enemies => enemies;
+        /// <summary>The boss of the current room, or null outside the boss fight.</summary>
+        public BossEnemy Boss { get; private set; }
+        /// <summary>Raised once the boss is spawned and dealt (boss HUD/FX bind to it).</summary>
+        public event Action<BossEnemy> BossSpawned;
         public CombatReward CurrentReward { get; private set; }
         public ShopVisit CurrentShop { get; private set; }
         public ForgeVisit CurrentForge { get; private set; }
@@ -225,6 +229,8 @@ namespace DeckArpg.Gameplay
 
                 enemy.Status.SetMaxHp(maxHp);
                 enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * postureScale);
+                // Before the deal: the boss sets its 9-spacing rule on the deck cycle.
+                if (room.Kind == MapCardKind.Boss) Boss = enemy.gameObject.AddComponent<BossEnemy>();
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 enemy.Deck.SetStartingDeck(deck, NextSeed());
                 ApplyTrial(enemy, room);
@@ -233,6 +239,7 @@ namespace DeckArpg.Gameplay
                 enemy.Status.Died += () => HandleEnemyDied(captured);
                 enemies.Add(enemy);
             }
+            if (Boss != null) BossSpawned?.Invoke(Boss);
         }
 
         /// <summary>Purple Elite trial hooks (docs/specs/m3-elite-trials.md). Hexer lives in <see cref="HandlePlayerCardBroken"/>.</summary>
@@ -318,6 +325,7 @@ namespace DeckArpg.Gameplay
         {
             foreach (var e in enemies) if (e != null) Destroy(e.gameObject);
             enemies.Clear();
+            Boss = null;
         }
 
         private void ClearVisits()
