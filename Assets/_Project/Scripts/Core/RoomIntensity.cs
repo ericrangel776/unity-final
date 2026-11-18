@@ -45,15 +45,15 @@ namespace DeckArpg.Core
 
         public const int EliteHpPercent = 250;
         /// <summary>
-        /// Boss size class (M3 placeholder: 400%). M4: 1900% (1710 HP) felt like an HP wall in the user's playtest
-        /// (2026-11-18), so 1000%: 900 HP at the base 60 and Intensity 7, about 1-2 boss deck cycles, so at least one punish
-        /// window per fight.
+        /// Boss size class (M3 placeholder: 400%). M4 playtests (2026-11-18): 1900% (1710 HP) was an HP wall and 1000%
+        /// (900) still felt too long; the controls are harder for a human than for the measurement bot, so 700%: 630 HP at
+        /// the base 60 and Intensity 7.
         /// </summary>
-        public const int BossHpPercent = 1000;
+        public const int BossHpPercent = 700;
 
         /// <summary>
         /// One enemy's max HP: <paramref name="baseHp"/> x <see cref="EnemyHpPercent"/> x size class
-        /// (Elite 250%, Boss 1000%), rounded half up, at least 1.
+        /// (Elite 250%, Boss 700%), rounded half up, at least 1.
         /// </summary>
         public static int EnemyMaxHp(int baseHp, in MapCard room)
         {

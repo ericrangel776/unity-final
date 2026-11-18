@@ -107,7 +107,7 @@ namespace DeckArpg.Tests.EditMode
         [TestCase(MapCardKind.Vanguard, 1, 54)]     // 60 x 0.9
         [TestCase(MapCardKind.Vanguard, 9, 102)]    // 60 x 1.7
         [TestCase(MapCardKind.EliteTrial, 5, 195)]  // 60 x 1.3 = 78, x 2.5
-        [TestCase(MapCardKind.Boss, 7, 900)]        // 60 x 1.5 = 90, x 10 (M4 boss tuning after playtest)
+        [TestCase(MapCardKind.Boss, 7, 630)]        // 60 x 1.5 = 90, x 7 (M4 boss tuning after playtests)
         public void EnemyMaxHp_ScalesByIntensityAndSize(MapCardKind kind, int n, int expected) =>
             Assert.AreEqual(expected, RoomIntensity.EnemyMaxHp(60, Room(kind, n)));
 

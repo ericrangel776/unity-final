@@ -49,16 +49,17 @@ in real time. Results land in `TestResults/bossfight.txt`.
 | 630 HP, guard 35% | 4 / 6 | 27-32 s | Every win came in the first Exhausted. |
 | 1710 HP, guard | 0 / 6 | 27-59 s | The bot (100 HP) lasts ~40 s at full boss damage. |
 | 1710 HP, guard, boss deals 50% | 1 / 6 | 41-71 s | Losses end with the boss at 551-956 HP. |
-| **900 HP, guard, boss deals 50% (current)** | 5 / 6 | 33-48 s | Every fight had one Exhausted; the loss ended with the boss at 146. |
+| 900 HP, guard, boss deals 50% | 5 / 6 | 33-48 s | Every fight had one Exhausted; the loss ended with the boss at 146. |
 
 Decisions from these results:
 - **Guard:** the boss takes 35% HP damage outside its punish windows, 100% in the reload window, 200% when Exhausted
   (`BossRules.GuardDamageMultiplier`). HUD label `GUARDED`. The Big Deadlock's combined hit ignores the guard.
 - **Boss damage dealt x0.5** (`BossRules.DamageDealtMultiplier`, stamped on its hitboxes via
   `CombatActionController.OutgoingDamageScale` / `AttackPayload.DamageScale`). Card values and clashes are unchanged.
-- **Boss HP 1000%** (900 at the base 60, Intensity 7). First set to 1900% (1710) from the bot data; the user's playtest
+- **Boss HP 700%** (630 at the base 60, Intensity 7). First set to 1900% (1710) from the bot data; the user's playtest
   (2026-11-18): "the actual gameplay was great, but the boss had way too much health... it shouldn't be a boring HP
-  wall". 900 HP was chosen to give roughly 1-2 boss deck cycles (at least one punish window) per fight.
+  wall". Then 1000% (900): "still feels too long. Remember the controls are a bit tricky for a human". Now **700% (630)**;
+  the bot deals damage faster than a person can, so human fights run longer than the bot times below.
 - **Natural boss AI** (`NaturalBossPolicy`, used in runs; the pattern policy stays the component default for tests):
   base 15% Sleight chance, +35% if the player has no 0 ready, +30% if the player is reloading or stunned, +4% per hand-sum
   point above 15 (max +30%), +10% per attack beyond 3 since the last Sleight, capped at 90%; never twice in a row; needs a
