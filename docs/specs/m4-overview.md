@@ -55,7 +55,9 @@ Decisions from these results:
   (`BossRules.GuardDamageMultiplier`). HUD label `GUARDED`. The Big Deadlock's combined hit ignores the guard.
 - **Boss damage dealt x0.5** (`BossRules.DamageDealtMultiplier`, stamped on its hitboxes via
   `CombatActionController.OutgoingDamageScale` / `AttackPayload.DamageScale`). Card values and clashes are unchanged.
-- **Boss HP 1900%** (1710 at the base 60, Intensity 7).
+- **Boss HP 1000%** (900 at the base 60, Intensity 7). First set to 1900% (1710) from the bot data; the user's playtest
+  (2026-11-18): "the actual gameplay was great, but the boss had way too much health... it shouldn't be a boring HP
+  wall". 900 HP was chosen to give roughly 1-2 boss deck cycles (at least one punish window) per fight.
 - **Natural boss AI** (`NaturalBossPolicy`, used in runs; the pattern policy stays the component default for tests):
   base 15% Sleight chance, +35% if the player has no 0 ready, +30% if the player is reloading or stunned, +4% per hand-sum
   point above 15 (max +30%), +10% per attack beyond 3 since the last Sleight, capped at 90%; never twice in a row; needs a
