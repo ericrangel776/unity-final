@@ -49,6 +49,7 @@ in real time. Results land in `TestResults/bossfight.txt`.
 | 630 HP, guard 35% | 4 / 6 | 27-32 s | Every win came in the first Exhausted. |
 | 1710 HP, guard | 0 / 6 | 27-59 s | The bot (100 HP) lasts ~40 s at full boss damage. |
 | 1710 HP, guard, boss deals 50% | 1 / 6 | 41-71 s | Losses end with the boss at 551-956 HP. |
+| **900 HP, guard, boss deals 50% (current)** | 5 / 6 | 33-48 s | Every fight had one Exhausted; the loss ended with the boss at 146. |
 
 Decisions from these results:
 - **Guard:** the boss takes 35% HP damage outside its punish windows, 100% in the reload window, 200% when Exhausted
