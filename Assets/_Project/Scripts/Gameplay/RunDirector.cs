@@ -240,6 +240,8 @@ namespace DeckArpg.Gameplay
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 int deckSeed = NextSeed();
                 enemy.Deck.SetStartingDeck(deck, deckSeed);
+                // Boss HP is relative to the player's, per floor (BossRules.MaxHp).
+                if (room.Kind == MapCardKind.Boss) enemy.Status.SetMaxHp(BossRules.MaxHp(Run.Floor, playerStatus.MaxHp));
                 // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
                 if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);

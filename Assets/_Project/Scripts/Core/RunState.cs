@@ -59,6 +59,8 @@ namespace DeckArpg.Core
         public RunPhase Phase { get; private set; } = RunPhase.ChoosingDoor;
         /// <summary>The room being chosen or played (1-6).</summary>
         public int RoomNumber { get; private set; } = 1;
+        /// <summary>The floor this run is on. Only floor 1 exists so far; boss HP and later difficulty scale with it.</summary>
+        public int Floor { get; } = 1;
         public MapCard CurrentRoom { get; private set; }
         public IReadOnlyList<MapCard> CurrentOffer => currentOffer;
         public IReadOnlyList<MapCard> History => history;

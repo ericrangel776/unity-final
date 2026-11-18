@@ -45,22 +45,15 @@ namespace DeckArpg.Core
 
         public const int EliteHpPercent = 250;
         /// <summary>
-        /// Boss size class (M3 placeholder: 400%). M4 playtests (2026-11-18): 1900% (1710 HP) was an HP wall and 1000%
-        /// (900) still felt too long; the controls are harder for a human than for the measurement bot, so 700%: 630 HP at
-        /// the base 60 and Intensity 7.
-        /// </summary>
-        public const int BossHpPercent = 700;
-
-        /// <summary>
         /// One enemy's max HP: <paramref name="baseHp"/> x <see cref="EnemyHpPercent"/> x size class
-        /// (Elite 250%, Boss 700%), rounded half up, at least 1.
+        /// (Elite 250%), rounded half up, at least 1. The boss's HP doesn't come from here: it's relative to the player's
+        /// (<see cref="BossRules.MaxHp"/>).
         /// </summary>
         public static int EnemyMaxHp(int baseHp, in MapCard room)
         {
             if (baseHp < 1) throw new ArgumentOutOfRangeException(nameof(baseHp));
             int hp = RewardRules.PercentHalfUp(baseHp, EnemyHpPercent(room));
             if (room.Kind == MapCardKind.EliteTrial) hp = RewardRules.PercentHalfUp(hp, EliteHpPercent);
-            else if (room.Kind == MapCardKind.Boss) hp = RewardRules.PercentHalfUp(hp, BossHpPercent);
             return Math.Max(1, hp);
         }
 

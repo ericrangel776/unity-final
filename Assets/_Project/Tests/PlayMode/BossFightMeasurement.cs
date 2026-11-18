@@ -96,7 +96,7 @@ namespace DeckArpg.Tests.PlayMode
             Report.AppendLine(line);
             string path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "TestResults", "bossfight.txt"));
             Directory.CreateDirectory(Path.GetDirectoryName(path));
-            File.WriteAllText(path, $"Boss HP percent {RoomIntensity.BossHpPercent}\n" + Report);
+            File.WriteAllText(path, $"Boss HP = player max HP x {BossRules.HpRatioByFloor[0]} (floor 1)\n" + Report);
             Object.Destroy(bot);
         }
     }

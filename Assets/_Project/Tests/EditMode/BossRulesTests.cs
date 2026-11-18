@@ -20,6 +20,21 @@ namespace DeckArpg.Tests.EditMode
         public void CycleEnd_ExhaustedFromFourDeletes(int deleted, BossCycleEnd expected) =>
             Assert.AreEqual(expected, BossRules.CycleEnd(deleted));
 
+        [TestCase(100, 150)]   // a bit more than the player: a challenge, not a wall
+        [TestCase(80, 120)]
+        [TestCase(1, 2)]       // rounds up
+        public void MaxHp_Floor1_IsOneAndAHalfTimesThePlayer(int playerMaxHp, int expected) =>
+            Assert.AreEqual(expected, BossRules.MaxHp(1, playerMaxHp));
+
+        [Test]
+        public void MaxHp_FloorsPastTheTable_UseTheLastRow() =>
+            Assert.AreEqual(BossRules.MaxHp(BossRules.HpRatioByFloor.Length, 100), BossRules.MaxHp(99, 100));
+
+        [TestCase(0, 100)]
+        [TestCase(1, 0)]
+        public void MaxHp_RejectsBadInput(int floor, int playerMaxHp) =>
+            Assert.Throws<ArgumentOutOfRangeException>(() => BossRules.MaxHp(floor, playerMaxHp));
+
         [TestCase(10, 50, 10)]
         [TestCase(60, 50, 49)]
         [TestCase(5, 1, 0)]

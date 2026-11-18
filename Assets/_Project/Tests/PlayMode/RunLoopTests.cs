@@ -341,6 +341,8 @@ namespace DeckArpg.Tests.PlayMode
                             var boss = director.Enemies[0].GetComponent<BossEnemy>();
                             Assert.IsNotNull(boss, "The boss room spawns a BossEnemy.");
                             Assert.AreSame(boss, director.Boss);
+                            Assert.AreEqual(BossRules.MaxHp(director.Run.Floor, player.MaxHp), boss.Status.MaxHp,
+                                "boss HP is relative to the player's");
                             Assert.AreSame(boss, spawnedBoss);
                             Assert.IsNotNull(director.Enemies[0].Deck.Cycle.SpacingRule, "Spacing set before the deal.");
                             var hud = Object.FindAnyObjectByType<DeckArpg.UI.BossHudView>();
