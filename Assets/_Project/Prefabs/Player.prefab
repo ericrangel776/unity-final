@@ -281,6 +281,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.PlayerCombatInput
   actionRecovery: 0.25
   respawnDelay: 1.5
+  respawnOnDeath: 1
 --- !u!1 &5937457132148451322
 GameObject:
   m_ObjectHideFlags: 0

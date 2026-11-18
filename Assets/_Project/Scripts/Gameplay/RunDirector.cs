@@ -60,6 +60,10 @@ namespace DeckArpg.Gameplay
         public ExitDoor Door => door;
         /// <summary>Spawned enemies of the current room that haven't been removed yet.</summary>
         public IReadOnlyList<TrainingDummyEnemy> Enemies => enemies;
+        /// <summary>The boss of the current room, or null outside the boss fight.</summary>
+        public BossEnemy Boss { get; private set; }
+        /// <summary>Raised once the boss is spawned and dealt (boss HUD/FX bind to it).</summary>
+        public event Action<BossEnemy> BossSpawned;
         public CombatReward CurrentReward { get; private set; }
         public ShopVisit CurrentShop { get; private set; }
         public ForgeVisit CurrentForge { get; private set; }
@@ -225,14 +229,28 @@ namespace DeckArpg.Gameplay
 
                 enemy.Status.SetMaxHp(maxHp);
                 enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * postureScale);
+                // Before the deal: the boss sets its 9-spacing rule on the deck cycle.
+                if (room.Kind == MapCardKind.Boss)
+                {
+                    Boss = enemy.gameObject.AddComponent<BossEnemy>();
+                    enemy.gameObject.AddComponent<BossSleightClash>().Watch(playerCombat);
+                    enemy.gameObject.AddComponent<BossTelegraphFx>();
+                    enemy.gameObject.AddComponent<BossStateFx>();
+                }
                 enemy.Deck.SetRoomValueMod(valueBonus);
-                enemy.Deck.SetStartingDeck(deck, NextSeed());
+                int deckSeed = NextSeed();
+                enemy.Deck.SetStartingDeck(deck, deckSeed);
+                // Boss HP is relative to the player's, per floor (BossRules.MaxHp).
+                if (room.Kind == MapCardKind.Boss) enemy.Status.SetMaxHp(BossRules.MaxHp(Run.Floor, playerStatus.MaxHp));
+                // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
+                if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);
 
                 var captured = enemy;
                 enemy.Status.Died += () => HandleEnemyDied(captured);
                 enemies.Add(enemy);
             }
+            if (Boss != null) BossSpawned?.Invoke(Boss);
         }
 
         /// <summary>Purple Elite trial hooks (docs/specs/m3-elite-trials.md). Hexer lives in <see cref="HandlePlayerCardBroken"/>.</summary>
@@ -318,6 +336,7 @@ namespace DeckArpg.Gameplay
         {
             foreach (var e in enemies) if (e != null) Destroy(e.gameObject);
             enemies.Clear();
+            Boss = null;
         }
 
         private void ClearVisits()
@@ -351,14 +370,51 @@ namespace DeckArpg.Gameplay
         [ContextMenu("Run/Leave Utility Room")] private void DebugLeaveUtility() => LeaveUtility();
         [ContextMenu("Run/Restart")] private void DebugRestart() => RestartRun();
 
+        /// <summary>
+        /// Playtesting: plays the run forward into the boss fight. Earlier fights are debug-cleared, the first draft card
+        /// and relic are taken (so the deck looks like a real run's) and Blue rooms are left. Starts a run if needed; a
+        /// finished run is restarted. Returns false if the boss wasn't reached.
+        /// </summary>
+        [ContextMenu("Run/Skip To Boss")]
+        public bool DebugSkipToBoss()
+        {
+            if (Run == null || State == RunDirectorState.Victory || State == RunDirectorState.Defeat) StartRun();
+            for (int step = 0; step < 50; step++)
+            {
+                switch (State)
+                {
+                    case RunDirectorState.ChoosingDoor:
+                        ChooseDoor(0);
+                        break;
+                    case RunDirectorState.Fighting:
+                        if (Boss != null) return true;
+                        DebugDefeatAllEnemies();
+                        break;
+                    case RunDirectorState.Reward:
+                        if (CurrentReward.RelicOptions != null && CurrentReward.RelicOptions.Count > 0) ChooseRelic(0);
+                        while (CurrentReward.PicksMade < CurrentReward.PicksAllowed && CurrentReward.TryPick(0, Run)) { }
+                        FinishReward();
+                        break;
+                    case RunDirectorState.Utility:
+                        LeaveUtility();
+                        break;
+                    default:
+                        StartRun();
+                        break;
+                }
+            }
+            return State == RunDirectorState.Fighting && Boss != null;
+        }
+
         [ContextMenu("Run/Defeat All Enemies")]
         public void DebugDefeatAllEnemies()
         {
-            // One overwhelming Sleight hit each (Sleight values aren't clamped to 9).
+            // Overwhelming Sleight hits (values aren't clamped to 9), repeated so a guarded boss still goes down.
             var payload = new AttackPayload(playerStatus.OwnerId, Team.Player, 999, false, true, Time.frameCount,
                 CardShape.Strike, Element.Physical);
             foreach (var e in enemies.ToArray())
-                if (e != null && !e.Status.IsDead) e.Status.TakeHit(payload);
+                for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
+                    e.Status.TakeHit(payload);
         }
     }
 }

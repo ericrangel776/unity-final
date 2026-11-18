@@ -44,18 +44,16 @@ namespace DeckArpg.Core
         }
 
         public const int EliteHpPercent = 250;
-        public const int BossHpPercent = 400;
-
         /// <summary>
         /// One enemy's max HP: <paramref name="baseHp"/> x <see cref="EnemyHpPercent"/> x size class
-        /// (Elite 250%, Boss 400%), rounded half up, at least 1.
+        /// (Elite 250%), rounded half up, at least 1. The boss's HP doesn't come from here: it's relative to the player's
+        /// (<see cref="BossRules.MaxHp"/>).
         /// </summary>
         public static int EnemyMaxHp(int baseHp, in MapCard room)
         {
             if (baseHp < 1) throw new ArgumentOutOfRangeException(nameof(baseHp));
             int hp = RewardRules.PercentHalfUp(baseHp, EnemyHpPercent(room));
             if (room.Kind == MapCardKind.EliteTrial) hp = RewardRules.PercentHalfUp(hp, EliteHpPercent);
-            else if (room.Kind == MapCardKind.Boss) hp = RewardRules.PercentHalfUp(hp, BossHpPercent);
             return Math.Max(1, hp);
         }
 
@@ -77,10 +75,14 @@ namespace DeckArpg.Core
             return percent;
         }
 
-        /// <summary>Added to every enemy card as a room mod (so still clamped): <c>(I - 1) / 4</c>, +1 on Hexfire.</summary>
+        /// <summary>
+        /// Added to every enemy card as a room mod (so still clamped): <c>(I - 1) / 4</c>, +1 on Hexfire. The boss gets
+        /// 0: its deck is tuned directly so 9s are regular but spaced (M4).
+        /// </summary>
         public static int EnemyCardValueBonus(in MapCard room)
         {
             RequireCombat(room);
+            if (room.Kind == MapCardKind.Boss) return 0;
             int bonus = (room.Number - 1) / 4;
             if (room.Kind == MapCardKind.Hexfire) bonus += 1;
             return bonus;

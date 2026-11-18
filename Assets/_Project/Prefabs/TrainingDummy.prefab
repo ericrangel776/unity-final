@@ -351,6 +351,7 @@ MonoBehaviour:
   telegraphSeconds: 0.7
   recoverSeconds: 1.2
   respawnDelay: 2
+  respawnOnDeath: 1
 --- !u!114 &9166423704828162631
 MonoBehaviour:
   m_ObjectHideFlags: 0

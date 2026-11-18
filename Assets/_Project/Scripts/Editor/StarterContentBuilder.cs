@@ -110,11 +110,14 @@ namespace DeckArpg.Editor
             return deck;
         }
 
-        /// <summary>Boss placeholder: the 15-card visible deck from the design doc (real boss AI is M4).</summary>
+        /// <summary>
+        /// The Warden: the 15-card visible boss deck. Three 9s (about 1 in 5); the boss ignores the Intensity bonus and
+        /// spaces its 9s so they never come back to back (docs/specs/m4-overview.md).
+        /// </summary>
         public static List<CardData> BuildBossDeck()
         {
             var deck = new List<CardData>();
-            int[] values = { 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9 };
+            int[] values = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9 };
             for (int i = 0; i < values.Length; i++)
                 deck.Add(GetOrCreate($"warden_{i + 1:00}_{values[i]}", values[i], CardShape.Strike, Element.Physical, $"Warden {values[i]}"));
             return deck;

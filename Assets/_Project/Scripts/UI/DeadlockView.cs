@@ -82,7 +82,8 @@ namespace DeckArpg.UI
                 worldPosition = deadlock.Position;
                 float elapsed = deadlock.Elapsed;
                 // 3x the target at the start, exactly the target at TargetTime, still shrinking after.
-                float scale = 1f + (DeadlockRules.TargetTime - elapsed) / DeadlockRules.TargetTime * 2f;
+                float target = deadlock.TargetTime;
+                float scale = 1f + (target - elapsed) / target * 2f;
                 ring.rectTransform.sizeDelta = Vector2.one * (TargetSize * Mathf.Max(0.2f, scale));
                 hand.text = HandLine(deadlock.PlayerCycle);
 

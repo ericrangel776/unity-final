@@ -256,5 +256,60 @@ namespace DeckArpg.UI
             return string.Join(" · ", owned.Select(r =>
                 r == RelicId.AshenSigil && ashenStacks > 0 ? $"{RelicShortName(r)} x{ashenStacks}" : RelicShortName(r)));
         }
+
+        // ---- Boss HUD (M4) ----
+
+        /// <summary>
+        /// The boss's 15-pip deck counter, in display order: cards still to play (hand + queue), stocked toward a Sleight,
+        /// spent this cycle, 0-deleted this cycle, burned for the fight. Negative counts are treated as 0.
+        /// </summary>
+        public static List<BossPip> BossPips(int left, int stocked, int spent, int deleted, int burned)
+        {
+            var pips = new List<BossPip>();
+            void Add(BossPip pip, int count) { for (int i = 0; i < count; i++) pips.Add(pip); }
+            Add(BossPip.Left, left);
+            Add(BossPip.Stocked, stocked);
+            Add(BossPip.Spent, spent);
+            Add(BossPip.Deleted, deleted);
+            Add(BossPip.Burned, burned);
+            return pips;
+        }
+
+        /// <summary>
+        /// "9 left · 3 spent · 2 deleted (2 more = EXHAUSTED)". Parts that are 0 are left out, except "left". The Exhausted
+        /// hint is only shown mid-cycle (<paramref name="showHint"/>): once the cycle has ended it no longer applies.
+        /// </summary>
+        public static string BossCounter(int left, int stocked, int spent, int deleted, int burned, int exhaustThreshold,
+            bool showHint = true)
+        {
+            var parts = new List<string> { $"{left} left" };
+            if (stocked > 0) parts.Add($"{stocked} stocked");
+            if (spent > 0) parts.Add($"{spent} spent");
+            if (deleted > 0 && !showHint) parts.Add($"{deleted} deleted");
+            else if (deleted > 0)
+            {
+                int more = exhaustThreshold - deleted;
+                parts.Add(more > 0 ? $"{deleted} deleted ({more} more = EXHAUSTED)" : $"{deleted} deleted: EXHAUSTED at reload");
+            }
+            if (burned > 0) parts.Add($"{burned} burned");
+            return string.Join(" · ", parts);
+        }
+
+        /// <summary>The boss state label: "SLEIGHT 15", "RELOADING 1.2s", "EXHAUSTED 3.4s", or "GUARDED" while it just fights
+        /// (it takes reduced damage outside its punish windows).</summary>
+        public static string BossState(Gameplay.BossState state, float remaining, int sleightValue)
+        {
+            if (remaining < 0f) remaining = 0f;
+            switch (state)
+            {
+                case Gameplay.BossState.SleightWindup: return $"SLEIGHT {sleightValue}";
+                case Gameplay.BossState.ReloadWindow: return $"RELOADING {remaining:0.0}s";
+                case Gameplay.BossState.Exhausted: return $"EXHAUSTED {remaining:0.0}s";
+                default: return "GUARDED";
+            }
+        }
     }
+
+    /// <summary>One pip of the boss deck counter.</summary>
+    public enum BossPip { Left, Stocked, Spent, Deleted, Burned }
 }

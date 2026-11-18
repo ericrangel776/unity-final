@@ -63,6 +63,11 @@ namespace DeckArpg.Gameplay
 
         public event Action<RuntimeCardInstance> TelegraphStarted;
         public event Action TelegraphEnded;
+        /// <summary>A telegraphed card was swung (it activated).</summary>
+        public event Action<RuntimeCardInstance> Swung;
+
+        /// <summary>Optional turn override (the boss). Null for mobs and Elites.</summary>
+        public IEnemyTurnHook TurnHook { get; set; }
 
         public Transform Target { get => target; set => target = value; }
         public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
@@ -132,6 +137,7 @@ namespace DeckArpg.Gameplay
             // Before the stun check so a flinched dummy still slides back.
             if (status.KnockbackVelocity != Vector3.zero) body.Move(status.KnockbackVelocity * Time.deltaTime);
             if (status.IsStunned || target == null) return;
+            if (TurnHook != null && TurnHook.IsBusy) return;
 
             var toTarget = target.position - transform.position;
             toTarget.y = 0f;
@@ -161,13 +167,29 @@ namespace DeckArpg.Gameplay
         private void BeginTelegraph()
         {
             var cycle = deck.Cycle;
+            if (TurnHook != null && TurnHook.TryTakeTurn())
+            {
+                state = State.Recover;
+                timer = recoverSeconds;
+                return;
+            }
+
             telegraphSlot = -1;
-            for (int i = 0; i < DeckCycle.HandSize; i++)
-                if (cycle.Hand[i] != null) { telegraphSlot = i; break; }
+            if (TurnHook != null) telegraphSlot = cycle.OldestSlot; // the boss plays in draw order (spaced 9s)
+            else
+                for (int i = 0; i < DeckCycle.HandSize; i++)
+                    if (cycle.Hand[i] != null) { telegraphSlot = i; break; }
 
             if (telegraphSlot < 0)
             {
-                // Out of cards: reload, then come back. (Bosses get a punishable stagger in M4.)
+                state = State.Recover;
+                timer = recoverSeconds;
+                // Out of cards: mobs reload at once; the boss opens its punishable reload window instead.
+                if (TurnHook != null)
+                {
+                    TurnHook.OnOutOfCards();
+                    return;
+                }
                 cycle.Reload();
                 state = State.Recover;
                 timer = recoverSeconds;
@@ -188,6 +210,7 @@ namespace DeckArpg.Gameplay
             {
                 var payload = AttackPayload.FromCard(card, status.OwnerId, Team.Enemy, Time.frameCount);
                 combat.Spawn(payload, toTarget, card);
+                Swung?.Invoke(card);
             }
             state = State.Recover;
             timer = recoverSeconds;
@@ -200,6 +223,7 @@ namespace DeckArpg.Gameplay
         /// </summary>
         internal void ResolveTelegraphClash(AttackHitbox incoming)
         {
+            if (TurnHook != null && TurnHook.IsBusy && TurnHook.ResolveBusyClash(incoming)) return;
             var telegraph = CurrentTelegraph;
             if (state != State.Telegraph || telegraph == null || incoming == null || !incoming.IsLive) return;
             var payload = incoming.Payload;

@@ -323,7 +323,9 @@ namespace DeckArpg.Tests.PlayMode
         {
             director.RestartRun(9);
             bool? ended = null;
+            BossEnemy spawnedBoss = null;
             director.RunEnded += victory => ended = victory;
+            director.BossSpawned += b => spawnedBoss = b;
 
             for (int guard = 0; guard < 20 && director.State != RunDirectorState.Victory; guard++)
             {
@@ -336,6 +338,21 @@ namespace DeckArpg.Tests.PlayMode
                             Assert.AreEqual(1, director.Enemies.Count);
                             Assert.Greater(director.Enemies[0].transform.localScale.x, 1f);
                             Assert.AreEqual(RunContent.BossDeckSize, director.Enemies[0].Deck.Cycle.CyclingCardCount);
+                            var boss = director.Enemies[0].GetComponent<BossEnemy>();
+                            Assert.IsNotNull(boss, "The boss room spawns a BossEnemy.");
+                            Assert.AreSame(boss, director.Boss);
+                            Assert.AreEqual(BossRules.MaxHp(director.Run.Floor, player.MaxHp), boss.Status.MaxHp,
+                                "boss HP is relative to the player's");
+                            Assert.AreSame(boss, spawnedBoss);
+                            Assert.IsNotNull(director.Enemies[0].Deck.Cycle.SpacingRule, "Spacing set before the deal.");
+                            var hud = Object.FindAnyObjectByType<DeckArpg.UI.BossHudView>();
+                            Assert.IsNotNull(hud, "M3_Run has a boss HUD.");
+                            Assert.AreSame(boss, hud.Boss, "the boss HUD binds on BossSpawned");
+                        }
+                        else if (director.Run.CurrentRoom.IsCombat)
+                        {
+                            Assert.IsNull(director.Boss);
+                            Assert.IsTrue(director.Enemies.All(e => e.GetComponent<BossEnemy>() == null), "Mobs have no boss brain.");
                         }
                         break;
                     case RunDirectorState.Fighting: director.DebugDefeatAllEnemies(); break;
@@ -349,6 +366,28 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(true, ended);
             Assert.AreEqual(RunPhase.Complete, director.Run.Phase);
             Assert.AreEqual(RunState.BossRoom, director.Run.History.Count);
+        }
+
+        [Test]
+        public void SkipToBoss_LandsInTheBossFight()
+        {
+            director.RestartRun(5);
+            Assert.IsTrue(director.DebugSkipToBoss());
+            Assert.AreEqual(RunDirectorState.Fighting, director.State);
+            Assert.IsTrue(director.Run.IsBossRoom);
+            Assert.IsNotNull(director.Boss);
+            Assert.Greater(director.Run.Deck.Count, 10, "drafted cards on the way");
+        }
+
+        [Test]
+        public void SkipToBoss_AfterAFinishedRun_StartsANewOne()
+        {
+            director.RestartRun(5);
+            director.DebugSkipToBoss();
+            director.DebugDefeatAllEnemies();
+            Assert.AreEqual(RunDirectorState.Victory, director.State);
+            Assert.IsTrue(director.DebugSkipToBoss());
+            Assert.IsNotNull(director.Boss);
         }
 
         [Test]
