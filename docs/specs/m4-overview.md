@@ -65,6 +65,8 @@ Decisions from these results:
   comparison (Slay the Spire, Hades, Enter the Gungeon, Dead Cells): the first boss is a short skill check that teaches
   its mechanic; the ramp comes from later floors/acts and opt-in difficulty (Ascension, Heat). `HpRatioByFloor` holds one
   row per floor, so later floors add rows. The boss no longer uses the room HP percent.
+  **Confirmed by user playtest (2026-11-18): the length feels good for floor 1.** Future (out of M4 scope): on later
+  floors, scale the boss's variance (deck, AI, HP) alongside the player's progression, not HP alone.
 - **Natural boss AI** (`NaturalBossPolicy`, used in runs; the pattern policy stays the component default for tests):
   base 15% Sleight chance, +35% if the player has no 0 ready, +30% if the player is reloading or stunned, +4% per hand-sum
   point above 15 (max +30%), +10% per attack beyond 3 since the last Sleight, capped at 90%; never twice in a row; needs a
