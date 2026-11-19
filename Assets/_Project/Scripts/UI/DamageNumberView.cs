@@ -16,6 +16,8 @@ namespace DeckArpg.UI
     {
         public const int PoolSize = 24;
         public const int BaseFontSize = 36;
+        /// <summary>Effect damage (burn ticks, chain jumps, finisher) shows smaller than a card hit.</summary>
+        public const float EffectNumberScale = 0.75f;
         public static readonly Color PlayerHurtColor = new Color(1f, 0.3f, 0.25f, 1f);
 
         [SerializeField] private float showSeconds = 0.7f;
@@ -96,7 +98,7 @@ namespace DeckArpg.UI
         {
             bool onPlayer = hit.Victim != null && hit.Victim.Team == Team.Player;
             var color = onPlayer ? PlayerHurtColor : Opaque(ElementColors.For(hit.Payload));
-            float scale = HitJuiceRules.DamageNumberScale(hit.Damage);
+            float scale = HitJuiceRules.DamageNumberScale(hit.Damage) * (hit.IsEffect ? EffectNumberScale : 1f);
             var jitter = new Vector2(Random.Range(-jitterScreenPixels, jitterScreenPixels), 0f);
             float drift = Random.Range(-driftScreenPixels, driftScreenPixels);
 

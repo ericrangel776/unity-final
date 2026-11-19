@@ -15,6 +15,8 @@ namespace DeckArpg.Gameplay
     {
         public const int PokeSparks = 6;
         public const int CardSparks = 10;
+        /// <summary>Effect damage (burn tick, chain jump, finisher): a small puff and no camera kick.</summary>
+        public const int EffectSparks = 3;
         public const float PlayerHurtShake = 0.3f;
 
         [Tooltip("Additive particle material. Created at runtime if left empty.")]
@@ -57,13 +59,13 @@ namespace DeckArpg.Gameplay
 
         private void HandleHit(HitInfo hit)
         {
-            int count = hit.Payload.IsPoke ? PokeSparks : CardSparks;
+            int count = hit.IsEffect ? EffectSparks : hit.Payload.IsPoke ? PokeSparks : CardSparks;
             var color = ClashImpactFx.Opaque(ElementColors.For(hit.Payload));
             ClashImpactFx.Emit(sparks, hit.Position, color, count);
             LastSparkCount = count;
             LastSparkColor = color;
 
-            if (hit.Victim == null || hit.Victim.Team != Team.Player) return;
+            if (hit.IsEffect || hit.Victim == null || hit.Victim.Team != Team.Player) return;
             impulse.GenerateImpulseAtPositionWithVelocity(hit.Position, Random.onUnitSphere * PlayerHurtShake);
             PlayerHurtImpulses++;
         }

@@ -139,6 +139,58 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(0, ElementRules.PickChain(Vector3.zero, c)[0]);
         }
 
+        private static AttackPayload Card(Element element, int value = 5, bool zero = false) =>
+            new AttackPayload(1, Team.Player, value, zero, false, 0, CardShape.Strike, element);
+
+        [Test]
+        public void BreakPostureScale_PhysicalWinner_IsOneAndAHalf()
+        {
+            Assert.AreEqual(1.5f, ElementRules.BreakPostureScale(Card(Element.Physical)), Eps);
+            var sleight = new AttackPayload(1, Team.Enemy, 15, false, true, 0, CardShape.Strike, Element.Physical, 5, 3);
+            Assert.AreEqual(1.5f, ElementRules.BreakPostureScale(sleight), Eps);
+        }
+
+        [TestCase(Element.Fire)]
+        [TestCase(Element.Ice)]
+        [TestCase(Element.Lightning)]
+        [TestCase(Element.Wind)]
+        public void BreakPostureScale_OtherElements_IsOne(Element element)
+        {
+            Assert.AreEqual(1f, ElementRules.BreakPostureScale(Card(element)), Eps);
+        }
+
+        [Test]
+        public void BreakPostureScale_ZeroCardAndPoke_IsOne()
+        {
+            Assert.AreEqual(1f, ElementRules.BreakPostureScale(Card(Element.Physical, 0, zero: true)), Eps);
+            Assert.AreEqual(1f, ElementRules.BreakPostureScale(AttackPayload.Poke(1, Team.Player, 0)), Eps);
+        }
+
+        [Test]
+        public void EffectHit_NeverHitStops()
+        {
+            Assert.AreEqual(0f, HitJuiceRules.BodyHitStopSeconds(Card(Element.Fire, 9), Team.Enemy, 20, isEffect: true));
+            Assert.AreEqual(0f, HitJuiceRules.BodyHitStopSeconds(Card(Element.Fire, 9), Team.Player, 20, isEffect: true));
+            Assert.Greater(HitJuiceRules.BodyHitStopSeconds(Card(Element.Fire, 9), Team.Enemy, 20), 0f);
+        }
+
+        [Test]
+        public void TotalDamage_IsTheUnsplitSleightDamage()
+        {
+            // 20 x 3 = 60, x1.1 = 66 total; split over 3 hits = 22 each.
+            var sleight = new AttackPayload(1, Team.Player, 20, false, true, 0, CardShape.Strike, Element.Fire, 1, 3);
+            Assert.AreEqual(66, CombatMath.TotalDamage(sleight));
+            Assert.AreEqual(22, CombatMath.Damage(sleight));
+            Assert.AreEqual(15, CombatMath.TotalDamage(Card(Element.Fire, 5)));
+        }
+
+        [Test]
+        public void WindColour_IsPaleGreen_NotThePhysicalGrey()
+        {
+            Assert.AreEqual(new Color(0.6f, 1f, 0.75f, 0.5f), DeckArpg.Gameplay.ElementColors.For(Element.Wind));
+            Assert.AreNotEqual(DeckArpg.Gameplay.ElementColors.For(Element.Physical), DeckArpg.Gameplay.ElementColors.For(Element.Wind));
+        }
+
         [Test]
         public void PickChain_IgnoresHeight()
         {

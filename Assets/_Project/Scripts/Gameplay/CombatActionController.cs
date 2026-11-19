@@ -27,6 +27,24 @@ namespace DeckArpg.Gameplay
         [Header("Arcana (burst around self)")]
         [SerializeField] private float arcanaRadius = 2.2f;
         [SerializeField] private float arcanaDuration = 0.3f;
+        [Header("FrostBlast (Ice: short blast in front)")]
+        [SerializeField] private float frostRadius = 1.4f;
+        [SerializeField] private float frostReach = 1f;
+        [SerializeField] private float frostDuration = 0.25f;
+        [Tooltip("FrostBlast Sleight: grows around self from this radius to frostRadius x the end multiplier.")]
+        [SerializeField] private float sleightFrostStartRadius = 0.5f;
+        [SerializeField] private float sleightFrostEndMultiplier = 2.1f;
+        [SerializeField] private float sleightFrostGrowSeconds = 0.3f;
+        [Header("ChainArc (Lightning: fast mid-range bolt, despawns on its first body hit)")]
+        [SerializeField] private float arcRadius = 0.3f;
+        [SerializeField] private float arcSpeed = 28f;
+        [SerializeField] private float arcLifetime = 0.25f;
+        [SerializeField] private float sleightArcScale = 1.5f;
+        [Header("Gust (Wind: forward box that hits every body inside)")]
+        [SerializeField] private Vector3 gustSize = new Vector3(2.4f, 1.2f, 2.5f);
+        [SerializeField] private float gustReach = 1.6f;
+        [SerializeField] private float gustDuration = 0.2f;
+        [SerializeField] private float sleightGustScale = 1.5f;
         [Header("Sleights")]
         [Tooltip("Strike Sleight: seconds between the hits of the lunge combo.")]
         [SerializeField] private float sleightStrikeInterval = 0.12f;
@@ -70,38 +88,52 @@ namespace DeckArpg.Gameplay
         public static event Action<AttackHitbox> AnyHitboxSpawned;
         /// <summary>One of our attacks broke an enemy card: the loser, and whether we broke it with a 0.</summary>
         public event Action<CombatantStatus, bool> ClashWon;
+        /// <summary>Any combatant fired a Sleight (the caster and its payload). Drives the finisher shockwave.</summary>
+        public static event Action<CombatActionController, AttackPayload> SleightSpawned;
 
         private void Awake()
         {
             Status = GetComponent<CombatantStatus>();
         }
 
-        /// <summary>Spawns the hitbox for <paramref name="payload"/>, shaped by its <see cref="CardShape"/>.</summary>
+        /// <summary>Spawns the hitbox for <paramref name="payload"/>, shaped by its <see cref="Delivery"/>.</summary>
         public AttackHitbox Spawn(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source = null) =>
             SpawnScaled(payload, aimDirection, source, 1f);
 
         /// <summary>
-        /// Fires a composed Sleight, each shape with its own behavior. Every hit carries the full Sleight
+        /// Fires a composed Sleight, each delivery with its own behavior. Every hit carries the full Sleight
         /// payload and clashes on its own. Strike: <c>HitCount</c> boxes spaced in time (pair with a motor lunge).
-        /// Throw: a piercing boomerang. Arcana: an expanding blast.
+        /// Projectile: a piercing boomerang. Burst: an expanding blast. FrostBlast: a bigger blast growing around
+        /// self. ChainArc and Gust: the single-card hitbox, scaled up.
         /// </summary>
         public void SpawnSleight(AttackPayload payload, Vector3 aimDirection)
         {
-            switch (payload.Shape)
+            switch (payload.Delivery)
             {
-                case CardShape.Throw:
+                case Delivery.Projectile:
                     SpawnScaled(payload, aimDirection, null, sleightThrowScale)
                         .MakeBoomerang(sleightThrowOutSeconds, transform, sleightThrowMaxLifetime);
                     break;
-                case CardShape.Arcana:
+                case Delivery.Burst:
                     SpawnScaled(payload, aimDirection, null, 1f)
                         .MakeGrowing(sleightArcanaStartRadius, arcanaRadius * sleightArcanaEndMultiplier, sleightArcanaGrowSeconds);
+                    break;
+                case Delivery.FrostBlast:
+                    SpawnScaled(payload, aimDirection, null, 1f, aroundSelf: true)
+                        .MakeGrowing(sleightFrostStartRadius, frostRadius * sleightFrostEndMultiplier, sleightFrostGrowSeconds);
+                    break;
+                case Delivery.ChainArc:
+                    SpawnScaled(payload, aimDirection, null, sleightArcScale);
+                    break;
+                case Delivery.Gust:
+                    SpawnScaled(payload, aimDirection, null, sleightGustScale);
                     break;
                 default:
                     if (pendingCombo != null) StopCoroutine(pendingCombo);
                     pendingCombo = StartCoroutine(StrikeCombo(payload, aimDirection));
                     break;
             }
+            SleightSpawned?.Invoke(this, payload);
         }
 
         private IEnumerator StrikeCombo(AttackPayload payload, Vector3 aimDirection)
@@ -116,7 +148,8 @@ namespace DeckArpg.Gameplay
             pendingCombo = null;
         }
 
-        private AttackHitbox SpawnScaled(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source, float scale)
+        private AttackHitbox SpawnScaled(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source, float scale,
+            bool aroundSelf = false)
         {
             aimDirection.y = 0f;
             if (aimDirection.sqrMagnitude < 0.0001f) aimDirection = transform.forward;
@@ -124,18 +157,33 @@ namespace DeckArpg.Gameplay
 
             var stamped = OutgoingDamageScale != 1f && OutgoingDamageScale > 0f
                 ? payload.WithDamageScale(OutgoingDamageScale) : payload;
-            var go = new GameObject($"Hitbox_{payload.Shape}_{payload.Value}");
+            var go = new GameObject($"Hitbox_{payload.Delivery}_{payload.Value}");
             go.layer = gameObject.layer;
             var hb = go.AddComponent<AttackHitbox>();
             var origin = transform.position + Vector3.up * 0.5f;
 
-            switch (payload.Shape)
+            switch (payload.Delivery)
             {
-                case CardShape.Throw:
+                case Delivery.Projectile:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
                     hb.InitSphere(this, stamped, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
                     break;
-                case CardShape.Arcana:
+                case Delivery.FrostBlast:
+                    go.transform.SetParent(transform, false);
+                    go.transform.position = aroundSelf ? origin : origin + aimDirection * frostReach;
+                    hb.InitSphere(this, stamped, frostRadius * scale, frostDuration, bodyHitDelay, Vector3.zero, showHitboxes);
+                    break;
+                case Delivery.ChainArc:
+                    go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
+                    hb.InitSphere(this, stamped, arcRadius * scale, arcLifetime, bodyHitDelay, aimDirection * arcSpeed, showHitboxes);
+                    hb.DespawnOnBodyHit = true;
+                    break;
+                case Delivery.Gust:
+                    go.transform.SetParent(transform, false);
+                    go.transform.SetPositionAndRotation(origin + aimDirection * gustReach, Quaternion.LookRotation(aimDirection));
+                    hb.InitBox(this, stamped, gustSize * scale, gustDuration, bodyHitDelay, showHitboxes);
+                    break;
+                case Delivery.Burst:
                     go.transform.SetParent(transform, false);
                     go.transform.position = origin;
                     hb.InitSphere(this, stamped, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
@@ -174,13 +222,14 @@ namespace DeckArpg.Gameplay
         /// Our hitbox lost a clash: cancel everything, take a break scaled by <paramref name="margin"/>
         /// (shoved along <paramref name="awayFromWinner"/>), and report the broken card.
         /// </summary>
-        internal void OnClashLost(AttackHitbox loser, bool brokeByZero, int margin, Vector3 awayFromWinner)
+        internal void OnClashLost(AttackHitbox loser, bool brokeByZero, int margin, Vector3 awayFromWinner,
+            float postureScale = 1f)
         {
             sources.TryGetValue(loser, out var card);
             CancelActiveAction();
             // The player's stun shrinks as more enemies are alive, so crowds can't stun-lock.
             float stunScale = Status.Team == Team.Player ? CombatMath.CrowdStunScale(TrainingDummyEnemy.LiveCount) : 1f;
-            Status.ApplyBreak(margin, awayFromWinner, stunScale);
+            Status.ApplyBreak(margin, awayFromWinner, stunScale, postureScale);
             CardBroken?.Invoke(card, brokeByZero);
         }
 

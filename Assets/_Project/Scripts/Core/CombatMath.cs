@@ -10,22 +10,30 @@ namespace DeckArpg.Core
         /// Sleights scale by <c>1 + finisher*0.1</c>, rounded up in integer tenths (floats would
         /// turn 30 * 1.1 into 34). Multi-hit Sleights split that total per hit, rounded up.
         /// </summary>
-        public static int Damage(in AttackPayload payload)
+        public static int Damage(in AttackPayload payload) => Scaled(UnscaledDamage(payload, split: true), payload);
+
+        /// <summary>
+        /// The whole attack's damage before a multi-hit Sleight splits it across hits (the finisher shockwave's base).
+        /// Equals <see cref="Damage"/> for single-hit attacks.
+        /// </summary>
+        public static int TotalDamage(in AttackPayload payload) => Scaled(UnscaledDamage(payload, split: false), payload);
+
+        private static int Scaled(int damage, in AttackPayload payload)
         {
-            int damage = UnscaledDamage(payload);
             float scale = payload.DamageScale;
             if (damage <= 0 || scale == 1f) return damage;
             // A scaled hit still deals at least 1.
             return System.Math.Max(1, (int)System.Math.Round(damage * scale, System.MidpointRounding.AwayFromZero));
         }
 
-        private static int UnscaledDamage(in AttackPayload payload)
+        private static int UnscaledDamage(in AttackPayload payload, bool split)
         {
             if (payload.IsZeroBreaker) return 0;
             int baseDamage = payload.Value * DamagePerPoint;
             if (!payload.IsSleight) return baseDamage;
             int tenths = baseDamage * (10 + payload.FinisherValue);
             int total = (tenths + 9) / 10;
+            if (!split) return total;
             int hits = System.Math.Max(1, payload.HitCount);
             return (total + hits - 1) / hits;
         }

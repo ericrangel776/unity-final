@@ -39,6 +39,8 @@ namespace DeckArpg.Gameplay
         public AttackPayload Payload { get; private set; }
         public CombatActionController Owner { get; private set; }
         public bool IsLive => initialized && !cancelled;
+        /// <summary>ChainArc: despawn after the first body hit (the chain does the crowd work).</summary>
+        public bool DespawnOnBodyHit { get; internal set; }
         /// <summary>True once the windup has passed and body contacts deal damage.</summary>
         public bool CanHitBodies => IsLive && bodyHitDelay <= 0f;
 
@@ -113,7 +115,15 @@ namespace DeckArpg.Gameplay
                 if (!IsLive) return; // lost or tied: our action was cancelled
                 // Hits during i-frames are not consumed, so dashing through only protects while dashing.
                 bool canCounter = !brokeInClash.Contains(status);
-                if (status.TakeHit(Payload, status.transform.position - source, canCounter)) alreadyHit.Add(status);
+                if (status.TakeHit(Payload, status.transform.position - source, canCounter))
+                {
+                    alreadyHit.Add(status);
+                    if (DespawnOnBodyHit)
+                    {
+                        Cancel();
+                        return;
+                    }
+                }
             }
         }
 

@@ -117,14 +117,16 @@ namespace DeckArpg.Gameplay
                 {
                     attacker.MarkBroke(defender.Status);
                     var away = defender.transform.position - attackerOwner.transform.position;
-                    defender.Status.ApplyBreak(CombatMath.BreakMargin(payload, telegraph), away);
+                    defender.Status.ApplyBreak(CombatMath.BreakMargin(payload, telegraph), away,
+                        postureScale: ElementRules.BreakPostureScale(payload));
                     attackerOwner.OnClashWon(defender.Status, false);
                     break;
                 }
                 case ClashOutcome.BWins:
                 {
                     var away = attackerOwner.transform.position - defender.transform.position;
-                    attackerOwner.OnClashLost(attacker, false, CombatMath.BreakMargin(telegraph, payload), away);
+                    attackerOwner.OnClashLost(attacker, false, CombatMath.BreakMargin(telegraph, payload), away,
+                        ElementRules.BreakPostureScale(telegraph));
                     defender.OnClashWon(attackerOwner.Status, false);
                     break;
                 }
@@ -149,7 +151,8 @@ namespace DeckArpg.Gameplay
             winner.MarkBroke(loser.Owner.Status);
             var winnerOwner = winner.Owner;
             var loserStatus = loser.Owner.Status;
-            loser.Owner.OnClashLost(loser, brokeByZero, CombatMath.ClampMargin(margin), away);
+            loser.Owner.OnClashLost(loser, brokeByZero, CombatMath.ClampMargin(margin), away,
+                ElementRules.BreakPostureScale(winner.Payload));
             winnerOwner.OnClashWon(loserStatus, brokeByZero);
         }
     }

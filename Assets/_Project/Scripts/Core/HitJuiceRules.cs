@@ -23,10 +23,11 @@ namespace DeckArpg.Core
         /// Freeze for a damaging body hit. 0 for pokes, zero-breakers and hits that dealt no damage. A hit on the
         /// player freezes <see cref="PlayerHurtHitStop"/>, a Sleight freezes <see cref="MaxCardHitStop"/>, and a card
         /// scales linearly from <see cref="MinCardHitStop"/> at value 1 to <see cref="MaxCardHitStop"/> at value 9.
+        /// Effect damage (<paramref name="isEffect"/>: burn ticks, chain jumps, finisher) never freezes.
         /// </summary>
-        public static float BodyHitStopSeconds(in AttackPayload payload, Team victimTeam, int damage)
+        public static float BodyHitStopSeconds(in AttackPayload payload, Team victimTeam, int damage, bool isEffect = false)
         {
-            if (damage <= 0 || payload.IsZeroBreaker || payload.IsPoke) return 0f;
+            if (isEffect || damage <= 0 || payload.IsZeroBreaker || payload.IsPoke) return 0f;
             if (victimTeam == Team.Player) return PlayerHurtHitStop;
             if (payload.IsSleight) return MaxCardHitStop;
             float t = (CardValue.Clamp(payload.Value) - CardValue.Min) / (float)(CardValue.Max - CardValue.Min);

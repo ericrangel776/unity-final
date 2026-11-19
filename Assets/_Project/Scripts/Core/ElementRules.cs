@@ -100,6 +100,15 @@ namespace DeckArpg.Core
             }
         }
 
+        /// <summary>
+        /// Multiplier on the loser's break posture when <paramref name="winner"/> wins a clash: x1.5 for a Physical card
+        /// or Sleight. 1 for other elements, 0-cards (a flag, not an element) and the poke (no element effect).
+        /// </summary>
+        public static float BreakPostureScale(in AttackPayload winner) =>
+            winner.Element == Element.Physical && !winner.IsZeroBreaker && !winner.IsPoke
+                ? PhysicalBreakPostureMultiplier
+                : 1f;
+
         /// <summary>Knockback multiplier for an element: 2.5 for Wind, else 1.</summary>
         public static float KnockbackScale(Element element) =>
             element == Element.Wind ? WindKnockbackMultiplier : 1f;

@@ -249,12 +249,25 @@ namespace DeckArpg.Gameplay
                 // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
                 if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);
+                ApplyElementResistance(enemy, room.Kind);
 
                 var captured = enemy;
                 enemy.Status.Died += () => HandleEnemyDied(captured);
                 enemies.Add(enemy);
             }
             if (Boss != null) BossSpawned?.Invoke(Boss);
+        }
+
+        /// <summary>
+        /// Boss and Elites shrug statuses off twice as fast; only the boss also halves Wind knockback
+        /// (docs/specs/element-mechanics.md).
+        /// </summary>
+        private static void ApplyElementResistance(TrainingDummyEnemy enemy, MapCardKind kind)
+        {
+            bool tough = kind == MapCardKind.EliteTrial || kind == MapCardKind.Boss;
+            var fx = enemy.GetComponent<ElementStatusEffects>();
+            if (fx != null) fx.DurationScale = tough ? ElementRules.EliteBossDurationScale : 1f;
+            if (kind == MapCardKind.Boss) enemy.Status.KnockbackTakenMultiplier = ElementRules.BossWindKnockbackScale;
         }
 
         /// <summary>Purple Elite trial hooks (docs/specs/m3-elite-trials.md). Hexer lives in <see cref="HandlePlayerCardBroken"/>.</summary>

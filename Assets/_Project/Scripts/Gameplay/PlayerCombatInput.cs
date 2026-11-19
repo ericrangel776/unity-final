@@ -39,6 +39,7 @@ namespace DeckArpg.Gameplay
         private CombatActionController combat;
         private DeckRuntimeManager deck;
         private CombatantStatus status;
+        private ElementStatusEffects elementFx;
         private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload, stock;
         private float recoveryRemaining;
         private float respawnRemaining;
@@ -130,7 +131,9 @@ namespace DeckArpg.Gameplay
             if (RouteToDeadlock()) return;
 
             motor.SetMoveInput(move.ReadValue<Vector2>());
-            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier;
+            // Chill multiplies with the reload boost. Dash, i-frames and the reload bar are untouched.
+            if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
+            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier * (elementFx != null ? elementFx.SpeedMultiplier : 1f);
             ReadAim();
             if (dash.WasPressedThisFrame()) motor.TryDash();
 

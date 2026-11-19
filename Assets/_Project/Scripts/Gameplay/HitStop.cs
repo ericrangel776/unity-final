@@ -55,9 +55,10 @@ namespace DeckArpg.Gameplay
         private void HandleClash(ClashEvent e) =>
             Freeze(CombatMath.HitStopSeconds(e.Result.Outcome, e.Result.BrokeByZero));
 
-        // A plain damaging hit gets a short freeze too (docs/specs/hit-juice.md); pokes return 0 and don't freeze.
+        // A plain damaging hit gets a short freeze too (docs/specs/hit-juice.md); pokes and effect damage (burn ticks,
+        // chains, finisher) return 0 and don't freeze.
         private void HandleHit(HitInfo hit) =>
-            Freeze(HitJuiceRules.BodyHitStopSeconds(hit.Payload, hit.Victim.Team, hit.Damage));
+            Freeze(HitJuiceRules.BodyHitStopSeconds(hit.Payload, hit.Victim.Team, hit.Damage, hit.IsEffect));
 
         /// <summary>Freezes for <paramref name="seconds"/> of real time; overlapping calls extend, never stack.</summary>
         public void Freeze(float seconds)

@@ -15,9 +15,13 @@ namespace DeckArpg.Gameplay
         public readonly bool Killed;
         /// <summary>Where to show the hit: the victim's position, raised to body height.</summary>
         public readonly Vector3 Position;
+        /// <summary>
+        /// Effect damage (burn tick, chain jump, finisher shockwave): no hit-stop, no shake, never applies a status.
+        /// </summary>
+        public readonly bool IsEffect;
 
         public HitInfo(CombatantStatus victim, in AttackPayload payload, int damage, bool wasCounter, bool killed,
-            Vector3 position)
+            Vector3 position, bool isEffect = false)
         {
             Victim = victim;
             Payload = payload;
@@ -25,6 +29,7 @@ namespace DeckArpg.Gameplay
             WasCounter = wasCounter;
             Killed = killed;
             Position = position;
+            IsEffect = isEffect;
         }
     }
 
@@ -76,6 +81,15 @@ namespace DeckArpg.Gameplay
         public float PostureTakenMultiplier { get; set; } = 1f;
         /// <summary>Push from the last body hit, decaying to zero. Movers add this to their motion.</summary>
         public Vector3 KnockbackVelocity { get; private set; }
+        /// <summary>Multiplies the push from Wind hits only (the boss: 0.5). 1 = normal.</summary>
+        public float KnockbackTakenMultiplier { get; set; } = 1f;
+        /// <summary>A non-poke body hit pushed us (Wind slam detection listens for Wind payloads).</summary>
+        public event Action<AttackPayload> KnockedBackBy;
+
+        private static readonly System.Collections.Generic.List<CombatantStatus> all =
+            new System.Collections.Generic.List<CombatantStatus>();
+        /// <summary>Every enabled combatant (chain targeting). Dead ones stay listed; filter on <see cref="IsDead"/>.</summary>
+        public static System.Collections.Generic.IReadOnlyList<CombatantStatus> All => all;
 
         public event Action<int> Damaged;
         /// <summary>A damaging body hit landed: damage and the flat direction it pushed us.</summary>
@@ -108,6 +122,13 @@ namespace DeckArpg.Gameplay
         {
             Hp = maxHp;
         }
+
+        private void OnEnable()
+        {
+            if (!all.Contains(this)) all.Add(this);
+        }
+
+        private void OnDisable() => all.Remove(this);
 
         private void Update()
         {
@@ -169,6 +190,39 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>
+        /// Effect damage (burn tick, chain jump, finisher shockwave): HP damage only, with no flinch, knockback,
+        /// counter or clash. Respects i-frames, death, teams and <see cref="DamageTakenMultiplier"/>. Raises the
+        /// usual hit events with <see cref="HitInfo.IsEffect"/> set, and <see cref="Died"/> if lethal.
+        /// Returns false if ignored.
+        /// </summary>
+        public bool TakeEffectDamage(int amount, Element element, in AttackPayload source)
+        {
+            if (IsInvulnerable || IsDead || source.Team == team || amount <= 0) return false;
+            int damage = amount;
+            if (DamageTakenMultiplier != 1f) damage = Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier));
+            if (damage <= 0) return false;
+            Hp = Mathf.Max(0, Hp - damage);
+            Damaged?.Invoke(damage);
+            AnyHitTaken?.Invoke(this, damage);
+            LastHitElement = element;
+            AnyHitLanded?.Invoke(new HitInfo(this, source, damage, false, Hp == 0,
+                transform.position + Vector3.up * HitFeedbackHeight, isEffect: true));
+            if (Hp == 0) Died?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// A push with no damage (the Wind finisher shockwave): knockback from <paramref name="payload"/> along
+        /// <paramref name="fromDirection"/>, with the Wind resistance applied. Raises <see cref="KnockedBackBy"/>.
+        /// </summary>
+        public void ApplyKnockback(in AttackPayload payload, Vector3 fromDirection)
+        {
+            if (IsInvulnerable || IsDead || payload.Team == team || payload.IsPoke) return;
+            Push(fromDirection, KnockbackSpeedFrom(payload));
+            KnockedBackBy?.Invoke(payload);
+        }
+
+        /// <summary>
         /// Pays HP as a cost (e.g. Overburn). Not a hit: no flinch, knockback, counter or events, and it
         /// never kills (floors at 1). Ignored when dead or for non-positive amounts.
         /// </summary>
@@ -181,14 +235,20 @@ namespace DeckArpg.Gameplay
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
             // A poke is damage only: no shove (can't keep enemies at bay) and no flinch.
-            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, CombatMath.KnockbackSpeed(payload));
+            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, KnockbackSpeedFrom(payload));
             HitTaken?.Invoke(damage, direction);
+            if (!payload.IsPoke) KnockedBackBy?.Invoke(payload);
 
             if (payload.IsPoke || FlinchArmor || flinchCooldownRemaining > 0f || hitFlinchSeconds <= 0f) return;
             stunRemaining = Mathf.Max(stunRemaining, hitFlinchSeconds);
             flinchCooldownRemaining = flinchCooldownSeconds;
             Flinched?.Invoke();
         }
+
+        /// <summary>Push speed from a payload; Wind pushes are scaled by <see cref="KnockbackTakenMultiplier"/>.</summary>
+        private float KnockbackSpeedFrom(in AttackPayload payload) =>
+            CombatMath.KnockbackSpeed(payload) *
+            (payload.Element == Element.Wind ? Mathf.Max(0f, KnockbackTakenMultiplier) : 1f);
 
         /// <summary>Sets a decaying push along the flattened direction. Returns the unit direction used.</summary>
         private Vector3 Push(Vector3 direction, float speed)
@@ -225,12 +285,14 @@ namespace DeckArpg.Gameplay
         /// <summary>
         /// Called when one of our cards loses a clash: posture damage and stun scaled by how decisively
         /// we lost (<paramref name="margin"/>), plus a shove along <paramref name="awayFromWinner"/>.
-        /// <paramref name="stunScale"/> multiplies the final stun (the player's crowd scaling).
+        /// <paramref name="stunScale"/> multiplies the final stun (the player's crowd scaling); <paramref name="postureScale"/>
+        /// multiplies the posture damage (a Physical winner: x1.5).
         /// </summary>
-        public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f)
+        public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f, float postureScale = 1f)
         {
             if (IsDead) return;
-            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin) * PostureTakenMultiplier;
+            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin) * PostureTakenMultiplier *
+                       Mathf.Max(0f, postureScale);
             float stun = breakStunSeconds * CombatMath.BreakStunScale(margin);
             if (awayFromWinner != Vector3.zero) Push(awayFromWinner, CombatMath.BreakShoveSpeed(margin));
             if (Posture >= maxPosture)
