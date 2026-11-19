@@ -248,17 +248,17 @@ namespace DeckArpg.Gameplay
         private static bool IsCardCommand(CombatCommand command) =>
             command != CombatCommand.Poke && command != CombatCommand.Reload && command != CombatCommand.Overburn;
 
-        /// <summary>A stock that completes the Sleight fires it: each shape has its own attack, Strike also lunges.</summary>
+        /// <summary>A stock that completes the Sleight fires it: each delivery has its own attack, Strike also lunges.</summary>
         private bool HandleStock(StockResult result, in SleightResult sleight, int tick)
         {
             if (result == StockResult.Rejected) return false;
             if (result == StockResult.Fired)
             {
                 var payload = AttackPayload.FromSleight(sleight, status.OwnerId, Team.Player, tick,
-                    SleightRules.HitCount(sleight.Shape), NextSleightZeroProof);
+                    SleightRules.HitCount(sleight.Delivery), NextSleightZeroProof);
                 NextSleightZeroProof = false;
                 combat.SpawnSleight(payload, motor.AimDirection);
-                if (sleight.Shape == CardShape.Strike) motor.TryLunge(motor.AimDirection);
+                if (sleight.Delivery == Delivery.Strike) motor.TryLunge(motor.AimDirection);
             }
             return true;
         }

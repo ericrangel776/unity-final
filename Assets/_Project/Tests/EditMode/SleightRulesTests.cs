@@ -164,5 +164,67 @@ namespace DeckArpg.Tests.EditMode
             Assert.Throws<ArgumentException>(() => SleightRules.Compose(Of(cards.Card(1), cards.Card(2))));
             Assert.Throws<ArgumentException>(() => SleightRules.Compose(Of(cards.Card(1), null, cards.Card(2))));
         }
+
+        [Test]
+        public void Compose_DeliveryFromSlot1Element_StatusFromSlot2()
+        {
+            var s = SleightRules.Compose(Of(
+                cards.Card(4, CardShape.Throw, Element.Lightning),
+                cards.Card(6, CardShape.Strike, Element.Fire),
+                cards.Card(3, CardShape.Arcana, Element.Ice)));
+            Assert.AreEqual(Delivery.ChainArc, s.Delivery);
+            Assert.AreEqual(Element.Fire, s.Element);
+        }
+
+        [Test]
+        public void Compose_PhysicalSlot1_KeepsItsShapeAsDelivery()
+        {
+            var s = SleightRules.Compose(Of(
+                cards.Card(4, CardShape.Arcana, Element.Physical),
+                cards.Card(6, CardShape.Strike, Element.Wind),
+                cards.Card(3)));
+            Assert.AreEqual(Delivery.Burst, s.Delivery);
+            Assert.AreEqual(Element.Wind, s.Element);
+        }
+
+        [Test]
+        public void Compose_ZeroInSlot1_TakesTheMirroredDelivery()
+        {
+            var source = cards.Card(7, CardShape.Strike, Element.Ice);
+            var s = SleightRules.Compose(Of(cards.Zero(), cards.Card(2, CardShape.Strike, Element.Fire), source));
+            Assert.AreEqual(Delivery.FrostBlast, s.Delivery);
+            Assert.AreEqual(Element.Fire, s.Element);
+        }
+
+        [Test]
+        public void Compose_AllSameElement_BecomesTheFinisherSource()
+        {
+            var s = SleightRules.Compose(Of(
+                cards.Card(4, CardShape.Throw, Element.Fire),
+                cards.Card(5, CardShape.Throw, Element.Fire),
+                cards.Card(6, CardShape.Throw, Element.Fire)));
+            var p = AttackPayload.FromSleight(s, 1, Team.Player, 0, SleightRules.HitCount(s.Delivery));
+            Assert.IsTrue(p.IsFinisherSource);
+            Assert.AreEqual(Delivery.Projectile, p.Delivery);
+        }
+
+        [TestCase(Delivery.Strike, 3)]
+        [TestCase(Delivery.Projectile, 2)]
+        [TestCase(Delivery.Burst, 1)]
+        [TestCase(Delivery.FrostBlast, 1)]
+        [TestCase(Delivery.ChainArc, 1)]
+        [TestCase(Delivery.Gust, 1)]
+        public void HitCount_PerDelivery(Delivery delivery, int expected)
+        {
+            Assert.AreEqual(expected, SleightRules.HitCount(delivery));
+        }
+
+        [TestCase(CardShape.Strike, 3)]
+        [TestCase(CardShape.Throw, 2)]
+        [TestCase(CardShape.Arcana, 1)]
+        public void HitCount_ShapeOverload_ForwardsAsPhysical(CardShape shape, int expected)
+        {
+            Assert.AreEqual(expected, SleightRules.HitCount(shape));
+        }
     }
 }

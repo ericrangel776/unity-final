@@ -235,7 +235,7 @@ namespace DeckArpg.Gameplay
             sleightCards.AddRange(cards);
 
             var payload = AttackPayload.FromSleight(sleight, status.OwnerId, Team.Enemy, Time.frameCount,
-                SleightRules.HitCount(sleight.Shape));
+                SleightRules.HitCount(sleight.Delivery));
             sleightHitboxes.Clear();
             LastSleightTime = Time.time;
             SetState(BossState.Idle, 0f);

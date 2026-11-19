@@ -123,5 +123,43 @@ namespace DeckArpg.Tests.EditMode
             var p = new AttackPayload(1, Team.Player, 10, false, true, 0, CardShape.Strike, Element.Physical, raw);
             Assert.AreEqual(expected, p.FinisherValue);
         }
+
+        [TestCase(Element.Physical, CardShape.Throw, Delivery.Projectile)]
+        [TestCase(Element.Fire, CardShape.Strike, Delivery.Projectile)]
+        [TestCase(Element.Ice, CardShape.Throw, Delivery.FrostBlast)]
+        [TestCase(Element.Lightning, CardShape.Arcana, Delivery.ChainArc)]
+        [TestCase(Element.Wind, CardShape.Strike, Delivery.Gust)]
+        public void FromCard_DeliveryIsElementDerived(Element element, CardShape shape, Delivery expected)
+        {
+            var p = AttackPayload.FromCard(cards.Card(4, shape, element), 1, Team.Player, 0);
+            Assert.AreEqual(expected, p.Delivery);
+            Assert.IsFalse(p.IsFinisherSource);
+        }
+
+        [Test]
+        public void Poke_IsPhysicalStrike()
+        {
+            var p = AttackPayload.Poke(1, Team.Player, 0);
+            Assert.AreEqual(Delivery.Strike, p.Delivery);
+            Assert.AreEqual(Element.Physical, p.Element);
+        }
+
+        [Test]
+        public void FromSleight_UsesSlot1Delivery_Slot2Element_AndFinisherFlag()
+        {
+            var sleight = new SleightResult(15, CardShape.Throw, Element.Ice, 5, true, Delivery.ChainArc);
+            var p = AttackPayload.FromSleight(sleight, 1, Team.Player, 0, 1);
+            Assert.AreEqual(Delivery.ChainArc, p.Delivery);
+            Assert.AreEqual(Element.Ice, p.Element);
+            Assert.IsTrue(p.IsFinisherSource);
+        }
+
+        [Test]
+        public void IsFinisherSource_IsIgnoredForSingleCards()
+        {
+            var p = new AttackPayload(1, Team.Player, 4, false, false, 0, CardShape.Strike, Element.Fire,
+                isFinisherSource: true);
+            Assert.IsFalse(p.IsFinisherSource);
+        }
     }
 }

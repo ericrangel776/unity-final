@@ -19,6 +19,10 @@ namespace DeckArpg.Core
         public readonly int ActivationTick;
         public readonly CardShape Shape;
         public readonly Element Element;
+        /// <summary>How the attack travels: element-derived (shape only for Physical). A Sleight uses slot 1's.</summary>
+        public readonly Delivery Delivery;
+        /// <summary>A Sleight whose three elements match (finisher shockwave trigger; only player ones fire it). Sleights only.</summary>
+        public readonly bool IsFinisherSource;
         /// <summary>Sleight slot-3 value (0-9) that scales damage; 0 for anything that is not a Sleight.</summary>
         public readonly int FinisherValue;
         /// <summary>Hits a multi-hit Sleight can land per body; its damage is split across them. 1 for everything else.</summary>
@@ -39,8 +43,10 @@ namespace DeckArpg.Core
 
         public AttackPayload(int ownerId, Team team, int value, bool isZeroBreaker, bool isSleight,
             int activationTick, CardShape shape, Element element, int finisherValue = 0, int hitCount = 1,
-            bool zeroProof = false, bool isPoke = false)
+            bool zeroProof = false, bool isPoke = false, Delivery? delivery = null, bool isFinisherSource = false)
         {
+            Delivery = delivery ?? ElementRules.DeliveryFor(element, shape);
+            IsFinisherSource = isSleight && isFinisherSource;
             IsPoke = isPoke;
             ZeroProof = isSleight && zeroProof;
             FinisherValue = isSleight ? Math.Max(0, Math.Min(CardValue.Max, finisherValue)) : 0;
@@ -82,7 +88,8 @@ namespace DeckArpg.Core
         public static AttackPayload FromSleight(in SleightResult sleight, int ownerId, Team team, int activationTick,
             int hitCount = 1, bool zeroProof = false) =>
             new AttackPayload(ownerId, team, sleight.Value, false, true, activationTick, sleight.Shape,
-                sleight.Element, sleight.FinisherValue, hitCount, zeroProof);
+                sleight.Element, sleight.FinisherValue, hitCount, zeroProof, delivery: sleight.Delivery,
+                isFinisherSource: sleight.AllSameElement);
 
         /// <summary>The always-available off-deck Value 1 poke, so the player is never helpless.</summary>
         public static AttackPayload Poke(int ownerId, Team team, int activationTick) =>

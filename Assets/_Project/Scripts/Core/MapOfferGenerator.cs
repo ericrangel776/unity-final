@@ -20,7 +20,7 @@ namespace DeckArpg.Core
         private static readonly MapCardKind[] GreenKinds = { MapCardKind.KindledGround, MapCardKind.BountyWind };
         private static readonly MapCardKind[] BlueKinds = { MapCardKind.Shop, MapCardKind.Forge, MapCardKind.Rest };
         private static readonly EliteTrial[] Trials = { EliteTrial.Veiled, EliteTrial.Counterpuncher, EliteTrial.Hexer };
-        private static readonly Element[] Elements = { Element.Physical, Element.Fire, Element.Ice, Element.Lightning };
+        private static readonly Element[] Elements = { Element.Physical, Element.Fire, Element.Ice, Element.Lightning, Element.Wind };
 
         /// <summary>Center of the number band: rooms 1-5 give 2, 3, 4, 6, 7.</summary>
         public static int Center(int room)
