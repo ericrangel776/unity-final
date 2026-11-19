@@ -171,6 +171,8 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(fx.HasBurnPip);
             Assert.IsTrue(fx.HasChillPip);
             Assert.AreEqual(2, fx.PipCount);
+            var pip = body.transform.Find("BurnPip");
+            Assert.Greater(pip.position.y, body.transform.position.y + 2f, "above the 2 u body, never inside it");
 
             effects.Clear();
             yield return null;

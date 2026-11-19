@@ -120,6 +120,13 @@ Instead of animating 50 custom Sleights like the original GBA game ([Sleight Wik
 * **Slot 3 (The Finisher — Defines Scaling):**
   * Scales final damage multiplier by `1.0f + (Slot3.EffectiveValue * 0.1f)` and triggers a finisher shockwave if all 3 cards share the same element tag.
 
+> **Implemented (vertical slice), see `docs/specs/element-mechanics.md`.** Element decides delivery: Fire = fireball
+> projectile, Ice = short frost blast, Lightning = mid-range arc that chains (up to 3, 4 u hops), and the new **Wind**
+> element = a gust that knocks back x2.5 and slams bodies into walls for posture. Physical keeps the card's shape
+> (Strike/Throw/Arcana), so slot 1 decides *delivery* and slot 2 the *status*. Every card applies its status, single
+> plays included; Sleights last longer. Physical's +50% applies to break posture. Burning-ground tiles and crystal
+> shrapnel are deferred, and the finisher shockwave is player-only (all boss/Elite decks are Physical).
+
 ### 6.2 Three Playable Roguelike Build Archetypes
 
 1. **The "Zero-Breaker" Deck-Mill Archetype:**

@@ -246,6 +246,67 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"Hit-juice screenshots written to {dir}");
         }
 
+        /// <summary>
+        /// Element mechanics (docs/specs/element-mechanics.md): a burning, chilled cluster mid-chain with pips and the
+        /// chain line, and the BURN/CHILL chips on the player, as elements_*.png.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CaptureElements()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+
+            // Find a fight with at least three enemies (a chain needs a cluster).
+            for (int seed = 1; seed < 40; seed++)
+            {
+                director.RestartRun(seed);
+                for (int guard = 0; guard < 12; guard++)
+                {
+                    if (director.State == RunDirectorState.Fighting && director.Enemies.Count >= 3) break;
+                    switch (director.State)
+                    {
+                        case RunDirectorState.ChoosingDoor: director.ChooseDoor(0); break;
+                        case RunDirectorState.Fighting: director.DebugDefeatAllEnemies(); break;
+                        case RunDirectorState.Reward: director.FinishReward(); break;
+                        case RunDirectorState.Utility: director.LeaveUtility(); break;
+                    }
+                    yield return null;
+                }
+                if (director.State == RunDirectorState.Fighting && director.Enemies.Count >= 3) break;
+            }
+            var enemies = director.Enemies;
+            Assert.GreaterOrEqual(enemies.Count, 3, "Need three enemies for the chain shot.");
+            foreach (var e in enemies) e.Target = null; // hold their AI still
+            // Pull them into a tight row (hops under 4 u) and stand the player in front of it.
+            var centre = enemies[0].transform.position;
+            for (int i = 0; i < enemies.Count; i++)
+                RunTestHelpers.Place(enemies[i], centre + new Vector3((i - 1) * 2f, 0f, 0f));
+            RunTestHelpers.Place(director.Player, centre + new Vector3(0f, 0f, -3f));
+            float settle = Time.realtimeSinceStartup + 1.5f;
+            while (Time.realtimeSinceStartup < settle) yield return null;
+
+            var player = director.Player.GetComponent<CombatantStatus>();
+            int tick = Time.frameCount;
+            AttackPayload Card(int value, Element element, Team team = Team.Player, int owner = 0) =>
+                new AttackPayload(owner != 0 ? owner : player.OwnerId, team, value, false, false, tick, CardShape.Strike, element);
+
+            // Burn and chill the cluster, burn and chill the player, then fire a Lightning hit and shoot mid-chain.
+            enemies[1].Status.TakeHit(Card(5, Element.Fire));
+            enemies[1].Status.TakeHit(Card(3, Element.Ice));
+            enemies[2].Status.TakeHit(Card(4, Element.Ice));
+            player.TakeHit(Card(3, Element.Fire, Team.Enemy, enemies[1].Status.OwnerId));
+            player.TakeHit(Card(2, Element.Ice, Team.Enemy, enemies[2].Status.OwnerId));
+            float wait = Time.realtimeSinceStartup + 0.25f; // let the hit flashes and hit-stop pass
+            while (Time.realtimeSinceStartup < wait) yield return null;
+            Time.timeScale = 1f;
+            enemies[0].Status.TakeHit(Card(6, Element.Lightning));
+            yield return Capture(dir, "elements_1_chain_burn_chill");
+            Debug.Log($"Element screenshots written to {dir}");
+        }
+
         [UnityTest]
         public IEnumerator CaptureM2HudStates()
         {

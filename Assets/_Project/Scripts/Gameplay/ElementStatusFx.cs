@@ -11,7 +11,11 @@ namespace DeckArpg.Gameplay
     [RequireComponent(typeof(ElementStatusEffects))]
     public sealed class ElementStatusFx : MonoBehaviour
     {
-        public const float PipHeightAboveFeedback = 0.6f;
+        /// <summary>
+        /// Pip height above the root (the feet). The greybox body is 2 u tall, so this floats them just over the head
+        /// (the spec's HitFeedbackHeight + 0.6 = 1.6 sat inside the body).
+        /// </summary>
+        public const float PipHeight = 2.35f;
         public const float PipSize = 0.22f;
         public const float PipSpacing = 0.3f;
         public const float PulseHz = 3f;
@@ -81,8 +85,7 @@ namespace DeckArpg.Gameplay
 
         private void PlacePips(bool burning, bool chilled)
         {
-            var head = transform.position + Vector3.up * (CombatantStatus.HitFeedbackHeight + PipHeightAboveFeedback) *
-                Mathf.Max(0.01f, transform.lossyScale.y);
+            var head = transform.position + Vector3.up * PipHeight * Mathf.Max(0.01f, transform.lossyScale.y);
             var cam = Camera.main;
             var right = cam != null ? cam.transform.right : Vector3.right;
             int count = (burning ? 1 : 0) + (chilled ? 1 : 0);

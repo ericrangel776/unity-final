@@ -9,8 +9,8 @@ Real-time roguelike ARPG with a card-clash combat core (mechanics inspired by KH
 Memories; run structure like Slay the Spire). Original assets/names only - no IP from references.
 
 - **Hand:** 3-card active hand + reserved `0`-Parry slot. Single play fires a card and draws next.
-- **Sleights:** stock 3 cards -> auto-fire, value = sum. Slot 1 = shape (Strike/Throw/Arcana),
-  Slot 2 = element/status (Fire/Ice/Lightning/Physical), Slot 3 = multiplier `1 + v*0.1`.
+- **Sleights:** stock 3 cards -> auto-fire, value = sum. Slot 1 = delivery (element-derived; Physical
+  keeps shape), Slot 2 = element/status (Fire/Ice/Lightning/Physical/Wind), Slot 3 = multiplier `1 + v*0.1`.
   Slot-1 card is burned for the room.
 - **Clashes:** higher value breaks lower (stun + posture dmg); equal = neutral cancel;
   `0` breaks anything only if played *second* (`activationTick` strictly greater; tie = bounce),
