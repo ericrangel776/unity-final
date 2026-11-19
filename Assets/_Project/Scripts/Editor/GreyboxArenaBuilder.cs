@@ -236,6 +236,8 @@ namespace DeckArpg.Editor
             AssignDeck(deckManager, deck);
             root.AddComponent<PlayerMotor>();
             root.AddComponent<PlayerCombatInput>();
+            root.AddComponent<ElementStatusEffects>();
+            root.AddComponent<ElementStatusFx>();
             return SavePrefab(root, PlayerPrefabPath);
         }
 
@@ -253,6 +255,8 @@ namespace DeckArpg.Editor
             root.AddComponent<TrainingDummyEnemy>();
             root.AddComponent<EnemyTelegraphView>();
             root.AddComponent<DeathPop>().ParticleMaterial = GetOrCreateSparkMaterial();
+            root.AddComponent<ElementStatusEffects>();
+            root.AddComponent<ElementStatusFx>();
             return SavePrefab(root, DummyPrefabPath);
         }
 
@@ -354,6 +358,8 @@ namespace DeckArpg.Editor
             var hitFx = new GameObject("HitFx");
             hitFx.transform.SetParent(fx.transform, false);
             hitFx.AddComponent<HitImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
+            // Burn/chill/chain on hits and the same-element finisher (docs/specs/element-mechanics.md).
+            new GameObject("ElementSystem").AddComponent<ElementSystem>();
         }
 
         /// <summary>Build scene order (docs/specs/m3-smoke-test.md): the run first, then the M1 arena. Only scenes that exist are listed.</summary>

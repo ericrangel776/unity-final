@@ -197,6 +197,8 @@ GameObject:
   - component: {fileID: 5222649928282007926}
   - component: {fileID: 9166423704828162631}
   - component: {fileID: 1695898995218105054}
+  - component: {fileID: 1497045074243017832}
+  - component: {fileID: 6280628203435378684}
   m_Layer: 0
   m_Name: TrainingDummy
   m_TagString: Untagged
@@ -306,6 +308,20 @@ MonoBehaviour:
   throwLifetime: 1.2
   arcanaRadius: 2.2
   arcanaDuration: 0.3
+  frostRadius: 1.4
+  frostReach: 1
+  frostDuration: 0.25
+  sleightFrostStartRadius: 0.5
+  sleightFrostEndMultiplier: 2.1
+  sleightFrostGrowSeconds: 0.3
+  arcRadius: 0.3
+  arcSpeed: 28
+  arcLifetime: 0.25
+  sleightArcScale: 1.5
+  gustSize: {x: 2.4, y: 1.2, z: 2.5}
+  gustReach: 1.6
+  gustDuration: 0.2
+  sleightGustScale: 1.5
   sleightStrikeInterval: 0.12
   sleightStrikeScale: 1.3
   sleightThrowScale: 1.5
@@ -380,3 +396,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.DeathPop
   particleMaterial: {fileID: 2100000, guid: 125ea273c06387f4fb26621ef029b96d, type: 2}
+--- !u!114 &1497045074243017832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6213917921559995211}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b68d620a252c6bf49aa6617c68ba49d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.ElementStatusEffects
+--- !u!114 &6280628203435378684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6213917921559995211}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f06d94d2d223774d8991fb8d4a41515, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.ElementStatusFx
