@@ -15,7 +15,8 @@ Memories; run structure like Slay the Spire). Original assets/names only - no IP
 - **Clashes:** higher value breaks lower (stun + posture dmg); equal = neutral cancel;
   `0` breaks anything only if played *second* (`activationTick` strictly greater; tie = bounce),
   and deletes the enemy card from its current cycle.
-- **Active Reload:** 1.2 s timing bar; sweet spot = instant reload + speed boost.
+- **Active Reload:** each reload rolls a 0.8-1.6 s timing bar with a sweet-spot centre at 40-85%;
+  sweet spot = instant reload + speed boost.
 - **Safeguards (must hold):** Floor of 3 (deck <= 3 -> Sleights don't burn); always-available
   `Value 1` poke + i-frame dash; Overburn Reload (10% HP restores burned cards);
   `0` is a flag (`isZeroBreaker`), never integer math - clamp all values to `[1, 9]`;
