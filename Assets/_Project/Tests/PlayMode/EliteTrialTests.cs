@@ -87,6 +87,15 @@ namespace DeckArpg.Tests.PlayMode
         // ---- setup per trial ----
 
         [Test]
+        public void Elite_GetsTheBiggerDeathPop()
+        {
+            EnterTrial(EliteTrial.Veiled);
+            var pop = Elite.GetComponent<DeathPop>();
+            Assert.IsNotNull(pop, "DeathPop missing from the enemy prefab (rebuild the arena).");
+            Assert.AreEqual(DeathPop.EliteScale, pop.Scale, 1e-5f);
+        }
+
+        [Test]
         public void Veiled_SetsRevealTimeFromIntensity()
         {
             var room = EnterTrial(EliteTrial.Veiled);

@@ -49,6 +49,14 @@ namespace DeckArpg.Tests.EditMode
             Assert.IsNotEmpty(StartingDeck(prefab));
         }
 
+        [Test]
+        public void DummyPrefab_HasDeathPop_WithParticleMaterial()
+        {
+            var pop = AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefab).GetComponent<DeathPop>();
+            Assert.IsNotNull(pop, "DeathPop missing (rebuild the arena).");
+            Assert.IsNotNull(pop.ParticleMaterial, "DeathPop particle material not assigned.");
+        }
+
         [TestCase(PlayerPrefab)]
         [TestCase(DummyPrefab)]
         public void CharacterPrefabs_DoNotDropSmallMoves(string path)
