@@ -90,7 +90,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(stockView.IsVisible);
             Assert.AreEqual(value.ToString(), stockView.SlotText(0));
             Assert.AreEqual("", stockView.SlotText(1));
-            StringAssert.StartsWith($"SLEIGHT {value}+ · Throw", stockView.PreviewText);
+            StringAssert.StartsWith($"SLEIGHT {value}+ · Fireball", stockView.PreviewText);
         }
 
         [UnityTest]
@@ -102,7 +102,7 @@ namespace DeckArpg.Tests.PlayMode
             yield return null;
 
             Assert.AreEqual($"0→{value}", stockView.SlotText(1));
-            StringAssert.StartsWith($"SLEIGHT {value * 2}+ · Throw · Fire", stockView.PreviewText);
+            StringAssert.StartsWith($"SLEIGHT {value * 2}+ · Fireball · Fire", stockView.PreviewText);
             StringAssert.Contains("finisher", stockView.PreviewText);
         }
 

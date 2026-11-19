@@ -132,10 +132,38 @@ namespace DeckArpg.UI
         public static string CardValue(CardData card, int upgrade = 0) =>
             card.IsZeroBreaker ? "0" : Core.CardValue.Clamp(card.BaseValue + upgrade).ToString();
 
-        /// <summary>"Strike · Fire", plus "Premium (+2, burns on play)" and "Pre-upgraded +N" lines when they apply.</summary>
+        /// <summary>
+        /// How an attack travels, for the HUD: "Strike", "Throw", "Burst" (Physical shapes), "Fireball", "Frost Blast",
+        /// "Chain Arc", "Gust". Projectile reads "Fireball" only for Fire.
+        /// </summary>
+        public static string DeliveryName(Delivery delivery, Element element = Element.Physical)
+        {
+            switch (delivery)
+            {
+                case Delivery.Projectile: return element == Element.Fire ? "Fireball" : "Throw";
+                case Delivery.Burst: return "Burst";
+                case Delivery.FrostBlast: return "Frost Blast";
+                case Delivery.ChainArc: return "Chain Arc";
+                case Delivery.Gust: return "Gust";
+                default: return "Strike";
+            }
+        }
+
+        /// <summary>A player status chip: "BURN 2.4s" (seconds rounded up to a tenth, so it never reads 0.0s while on).</summary>
+        public static string StatusChip(string label, float secondsLeft)
+        {
+            double tenths = System.Math.Ceiling(System.Math.Max(0.0, secondsLeft) * 10.0 - 1e-4) / 10.0;
+            return $"{label} {tenths.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}s";
+        }
+
+        /// <summary>The delivery name of a card: its element decides it (Physical keeps its shape).</summary>
+        public static string DeliveryName(CardData card) =>
+            DeliveryName(ElementRules.DeliveryFor(card.Element, card.Shape), card.Element);
+
+        /// <summary>"Fireball · Fire", plus "Premium (+2, burns on play)" and "Pre-upgraded +N" lines when they apply.</summary>
         public static string CardDetails(CardData card, int upgrade = 0)
         {
-            var sb = new StringBuilder(card.IsZeroBreaker ? "0-card · breaks anything played first" : $"{card.Shape} · {card.Element}");
+            var sb = new StringBuilder(card.IsZeroBreaker ? "0-card · breaks anything played first" : $"{DeliveryName(card)} · {card.Element}");
             if (card.IsPremium) sb.Append($"\nPremium (+{RuntimeCardInstance.PremiumBonus}, burns on play)");
             if (upgrade > 0 && !card.IsZeroBreaker) sb.Append($"\nPre-upgraded +{upgrade}");
             return sb.ToString();
@@ -165,7 +193,7 @@ namespace DeckArpg.UI
         /// <summary>A deck-list cell: "6  Strike 4  +2  ·  Strike · Physical", plus "  (reason)" when it can't be chosen.</summary>
         public static string DeckCell(RuntimeCardInstance card, string blockedReason = null)
         {
-            string kind = card.IsZeroBreaker ? "0-card" : $"{card.Data.Shape} · {card.Data.Element}";
+            string kind = card.IsZeroBreaker ? "0-card" : $"{DeliveryName(card.Data)} · {card.Data.Element}";
             string text = $"{DeckValue(card)}   {DeckCardLabel(card)}   ·   {kind}";
             return string.IsNullOrEmpty(blockedReason) ? text : $"{text}   ({blockedReason})";
         }

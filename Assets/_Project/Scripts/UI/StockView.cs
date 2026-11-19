@@ -108,7 +108,7 @@ namespace DeckArpg.UI
         {
             int total = SleightRules.PreviewTotal(stock);
             string plus = stock.Count < SleightRules.StockSize ? "+" : "";
-            string line = $"SLEIGHT {total}{plus} · {Resolve(stock, 0).Data.Shape}";
+            string line = $"SLEIGHT {total}{plus} · {RunUiText.DeliveryName(Resolve(stock, 0).Data)}";
             if (stock.Count > 1) line += $" · {Resolve(stock, 1).Data.Element}";
             if (stock.Count == SleightRules.StockSize - 1) line += "\n3rd card = finisher x(1 + v/10)";
             return line;

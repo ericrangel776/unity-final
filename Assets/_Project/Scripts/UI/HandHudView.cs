@@ -134,7 +134,7 @@ namespace DeckArpg.UI
                 var card = cycle.Hand[i];
                 slotImages[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyColor;
                 slotValues[i].text = card != null ? card.GetEffectiveValue().ToString() : "";
-                slotNames[i].text = card != null ? $"{card.Data.DisplayName}\n{card.Data.Shape}\n" : "";
+                slotNames[i].text = card != null ? $"{card.Data.DisplayName}\n{RunUiText.DeliveryName(card.Data)}\n" : "";
             }
 
             var parry = cycle.ParrySlot;
