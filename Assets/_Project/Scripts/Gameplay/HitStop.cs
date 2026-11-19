@@ -34,11 +34,16 @@ namespace DeckArpg.Gameplay
             savedTimeScale = 1f;
         }
 
-        private void OnEnable() => ClashSystem.ClashOccurred += HandleClash;
+        private void OnEnable()
+        {
+            ClashSystem.ClashOccurred += HandleClash;
+            CombatantStatus.AnyHitLanded += HandleHit;
+        }
 
         private void OnDisable()
         {
             ClashSystem.ClashOccurred -= HandleClash;
+            CombatantStatus.AnyHitLanded -= HandleHit;
             // Never leave the game frozen if the owner is disabled or the scene unloads mid-freeze.
             if (owner == this)
             {
@@ -49,6 +54,10 @@ namespace DeckArpg.Gameplay
 
         private void HandleClash(ClashEvent e) =>
             Freeze(CombatMath.HitStopSeconds(e.Result.Outcome, e.Result.BrokeByZero));
+
+        // A plain damaging hit gets a short freeze too (docs/specs/hit-juice.md); pokes return 0 and don't freeze.
+        private void HandleHit(HitInfo hit) =>
+            Freeze(HitJuiceRules.BodyHitStopSeconds(hit.Payload, hit.Victim.Team, hit.Damage));
 
         /// <summary>Freezes for <paramref name="seconds"/> of real time; overlapping calls extend, never stack.</summary>
         public void Freeze(float seconds)
