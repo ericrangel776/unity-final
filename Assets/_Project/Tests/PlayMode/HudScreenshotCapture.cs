@@ -186,6 +186,66 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"M4 screenshots written to {dir}");
         }
 
+        /// <summary>Hit juice (docs/specs/hit-juice.md): damage numbers in each element colour, the red hurt number, a death pop.</summary>
+        [UnityTest]
+        public IEnumerator CaptureHitJuice()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+            director.RestartRun(5);
+
+            // Find a fight with at least two enemies.
+            for (int guard = 0; guard < 20; guard++)
+            {
+                if (director.State == RunDirectorState.Fighting && director.Enemies.Count >= 2) break;
+                switch (director.State)
+                {
+                    case RunDirectorState.ChoosingDoor: director.ChooseDoor(0); break;
+                    case RunDirectorState.Fighting: director.DebugDefeatAllEnemies(); break;
+                    case RunDirectorState.Reward: director.FinishReward(); break;
+                    case RunDirectorState.Utility: director.LeaveUtility(); break;
+                }
+                yield return null;
+            }
+            Assert.AreEqual(RunDirectorState.Fighting, director.State, "Never reached a fight.");
+            var enemies = director.Enemies;
+            Assert.GreaterOrEqual(enemies.Count, 2, "Need two enemies for the shot.");
+            foreach (var e in enemies) e.Target = null; // hold their AI still
+            // Stand between the two targets, a little in front, so both sit mid-screen above the HUD.
+            var middle = (enemies[0].transform.position + enemies[1].transform.position) * 0.5f;
+            RunTestHelpers.Place(director.Player, middle + new Vector3(0f, 0f, -1.5f));
+            float settle = Time.realtimeSinceStartup + 1.5f; // let the follow camera's damping catch up
+            while (Time.realtimeSinceStartup < settle) yield return null;
+
+            var player = director.Player.GetComponent<CombatantStatus>();
+            int tick = Time.frameCount;
+            AttackPayload Card(int value, Element element) =>
+                new AttackPayload(player.OwnerId, Team.Player, value, false, false, tick, CardShape.Strike, element);
+
+            // 1) Numbers: small Fire, big Ice Sleight, Lightning, a poke, and a red hurt number over the player.
+            enemies[0].Status.TakeHit(Card(2, Element.Fire));
+            enemies[0].Status.TakeHit(new AttackPayload(player.OwnerId, Team.Player, 18, false, true, tick,
+                CardShape.Strike, Element.Ice, 9));
+            enemies[1].Status.TakeHit(Card(7, Element.Lightning));
+            enemies[1].Status.TakeHit(AttackPayload.Poke(player.OwnerId, Team.Player, tick));
+            player.TakeHit(new AttackPayload(enemies[1].Status.OwnerId, Team.Enemy, 4, false, false, tick,
+                CardShape.Strike, Element.Physical));
+            yield return Capture(dir, "juice_1_damage_numbers");
+
+            // 2) Death pop mid-squash: a lethal Fire hit, captured a few frames in.
+            Time.timeScale = 1f;
+            var victim = enemies[1].Status;
+            victim.TakeHit(new AttackPayload(player.OwnerId, Team.Player, 99, false, true, tick, CardShape.Strike,
+                Element.Fire, 9));
+            float popEnd = Time.realtimeSinceStartup + 0.1f;
+            while (Time.realtimeSinceStartup < popEnd) yield return null;
+            yield return Capture(dir, "juice_2_death_pop");
+            Debug.Log($"Hit-juice screenshots written to {dir}");
+        }
+
         [UnityTest]
         public IEnumerator CaptureM2HudStates()
         {

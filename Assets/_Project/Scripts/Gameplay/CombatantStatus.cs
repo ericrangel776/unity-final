@@ -4,6 +4,30 @@ using UnityEngine;
 
 namespace DeckArpg.Gameplay
 {
+    /// <summary>A damaging body hit that landed, for global feedback (hit-stop, sparks, damage numbers).</summary>
+    public readonly struct HitInfo
+    {
+        public readonly CombatantStatus Victim;
+        public readonly AttackPayload Payload;
+        /// <summary>Final damage after multipliers, the counter bonus and any non-lethal cap. Always above 0.</summary>
+        public readonly int Damage;
+        public readonly bool WasCounter;
+        public readonly bool Killed;
+        /// <summary>Where to show the hit: the victim's position, raised to body height.</summary>
+        public readonly Vector3 Position;
+
+        public HitInfo(CombatantStatus victim, in AttackPayload payload, int damage, bool wasCounter, bool killed,
+            Vector3 position)
+        {
+            Victim = victim;
+            Payload = payload;
+            Damage = damage;
+            WasCounter = wasCounter;
+            Killed = killed;
+            Position = position;
+        }
+    }
+
     /// <summary>HP, posture, stun and i-frames for anything that can be hit.</summary>
     public sealed class CombatantStatus : MonoBehaviour, IHpPool
     {
@@ -67,6 +91,18 @@ namespace DeckArpg.Gameplay
         public static event Action<CombatantStatus, int> CounterHit;
         /// <summary>Any combatant took a damaging body hit: the victim and the damage. For global feedback (SFX).</summary>
         public static event Action<CombatantStatus, int> AnyHitTaken;
+        /// <summary>
+        /// Any combatant took a damaging body hit (damage above 0), lethal hits included. Raised after HP changes and
+        /// before <see cref="Died"/>, so feedback for the killing blow plays before the death.
+        /// </summary>
+        public static event Action<HitInfo> AnyHitLanded;
+        /// <summary>Raised by <see cref="Revive"/>, so FX can restore visuals when a body respawns.</summary>
+        public event Action Revived;
+        /// <summary>Element of the last damaging hit we took (the death pop colour). Physical until hit.</summary>
+        public Element LastHitElement { get; private set; } = Element.Physical;
+
+        /// <summary>Height above the root at which hit feedback is shown.</summary>
+        public const float HitFeedbackHeight = 1f;
 
         private void Awake()
         {
@@ -116,7 +152,13 @@ namespace DeckArpg.Gameplay
             Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
             if (counter) CounterHit?.Invoke(this, damage);
-            if (damage > 0) AnyHitTaken?.Invoke(this, damage);
+            if (damage > 0)
+            {
+                AnyHitTaken?.Invoke(this, damage);
+                LastHitElement = payload.Element;
+                AnyHitLanded?.Invoke(new HitInfo(this, payload, damage, counter, Hp == 0,
+                    transform.position + Vector3.up * HitFeedbackHeight));
+            }
             if (Hp == 0)
             {
                 Died?.Invoke();
@@ -232,6 +274,8 @@ namespace DeckArpg.Gameplay
             flinchCooldownRemaining = 0f;
             counterWindowRemaining = 0f;
             KnockbackVelocity = Vector3.zero;
+            LastHitElement = Element.Physical;
+            Revived?.Invoke();
         }
     }
 }

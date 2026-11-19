@@ -61,5 +61,25 @@ namespace DeckArpg.Tests.EditMode
                 EditorSceneManager.CloseScene(scene, true);
             }
         }
+
+        [Test]
+        public void RunScene_HasHitJuice()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var hitFx = roots.Select(r => r.GetComponentInChildren<HitImpactFx>()).FirstOrDefault(f => f != null);
+                Assert.IsNotNull(hitFx, "HitImpactFx missing (rebuild the scene).");
+                Assert.IsNotNull(hitFx.ParticleMaterial, "HitImpactFx particle material not assigned.");
+                Assert.IsNull(hitFx.GetComponent<ClashImpactFx>(), "HitImpactFx needs its own object (impulse sources).");
+                Assert.IsTrue(roots.Any(r => r.GetComponent<HitStop>() != null), "HitStop missing.");
+                Assert.IsTrue(roots.Any(r => r.GetComponent<DamageNumberView>() != null), "DamageNumberView missing.");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
     }
 }

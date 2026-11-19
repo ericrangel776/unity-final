@@ -90,7 +90,7 @@ Decisions from these results:
 - A "natural" boss decision AI (hand-value or phase-based). Only the `IBossAttackPolicy` seam and the pattern policy.
 - Permanent mill / mill-as-win, a boss 0-card, multiple bosses or boss phases.
 - Showing the boss's queue order. Boss-style HUD or deck visibility for mobs or Elites.
-- Floating damage numbers (not selected).
+- Floating damage numbers: approved later, see `docs/specs/hit-juice.md`.
 - Imported audio assets, music, an audio mixer/settings menu.
 - New art/models: the boss stays greybox (scaled capsule plus a tint).
 - Changing Elite trials, relics, rewards or the Map Card loop (except `RoomIntensity` for the boss bonus).

@@ -223,6 +223,10 @@ namespace DeckArpg.Gameplay
                 var enemy = Instantiate(enemyPrefab, position, Quaternion.LookRotation(facing));
                 enemy.name = $"{room.Kind} Enemy {i + 1}";
                 enemy.transform.localScale *= scale;
+                var pop = enemy.GetComponent<DeathPop>();
+                if (pop != null)
+                    pop.Scale = room.Kind == MapCardKind.EliteTrial ? DeathPop.EliteScale
+                        : room.Kind == MapCardKind.Boss ? DeathPop.BossScale : 1f;
                 enemy.RespawnOnDeath = false;
                 enemy.Target = player.transform;
                 enemy.ApplyTempo(tempo);

@@ -196,6 +196,7 @@ GameObject:
   - component: {fileID: 8916190510095622547}
   - component: {fileID: 5222649928282007926}
   - component: {fileID: 9166423704828162631}
+  - component: {fileID: 1695898995218105054}
   m_Layer: 0
   m_Name: TrainingDummy
   m_TagString: Untagged
@@ -366,3 +367,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: DeckArpg.UI::DeckArpg.UI.EnemyTelegraphView
   enemy: {fileID: 0}
   height: 2.6
+--- !u!114 &1695898995218105054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6213917921559995211}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00ef7d69ae78cd9408a09ddf1ef6a468, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.DeathPop
+  particleMaterial: {fileID: 2100000, guid: 125ea273c06387f4fb26621ef029b96d, type: 2}

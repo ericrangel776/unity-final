@@ -149,6 +149,7 @@ namespace DeckArpg.Editor
             hud.AddComponent<StockView>();
             hud.AddComponent<ReloadBarView>();
             hud.AddComponent<SpeedLinesView>();
+            hud.AddComponent<DamageNumberView>();
             new GameObject("Audio").AddComponent<AudioService>();
         }
 
@@ -251,6 +252,7 @@ namespace DeckArpg.Editor
             AssignDeck(deckManager, deck);
             root.AddComponent<TrainingDummyEnemy>();
             root.AddComponent<EnemyTelegraphView>();
+            root.AddComponent<DeathPop>().ParticleMaterial = GetOrCreateSparkMaterial();
             return SavePrefab(root, DummyPrefabPath);
         }
 
@@ -348,6 +350,10 @@ namespace DeckArpg.Editor
             fx.AddComponent<HitStop>();
             fx.AddComponent<DeadlockController>(); // equal-value clashes become the timing-ring tie-break
             fx.AddComponent<ClashImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
+            // Own child: a second impulse source on ClashFx would be ambiguous for ClashImpactFx's GetComponent.
+            var hitFx = new GameObject("HitFx");
+            hitFx.transform.SetParent(fx.transform, false);
+            hitFx.AddComponent<HitImpactFx>().ParticleMaterial = GetOrCreateSparkMaterial();
         }
 
         /// <summary>Build scene order (docs/specs/m3-smoke-test.md): the run first, then the M1 arena. Only scenes that exist are listed.</summary>
