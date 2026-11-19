@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Thunderhead 9
   isZeroBreaker: 0
   baseValue: 9
-  shape: 2
+  shape: 1
   element: 3
   isHeal: 0
   isPremium: 0

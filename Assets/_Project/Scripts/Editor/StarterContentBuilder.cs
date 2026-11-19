@@ -59,7 +59,10 @@ namespace DeckArpg.Editor
             return result;
         }
 
-        /// <summary>17 draftable cards: 7 Common, 6 Uncommon, 4 Rare (incl. the Null Ward 0-card).</summary>
+        /// <summary>
+        /// 20 draftable cards: 8 Common, 7 Uncommon, 5 Rare (incl. the Null Ward 0-card). Each element's cards author the
+        /// shape that matches its delivery (Fire/Lightning Throw, Ice Arcana, Wind Strike; docs/specs/element-mechanics.md).
+        /// </summary>
         public static List<CardData> BuildDraftPool()
         {
             const Rarity C = Rarity.Common, U = Rarity.Uncommon, R = Rarity.Rare;
@@ -71,18 +74,21 @@ namespace DeckArpg.Editor
                 GetOrCreate("frost_5", 5, CardShape.Arcana, Element.Ice, "Frost 5", rarity: C),
                 GetOrCreate("spark_3", 3, CardShape.Throw, Element.Lightning, "Spark 3", rarity: C),
                 GetOrCreate("spark_5", 5, CardShape.Throw, Element.Lightning, "Spark 5", rarity: C),
-                GetOrCreate("volt_burst_4", 4, CardShape.Arcana, Element.Lightning, "Volt Burst 4", rarity: C),
+                GetOrCreate("volt_burst_4", 4, CardShape.Throw, Element.Lightning, "Volt Arc 4", rarity: C),
+                GetOrCreate("gust_4", 4, CardShape.Strike, Element.Wind, "Gust 4", rarity: C),
 
                 GetOrCreate("cleave_8", 8, CardShape.Strike, Element.Physical, "Cleave 8", rarity: U),
                 GetOrCreate("ember_7", 7, CardShape.Throw, Element.Fire, "Ember 7", rarity: U),
                 GetOrCreate("frost_7", 7, CardShape.Arcana, Element.Ice, "Frost 7", rarity: U),
                 GetOrCreate("spark_7", 7, CardShape.Throw, Element.Lightning, "Spark 7", rarity: U),
-                GetOrCreate("cinder_nova_6", 6, CardShape.Arcana, Element.Fire, "Cinder Nova 6", rarity: U),
-                GetOrCreate("rime_lance_6", 6, CardShape.Throw, Element.Ice, "Rime Lance 6", rarity: U),
+                GetOrCreate("cinder_nova_6", 6, CardShape.Throw, Element.Fire, "Cinder Bolt 6", rarity: U),
+                GetOrCreate("rime_lance_6", 6, CardShape.Arcana, Element.Ice, "Rime Burst 6", rarity: U),
+                GetOrCreate("gust_6", 6, CardShape.Strike, Element.Wind, "Gust 6", rarity: U),
 
                 GetOrCreate("cleave_9", 9, CardShape.Strike, Element.Physical, "Cleave 9", rarity: R),
-                GetOrCreate("thunderhead_9", 9, CardShape.Arcana, Element.Lightning, "Thunderhead 9", rarity: R),
-                GetOrCreate("inferno_8", 8, CardShape.Arcana, Element.Fire, "Inferno 8", rarity: R),
+                GetOrCreate("thunderhead_9", 9, CardShape.Throw, Element.Lightning, "Thunderhead 9", rarity: R),
+                GetOrCreate("inferno_8", 8, CardShape.Throw, Element.Fire, "Inferno 8", rarity: R),
+                GetOrCreate("tempest_8", 8, CardShape.Strike, Element.Wind, "Tempest 8", rarity: R),
                 GetOrCreate("null_ward_0", 1, CardShape.Strike, Element.Physical, "Null Ward", zero: true, rarity: R),
             };
         }
@@ -95,7 +101,7 @@ namespace DeckArpg.Editor
                 GetOrCreate("hex_bolt_3", 3, CardShape.Throw, Element.Fire, "Hex Bolt 3"),
                 GetOrCreate("hex_frost_4", 4, CardShape.Arcana, Element.Ice, "Hex Frost 4"),
                 GetOrCreate("hex_spark_5", 5, CardShape.Throw, Element.Lightning, "Hex Spark 5"),
-                GetOrCreate("hex_flare_6", 6, CardShape.Arcana, Element.Fire, "Hex Flare 6"),
+                GetOrCreate("hex_flare_6", 6, CardShape.Throw, Element.Fire, "Hex Flare 6"),
                 GetOrCreate("hex_arc_7", 7, CardShape.Throw, Element.Lightning, "Hex Arc 7"),
             };
         }
@@ -155,11 +161,31 @@ namespace DeckArpg.Editor
             EnsureFolder(CardsFolder);
             string path = $"{CardsFolder}/{id}.asset";
             var existing = AssetDatabase.LoadAssetAtPath<CardData>(path);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                SyncAuthoredFields(existing, shape, displayName);
+                return existing;
+            }
 
             var card = CardData.Create(id, value, shape, element, zero, displayName: displayName, rarity: rarity);
             AssetDatabase.CreateAsset(card, path);
             return card;
+        }
+
+        /// <summary>
+        /// Keeps an existing asset's shape and display name in step with the builder (its id, value and element never
+        /// change), so a rebuild applies renames like "Cinder Nova" -> "Cinder Bolt" without new GUIDs.
+        /// </summary>
+        private static void SyncAuthoredFields(CardData card, CardShape shape, string displayName)
+        {
+            var so = new SerializedObject(card);
+            var shapeProp = so.FindProperty("shape");
+            var nameProp = so.FindProperty("displayName");
+            if (shapeProp.enumValueIndex == (int)shape && nameProp.stringValue == displayName) return;
+            shapeProp.enumValueIndex = (int)shape;
+            nameProp.stringValue = displayName;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(card);
         }
 
         internal static void EnsureFolder(string path)

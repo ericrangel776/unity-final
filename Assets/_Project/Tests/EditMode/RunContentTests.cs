@@ -201,13 +201,34 @@ namespace DeckArpg.Tests.EditMode
         public void GeneratedContent_IsValid() => CollectionAssert.IsEmpty(Generated().Validate());
 
         [Test]
-        public void GeneratedPool_HasSeventeenCards_SevenSixFour()
+        public void GeneratedPool_HasTwentyCards_EightSevenFive()
         {
             var pool = Generated().DraftPool;
-            Assert.AreEqual(17, pool.Count);
-            Assert.AreEqual(7, pool.Count(c => c.Rarity == Rarity.Common));
-            Assert.AreEqual(6, pool.Count(c => c.Rarity == Rarity.Uncommon));
-            Assert.AreEqual(4, pool.Count(c => c.Rarity == Rarity.Rare));
+            Assert.AreEqual(20, pool.Count);
+            Assert.AreEqual(8, pool.Count(c => c.Rarity == Rarity.Common));
+            Assert.AreEqual(7, pool.Count(c => c.Rarity == Rarity.Uncommon));
+            Assert.AreEqual(5, pool.Count(c => c.Rarity == Rarity.Rare));
+        }
+
+        [Test]
+        public void GeneratedPool_HasWindCards_OneOfEachRarity()
+        {
+            var wind = Generated().DraftPool.Where(c => c.Element == Element.Wind).ToList();
+            Assert.AreEqual(3, wind.Count);
+            CollectionAssert.AreEquivalent(new[] { Rarity.Common, Rarity.Uncommon, Rarity.Rare }, wind.Select(c => c.Rarity));
+        }
+
+        [TestCase(Element.Fire, CardShape.Throw)]
+        [TestCase(Element.Ice, CardShape.Arcana)]
+        [TestCase(Element.Lightning, CardShape.Throw)]
+        [TestCase(Element.Wind, CardShape.Strike)]
+        public void GeneratedCards_AuthorTheShapeThatMatchesTheirDelivery(Element element, CardShape shape)
+        {
+            var content = Generated();
+            var all = content.DraftPool.Concat(content.StarterDeck).Concat(content.HexfireDeck)
+                .Where(c => c != null && !c.IsZeroBreaker && c.Element == element).ToList();
+            Assert.IsNotEmpty(all);
+            foreach (var c in all) Assert.AreEqual(shape, c.Shape, c.CardId);
         }
 
         [Test]

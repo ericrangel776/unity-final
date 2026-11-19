@@ -31,15 +31,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9edf346d955e3ac4d8d415801a730fc5, type: 2}
   - {fileID: 11400000, guid: d4c6abc1c22af0748855e233ba75e6f0, type: 2}
   - {fileID: 11400000, guid: c3d5021bdfb41ee4090d90be65532ed9, type: 2}
+  - {fileID: 11400000, guid: 97e174a222ed7194a9bd1f2f43e03f22, type: 2}
   - {fileID: 11400000, guid: 5b2ac53b9d143bd4ebf071b050324145, type: 2}
   - {fileID: 11400000, guid: 2333c0ccae844234c8f282cfa47a3be9, type: 2}
   - {fileID: 11400000, guid: 3f89acd3f3d2b234a82e1ece0bd8f80f, type: 2}
   - {fileID: 11400000, guid: a13e9492018f9e74db3936c0651011a1, type: 2}
   - {fileID: 11400000, guid: 0913e85055d4a4443994e71783f4f529, type: 2}
   - {fileID: 11400000, guid: 9974bee523113224bacb1c902fde796b, type: 2}
+  - {fileID: 11400000, guid: e3551f8bf77ca19418c1071109df17f0, type: 2}
   - {fileID: 11400000, guid: 7a6eccccced5b9541a18ea8f003d6d32, type: 2}
   - {fileID: 11400000, guid: 8ade39223be77ab4096d7c590c7088b2, type: 2}
   - {fileID: 11400000, guid: c11374b41d5d3454e8b3c2ff82ec8e83, type: 2}
+  - {fileID: 11400000, guid: 4de0d3a6c3710c14d948308313618d70, type: 2}
   - {fileID: 11400000, guid: 53f88b0084297124fa3259a63d82b130, type: 2}
   mobDeck:
   - {fileID: 11400000, guid: edc0e118168be984b86492bebdefc31b, type: 2}

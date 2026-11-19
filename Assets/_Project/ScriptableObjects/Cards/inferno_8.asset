@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Inferno 8
   isZeroBreaker: 0
   baseValue: 8
-  shape: 2
+  shape: 1
   element: 1
   isHeal: 0
   isPremium: 0

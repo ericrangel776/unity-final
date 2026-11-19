@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: volt_burst_4
   m_EditorClassIdentifier: DeckArpg.Core::DeckArpg.Core.CardData
   cardId: volt_burst_4
-  displayName: Volt Burst 4
+  displayName: Volt Arc 4
   isZeroBreaker: 0
   baseValue: 4
-  shape: 2
+  shape: 1
   element: 3
   isHeal: 0
   isPremium: 0
