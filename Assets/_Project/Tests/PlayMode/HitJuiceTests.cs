@@ -82,6 +82,139 @@ namespace DeckArpg.Tests.PlayMode
             yield return null;
         }
 
+        // ---- HitImpactFx ----
+
+        [UnityTest]
+        public IEnumerator CardHit_EmitsSparks_InElementColour()
+        {
+            var fx = Spawn<HitImpactFx>("HitFx");
+            var enemy = Body(Team.Enemy);
+
+            enemy.TakeHit(Card(4, Team.Player, Element.Fire));
+
+            Assert.AreEqual(HitImpactFx.CardSparks, fx.LastSparkCount);
+            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Fire)), fx.LastSparkColor);
+            Assert.AreEqual(0, fx.PlayerHurtImpulses, "Hitting an enemy must not kick the camera.");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Poke_EmitsFewerSparks()
+        {
+            var fx = Spawn<HitImpactFx>("HitFx");
+            var enemy = Body(Team.Enemy);
+
+            enemy.TakeHit(AttackPayload.Poke(1, Team.Player, 0));
+
+            Assert.AreEqual(HitImpactFx.PokeSparks, fx.LastSparkCount);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerHurt_KicksCamera()
+        {
+            var fx = Spawn<HitImpactFx>("HitFx");
+            var player = Body(Team.Player);
+
+            player.TakeHit(Card(3, Team.Enemy));
+
+            Assert.AreEqual(1, fx.PlayerHurtImpulses);
+            yield return null;
+        }
+
+        // ---- DeathPop ----
+
+        /// <summary>An enemy body with a renderer child, like the greybox prefab's "Body".</summary>
+        private (CombatantStatus status, DeathPop pop, Renderer body) PoppableEnemy()
+        {
+            var root = new GameObject("PoppableEnemy");
+            spawned.Add(root);
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            Object.Destroy(visual.GetComponent<Collider>());
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localScale = new Vector3(1f, 1.2f, 1f);
+            var status = root.AddComponent<CombatantStatus>();
+            status.Team = Team.Enemy;
+            status.SetMaxHp(5);
+            var pop = root.AddComponent<DeathPop>();
+            return (status, pop, visual.GetComponent<Renderer>());
+        }
+
+        [UnityTest]
+        public IEnumerator LethalHit_PopsInKillingElement_AndHidesBody()
+        {
+            var (status, pop, body) = PoppableEnemy();
+
+            status.TakeHit(Card(9, Team.Player, Element.Ice));
+
+            Assert.IsTrue(pop.IsPopped);
+            Assert.AreEqual(DeathPop.BaseBurstCount, pop.LastBurstCount);
+            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Ice)), pop.LastBurstColor);
+
+            yield return WaitUntilRealtime(() => !body.enabled, timeout: 1f);
+            Assert.IsFalse(body.enabled, "The body should be hidden after the squash.");
+            Assert.Less(body.transform.localScale.x, 0.05f);
+        }
+
+        [UnityTest]
+        public IEnumerator BurstCount_ScalesWithPopScale()
+        {
+            var (status, pop, _) = PoppableEnemy();
+            pop.Scale = DeathPop.BossScale;
+
+            status.TakeHit(Card(9, Team.Player));
+
+            Assert.AreEqual(Mathf.RoundToInt(DeathPop.BaseBurstCount * DeathPop.BossScale), pop.LastBurstCount);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Burst_OutlivesTheEnemy()
+        {
+            var (status, pop, _) = PoppableEnemy();
+            var burst = pop.transform.Find("DeathPopFx");
+            Assert.IsNotNull(burst, "DeathPop should build its burst under the enemy.");
+
+            status.TakeHit(Card(9, Team.Player));
+            Object.Destroy(status.gameObject);
+            yield return null;
+
+            Assert.IsTrue(burst != null, "The burst should be detached so it survives the enemy.");
+            Assert.IsNull(burst.parent);
+            spawned.Add(burst.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator Revive_RestoresBody()
+        {
+            var (status, pop, body) = PoppableEnemy();
+            status.TakeHit(Card(9, Team.Player));
+            yield return WaitUntilRealtime(() => !body.enabled, timeout: 1f);
+
+            status.Revive();
+
+            Assert.IsFalse(pop.IsPopped);
+            Assert.IsTrue(body.enabled);
+            Assert.AreEqual(new Vector3(1f, 1.2f, 1f), body.transform.localScale);
+            yield return null;
+            // It can pop again on the next death.
+            status.TakeHit(Card(9, Team.Player));
+            Assert.IsTrue(pop.IsPopped);
+        }
+
+        [UnityTest]
+        public IEnumerator NonLethalHit_DoesNotPop()
+        {
+            var (status, pop, body) = PoppableEnemy();
+            status.SetMaxHp(100);
+
+            status.TakeHit(Card(2, Team.Player));
+            yield return null;
+
+            Assert.IsFalse(pop.IsPopped);
+            Assert.IsTrue(body.enabled);
+        }
+
         [UnityTest]
         public IEnumerator EnemyHitOnPlayer_Freezes()
         {

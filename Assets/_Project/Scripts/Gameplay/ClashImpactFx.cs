@@ -108,7 +108,7 @@ namespace DeckArpg.Gameplay
             if (tier.Pulse > volume.weight) volume.weight = tier.Pulse;
         }
 
-        private static void Emit(ParticleSystem ps, Vector3 position, Color color, int count)
+        internal static void Emit(ParticleSystem ps, Vector3 position, Color color, int count)
         {
             if (count <= 0) return;
             var p = new ParticleSystem.EmitParams
@@ -120,11 +120,11 @@ namespace DeckArpg.Gameplay
             ps.Emit(p, count);
         }
 
-        private static Color Opaque(Color c) => new Color(c.r, c.g, c.b, 1f);
+        internal static Color Opaque(Color c) => new Color(c.r, c.g, c.b, 1f);
 
         private ParticleSystem BuildSparks(Material material)
         {
-            var ps = CreateSystem("Sparks", material, maxParticles: 256);
+            var ps = CreateSystem(transform, "Sparks", material, maxParticles: 256);
             var main = ps.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.45f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(7f, 16f);
@@ -139,7 +139,7 @@ namespace DeckArpg.Gameplay
 
         private ParticleSystem BuildRing(Material material)
         {
-            var ps = CreateSystem("ShockwaveRing", material, maxParticles: 128);
+            var ps = CreateSystem(transform, "ShockwaveRing", material, maxParticles: 128);
             var main = ps.main;
             main.startLifetime = 0.22f;
             main.startSpeed = 18f;
@@ -154,10 +154,11 @@ namespace DeckArpg.Gameplay
             return ps;
         }
 
-        private ParticleSystem CreateSystem(string name, Material material, int maxParticles)
+        /// <summary>A one-shot, unscaled-time, world-space particle system under <paramref name="parent"/>, burst via Emit.</summary>
+        internal static ParticleSystem CreateSystem(Transform parent, string name, Material material, int maxParticles)
         {
             var go = new GameObject(name);
-            go.transform.SetParent(transform, false);
+            go.transform.SetParent(parent, false);
             var ps = go.AddComponent<ParticleSystem>();
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
