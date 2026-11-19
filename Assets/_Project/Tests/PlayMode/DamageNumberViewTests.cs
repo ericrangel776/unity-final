@@ -94,6 +94,36 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator QuickHitsOnSameVictim_StackUpward()
+        {
+            var enemy = Body(Team.Enemy);
+            var other = Body(Team.Enemy);
+
+            enemy.TakeHit(Card(3, Team.Player));
+            enemy.TakeHit(Card(5, Team.Player));
+            other.TakeHit(Card(4, Team.Player));
+
+            var shown = view.Active;
+            Assert.AreEqual(0, shown[0].StackIndex);
+            Assert.AreEqual(1, shown[1].StackIndex, "The second hit on the same victim should stack above the first.");
+            Assert.AreEqual(0, shown[2].StackIndex, "A different victim starts its own stack.");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator HitsAfterStackWindow_DoNotStack()
+        {
+            var enemy = Body(Team.Enemy);
+            enemy.TakeHit(Card(3, Team.Player));
+
+            yield return WaitRealtime(0.35f);
+            enemy.TakeHit(Card(5, Team.Player));
+
+            var shown = view.Active;
+            Assert.AreEqual(0, shown[shown.Count - 1].StackIndex);
+        }
+
+        [UnityTest]
         public IEnumerator CounterHit_ShowsBoostedDamage()
         {
             var enemy = Body(Team.Enemy);

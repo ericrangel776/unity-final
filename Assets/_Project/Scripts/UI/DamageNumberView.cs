@@ -24,6 +24,9 @@ namespace DeckArpg.UI
         [SerializeField] private float jitterScreenPixels = 30f;
         [SerializeField] private float punchSeconds = 0.12f;
         [SerializeField] private float punchFrom = 1.4f;
+        [Tooltip("Hits on the same victim within this window stack upward instead of overlapping (multi-hit Sleights).")]
+        [SerializeField] private float stackWindowSeconds = 0.25f;
+        [SerializeField] private float stackStepPixels = 38f;
         /// <summary>Numbers start a little above the hit point so they clear the body.</summary>
         private static readonly Vector3 AnchorOffset = new Vector3(0f, 0.6f, 0f);
 
@@ -33,12 +36,15 @@ namespace DeckArpg.UI
             public readonly string Text;
             public readonly Color Color;
             public readonly float Scale;
+            /// <summary>0 for the first recent number on a victim, 1 for the next one stacked above it, and so on.</summary>
+            public readonly int StackIndex;
 
-            public Shown(string text, Color color, float scale)
+            public Shown(string text, Color color, float scale, int stackIndex)
             {
                 Text = text;
                 Color = color;
                 Scale = scale;
+                StackIndex = stackIndex;
             }
         }
 
@@ -66,7 +72,7 @@ namespace DeckArpg.UI
                 var live = new List<Label>(pool.Count);
                 foreach (var l in pool) if (l.IsActive) live.Add(l);
                 live.Sort((a, b) => a.Serial.CompareTo(b.Serial));
-                foreach (var l in live) activeScratch.Add(new Shown(l.Text, l.Color, l.DamageScale));
+                foreach (var l in live) activeScratch.Add(new Shown(l.Text, l.Color, l.DamageScale, l.StackIndex));
                 return activeScratch;
             }
         }
@@ -95,9 +101,29 @@ namespace DeckArpg.UI
             float drift = Random.Range(-driftScreenPixels, driftScreenPixels);
 
             var label = TakeLabel();
-            label.Show(hit.Damage.ToString(), color, scale, hit.Position + AnchorOffset, jitter, drift, showSeconds,
-                spawnSerial++);
+            int stack = RecentOn(hit.Victim, label, out float stackPixels);
+            var offset = jitter + new Vector2(0f, stackPixels);
+            label.Show(hit.Damage.ToString(), color, scale, hit.Position + AnchorOffset, offset, drift, showSeconds,
+                spawnSerial++, hit.Victim, stack);
             label.Tick(0f, Camera.main, CanvasCamera, this);
+        }
+
+        /// <summary>
+        /// How many live labels on <paramref name="victim"/> are younger than the stack window, and how far up a new one
+        /// must start to clear them (each counts its own text height, so a big number pushes the next one further).
+        /// </summary>
+        private int RecentOn(CombatantStatus victim, Label except, out float pixels)
+        {
+            pixels = 0f;
+            if (victim == null) return 0;
+            int n = 0;
+            foreach (var l in pool)
+            {
+                if (l == except || !l.IsActive || l.Victim != victim || l.Age >= stackWindowSeconds) continue;
+                n++;
+                pixels += Mathf.Max(stackStepPixels, BaseFontSize * l.DamageScale * 0.9f);
+            }
+            return n;
         }
 
         /// <summary>A free label, or the oldest busy one when the pool is exhausted.</summary>
@@ -141,6 +167,9 @@ namespace DeckArpg.UI
             public string Text => text.text;
             public Color Color => baseColor;
             public float DamageScale { get; private set; } = 1f;
+            public CombatantStatus Victim { get; private set; }
+            public int StackIndex { get; private set; }
+            public float Age => duration - remaining;
 
             public Label(Transform canvas, int index)
             {
@@ -155,8 +184,10 @@ namespace DeckArpg.UI
             }
 
             public void Show(string message, Color color, float damageScale, Vector3 position, Vector2 jitterPixels,
-                float driftPixels, float seconds, int serial)
+                float driftPixels, float seconds, int serial, CombatantStatus victim, int stackIndex)
             {
+                Victim = victim;
+                StackIndex = stackIndex;
                 text.text = message;
                 baseColor = color;
                 text.color = color;
@@ -173,6 +204,7 @@ namespace DeckArpg.UI
             public void Hide()
             {
                 remaining = 0f;
+                Victim = null;
                 text.enabled = false;
                 rect.localScale = Vector3.one;
             }

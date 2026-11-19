@@ -103,13 +103,15 @@ namespace DeckArpg.Gameplay
             }
             burst = ClashImpactFx.CreateSystem(transform, "DeathPopFx", material, maxParticles: 128);
             var main = burst.main;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 10f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.22f);
-            main.gravityModifier = 0.8f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(3f, 8f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.55f);
+            main.gravityModifier = 0.6f;
             var shape = burst.shape;
             shape.shapeType = ParticleSystemShapeType.Sphere;
             shape.radius = 0.4f;
+            // Round puffs, not the clash streaks: a death should read as the body bursting apart.
+            burst.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.Billboard;
         }
 
         private void HandleDied()
