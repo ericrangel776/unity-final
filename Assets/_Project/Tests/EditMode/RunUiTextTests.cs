@@ -227,6 +227,18 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void HandKind_HealCardSaysHeal_OthersShowDelivery()
+        {
+            var mend = CardData.Create("mend_3", 3, heal: true);
+            var ember = CardData.Create("ember_3", 3, CardShape.Throw, Element.Fire);
+            Assert.AreEqual("Heal", RunUiText.HandKind(mend));
+            Assert.AreEqual(RunUiText.DeliveryName(ember), RunUiText.HandKind(ember));
+            Assert.AreEqual("Fireball", RunUiText.HandKind(ember));
+            UnityEngine.Object.DestroyImmediate(mend);
+            UnityEngine.Object.DestroyImmediate(ember);
+        }
+
+        [Test]
         public void ShopHealLabel_StatesCostOrWhyDisabled()
         {
             Assert.AreEqual("Heal 25 HP (40)", RunUiText.ShopHealLabel(25, false, false, 100));

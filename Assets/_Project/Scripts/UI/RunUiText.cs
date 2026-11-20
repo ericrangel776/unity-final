@@ -192,6 +192,9 @@ namespace DeckArpg.UI
             return $"Heal · restores {amount} HP ({HealRules.ChannelSeconds:0.0} s channel)";
         }
 
+        /// <summary>The kind line on a hand card: "Heal" for a heal card, otherwise its delivery name.</summary>
+        public static string HandKind(CardData card) => card.IsHeal ? "Heal" : DeliveryName(card);
+
         /// <summary>The value shown on a hand card: "+3" for a heal card, otherwise its effective value.</summary>
         public static string HandValue(RuntimeCardInstance card)
         {
