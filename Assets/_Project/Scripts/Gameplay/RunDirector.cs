@@ -317,6 +317,7 @@ namespace DeckArpg.Gameplay
 
         private void RoomCleared()
         {
+            player.HealChannel.Cancel(); // a heal still channelling when the room ends doesn't land
             Run.SetHp(playerStatus.Hp);
             bool boss = Run.CurrentRoom.Kind == MapCardKind.Boss;
             CurrentReward = Run.CompleteRoom(content.DraftPool);
