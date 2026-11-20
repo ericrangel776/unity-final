@@ -314,6 +314,16 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void DeckCell_HealCard_SaysHeal()
+        {
+            var data = CardData.Create("mend_3", 3, heal: true, displayName: "Mend 3");
+            var card = new RuntimeCardInstance(data);
+            Assert.AreEqual("3   Mend 3   ·   Heal", RunUiText.DeckCell(card));
+            Assert.AreEqual("3   Mend 3   ·   Heal   (already Premium)", RunUiText.DeckCell(card, "already Premium"));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [Test]
         public void StatusChip_ShowsSecondsRoundedUpToATenth()
         {
             Assert.AreEqual("BURN 2.5s", RunUiText.StatusChip("BURN", 2.5f));

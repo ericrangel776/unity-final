@@ -224,10 +224,15 @@ namespace DeckArpg.UI
             return Core.CardValue.Clamp(card.Data.BaseValue + card.PermanentRunUpgradeMod + extraUpgrade + premium);
         }
 
-        /// <summary>A deck-list cell: "6  Strike 4  +2  ·  Strike · Physical", plus "  (reason)" when it can't be chosen.</summary>
+        /// <summary>
+        /// A deck-list cell: "6  Strike 4  +2  ·  Strike · Physical" ("Heal" for heal cards), plus "  (reason)" when it
+        /// can't be chosen.
+        /// </summary>
         public static string DeckCell(RuntimeCardInstance card, string blockedReason = null)
         {
-            string kind = card.IsZeroBreaker ? "0-card" : $"{DeliveryName(card.Data)} · {card.Data.Element}";
+            string kind = card.IsZeroBreaker ? "0-card"
+                : card.IsHeal ? "Heal"
+                : $"{DeliveryName(card.Data)} · {card.Data.Element}";
             string text = $"{DeckValue(card)}   {DeckCardLabel(card)}   ·   {kind}";
             return string.IsNullOrEmpty(blockedReason) ? text : $"{text}   ({blockedReason})";
         }
