@@ -7,6 +7,8 @@ namespace DeckArpg.Gameplay
     public static class ElementColors
     {
         public static readonly Color Zero = new Color(0.95f, 0.95f, 1f, 0.6f);
+        /// <summary>Heal cards, the heal channel ring and heal numbers.</summary>
+        public static readonly Color Heal = new Color(0.35f, 0.95f, 0.45f, 0.9f);
 
         public static Color For(Element element)
         {
@@ -24,5 +26,8 @@ namespace DeckArpg.Gameplay
 
         /// <summary>A card face in the HUD: the element colour at a stronger alpha than world FX.</summary>
         public static Color CardFace(Element element) => For(element) * new Color(1f, 1f, 1f, 1.8f);
+
+        /// <summary>A card face in the HUD: heal green for heal cards, otherwise <see cref="CardFace(Element)"/>.</summary>
+        public static Color CardFace(CardData card) => card != null && card.IsHeal ? Heal : CardFace(card != null ? card.Element : Element.Physical);
     }
 }

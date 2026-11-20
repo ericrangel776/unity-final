@@ -176,10 +176,28 @@ namespace DeckArpg.UI
         /// <summary>"Fireball · Fire", plus "Premium (+2, burns on play)" and "Pre-upgraded +N" lines when they apply.</summary>
         public static string CardDetails(CardData card, int upgrade = 0)
         {
-            var sb = new StringBuilder(card.IsZeroBreaker ? "0-card · breaks anything played first" : $"{DeliveryName(card)} · {card.Element}");
+            var sb = new StringBuilder(card.IsZeroBreaker ? "0-card · breaks anything played first"
+                : card.IsHeal ? HealDetails(card, upgrade)
+                : $"{DeliveryName(card)} · {card.Element}");
             if (card.IsPremium) sb.Append($"\nPremium (+{RuntimeCardInstance.PremiumBonus}, burns on play)");
             if (upgrade > 0 && !card.IsZeroBreaker) sb.Append($"\nPre-upgraded +{upgrade}");
             return sb.ToString();
+        }
+
+        /// <summary>"Heal · restores 9 HP (0.5 s channel)": the heal at the card's value (base + upgrade, + Premium).</summary>
+        public static string HealDetails(CardData card, int upgrade = 0)
+        {
+            int premium = card.IsPremium ? RuntimeCardInstance.PremiumBonus : 0;
+            int amount = HealRules.Amount(Core.CardValue.Clamp(card.BaseValue + upgrade + premium));
+            return $"Heal · restores {amount} HP ({HealRules.ChannelSeconds:0.0} s channel)";
+        }
+
+        /// <summary>The value shown on a hand card: "+3" for a heal card, otherwise its effective value.</summary>
+        public static string HandValue(RuntimeCardInstance card)
+        {
+            if (card == null) return "";
+            int value = card.GetEffectiveValue();
+            return card.IsHeal ? $"+{value}" : value.ToString();
         }
 
         /// <summary>
@@ -224,6 +242,24 @@ namespace DeckArpg.UI
             $"Remove {card.Data.DisplayName}: -{cost} currency, deck {deckCount} -> {deckCount - 1}";
 
         /// <summary>"Need 30 more currency" (empty when affordable).</summary>
+        /// <summary>The Shop's Heal button: what it does, or why it's disabled ("bought", "full HP", "need N more").</summary>
+        public static string ShopHealLabel(int healAmount, bool used, bool fullHp, int currency)
+        {
+            if (used) return "Heal (bought)";
+            if (fullHp) return "Heal (full HP)";
+            if (currency < ShopRules.HealCost) return $"Heal {ShopRules.HealCost} (need {ShopRules.HealCost - currency} more)";
+            return $"Heal {healAmount} HP ({ShopRules.HealCost})";
+        }
+
+        /// <summary>The Shop's Vital Draught button: what it does, or why it's disabled ("bought", "need N more").</summary>
+        public static string ShopDraughtLabel(bool used, int currency)
+        {
+            if (used) return "Draught (bought)";
+            if (currency < ShopRules.VitalDraughtCost)
+                return $"Draught {ShopRules.VitalDraughtCost} (need {ShopRules.VitalDraughtCost - currency} more)";
+            return $"Max HP +{ShopRules.VitalDraughtMaxHp} ({ShopRules.VitalDraughtCost})";
+        }
+
         public static string Shortfall(int price, int currency) =>
             currency >= price ? "" : $"Need {price - currency} more currency";
 

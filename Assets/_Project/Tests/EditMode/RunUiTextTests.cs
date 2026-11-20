@@ -206,6 +206,53 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void CardDetails_HealCard_ReadsHealAmountAndChannel()
+        {
+            var mend = CardData.Create("mend_3", 3, heal: true);
+            Assert.AreEqual("Heal · restores 9 HP (0.5 s channel)", RunUiText.CardDetails(mend));
+            StringAssert.StartsWith("Heal · restores 15 HP (0.5 s channel)", RunUiText.CardDetails(mend, 2));
+            UnityEngine.Object.DestroyImmediate(mend);
+        }
+
+        [Test]
+        public void HandValue_HealCardShowsPlus_OthersShowValue()
+        {
+            var mend = CardData.Create("mend_5", 5, heal: true);
+            var strike = CardData.Create("strike_5", 5);
+            Assert.AreEqual("+5", RunUiText.HandValue(new RuntimeCardInstance(mend)));
+            Assert.AreEqual("5", RunUiText.HandValue(new RuntimeCardInstance(strike)));
+            Assert.AreEqual("", RunUiText.HandValue(null));
+            UnityEngine.Object.DestroyImmediate(mend);
+            UnityEngine.Object.DestroyImmediate(strike);
+        }
+
+        [Test]
+        public void ShopHealLabel_StatesCostOrWhyDisabled()
+        {
+            Assert.AreEqual("Heal 25 HP (40)", RunUiText.ShopHealLabel(25, false, false, 100));
+            Assert.AreEqual("Heal (bought)", RunUiText.ShopHealLabel(25, true, false, 100));
+            Assert.AreEqual("Heal (full HP)", RunUiText.ShopHealLabel(25, false, true, 100));
+            Assert.AreEqual("Heal 40 (need 15 more)", RunUiText.ShopHealLabel(25, false, false, 25));
+        }
+
+        [Test]
+        public void ShopDraughtLabel_StatesCostOrWhyDisabled()
+        {
+            Assert.AreEqual("Max HP +10 (60)", RunUiText.ShopDraughtLabel(false, 60));
+            Assert.AreEqual("Draught (bought)", RunUiText.ShopDraughtLabel(true, 100));
+            Assert.AreEqual("Draught 60 (need 59 more)", RunUiText.ShopDraughtLabel(false, 1));
+        }
+
+        [Test]
+        public void HeartwoodSeed_Text()
+        {
+            Assert.AreEqual("Heartwood Seed", RunUiText.RelicName(RelicId.HeartwoodSeed));
+            Assert.AreEqual("Seed", RunUiText.RelicShortName(RelicId.HeartwoodSeed));
+            StringAssert.StartsWith("+15 max HP", RunUiText.RelicDescription(RelicId.HeartwoodSeed));
+            StringAssert.Contains("Overburn", RunUiText.RelicDescription(RelicId.HeartwoodSeed));
+        }
+
+        [Test]
         public void CardDetails_ListsDeliveryElement_PremiumAndUpgrade()
         {
             var card = CardData.Create("c", 4, CardShape.Throw, Element.Fire, premium: true);
