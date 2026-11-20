@@ -110,6 +110,10 @@ namespace DeckArpg.Gameplay
         /// before <see cref="Died"/>, so feedback for the killing blow plays before the death.
         /// </summary>
         public static event Action<HitInfo> AnyHitLanded;
+        /// <summary>We healed: the HP actually restored (always above 0).</summary>
+        public event Action<int> Healed;
+        /// <summary>Any combatant healed: who and the HP actually restored (above 0). For damage numbers and SFX.</summary>
+        public static event Action<CombatantStatus, int> AnyHealed;
         /// <summary>Raised by <see cref="Revive"/>, so FX can restore visuals when a body respawns.</summary>
         public event Action Revived;
         /// <summary>Element of the last damaging hit we took (the death pop colour). Physical until hit.</summary>
@@ -243,6 +247,22 @@ namespace DeckArpg.Gameplay
             Hp = Mathf.Max(1, Hp - amount);
         }
 
+        /// <summary>
+        /// Restores up to <paramref name="amount"/> HP, clamped to max. Ignored when dead or for non-positive amounts.
+        /// Returns the HP actually restored; raises <see cref="Healed"/> and <see cref="AnyHealed"/> only when above 0.
+        /// </summary>
+        public int Heal(int amount)
+        {
+            if (IsDead || amount <= 0) return 0;
+            int before = Hp;
+            Hp = Mathf.Min(maxHp, Hp + amount);
+            int healed = Hp - before;
+            if (healed <= 0) return 0;
+            Healed?.Invoke(healed);
+            AnyHealed?.Invoke(this, healed);
+            return healed;
+        }
+
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
             // A poke is damage only: no shove (can't keep enemies at bay) and no flinch.
@@ -331,6 +351,17 @@ namespace DeckArpg.Gameplay
         {
             maxPosture = Mathf.Max(1f, value);
             Posture = 0f;
+        }
+
+        /// <summary>
+        /// Run sync: sets max HP (at least 1) and HP (clamped to [1, max]) without refilling. HP is left alone when
+        /// dead. Used after max-HP upgrades (Fortify, Vital Draught, Heartwood Seed) and at room start.
+        /// </summary>
+        public void SetMaxHpKeepHp(int maxHp, int hp)
+        {
+            this.maxHp = Mathf.Max(1, maxHp);
+            if (IsDead) return;
+            Hp = Mathf.Clamp(hp, 1, this.maxHp);
         }
 
         /// <summary>Sets HP without a hit (run HP carry-over). Clamped to [1, max]; ignored when dead.</summary>
