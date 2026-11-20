@@ -12,6 +12,19 @@ namespace DeckArpg.UI
         public const string PipOff = "○";
 
         /// <summary>"Room 3/6", or "Room 6/6 · Boss" on the boss room.</summary>
+        private static readonly string[] SmallNumbers = BuildSmallNumbers(100);
+
+        private static string[] BuildSmallNumbers(int count)
+        {
+            var numbers = new string[count];
+            for (int i = 0; i < count; i++) numbers[i] = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return numbers;
+        }
+
+        /// <summary>n as text; 0-99 come from a cached table so per-frame HUD code doesn't allocate.</summary>
+        public static string Number(int n) =>
+            n >= 0 && n < SmallNumbers.Length ? SmallNumbers[n] : n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
         public static string Room(int roomNumber) =>
             $"Room {roomNumber}/{RunState.BossRoom}" + (roomNumber == RunState.BossRoom ? " · Boss" : "");
 

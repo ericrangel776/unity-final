@@ -26,6 +26,7 @@ namespace DeckArpg.UI
         private Text pilesText;
         private Text reloadText;
         private Text statusText;
+        private (int hp, int maxHp, int posture, bool dead, bool stunned, bool dashReady) shownStatus = (-1, -1, -1, false, false, false);
 
         public void Bind(DeckRuntimeManager deckManager, CombatantStatus playerStatus, PlayerMotor playerMotor)
         {
@@ -76,6 +77,12 @@ namespace DeckArpg.UI
             // The prompt depends on HP and the reload state, which change without a deck event.
             if (deck != null && reloadText != null) RefreshPrompt();
             if (status == null || statusText == null) return;
+            bool dashReady = !(motor != null && motor.DashCooldownRemaining > 0f);
+            // "{Posture:0}" rounds half away from zero; the key must round the same way or the text could go stale.
+            int posture = (int)System.Math.Round(status.Posture, System.MidpointRounding.AwayFromZero);
+            var now = (status.Hp, status.MaxHp, posture, status.IsDead, status.IsStunned, dashReady);
+            if (now == shownStatus) return;
+            shownStatus = now;
             string state = status.IsDead ? "  DOWN" : status.IsStunned ? "  STUNNED" : "";
             string dash = motor != null && motor.DashCooldownRemaining > 0f ? "  dash..." : "  [Space] dash";
             statusText.text = $"HP {status.Hp}/{status.MaxHp}   Posture {status.Posture:0}{state}{dash}";
@@ -132,7 +139,7 @@ namespace DeckArpg.UI
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var card = cycle.Hand[i];
-                slotImages[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyColor;
+                slotImages[i].color = card != null ? ElementColors.CardFace(card.Data.Element) : EmptyColor;
                 slotValues[i].text = card != null ? card.GetEffectiveValue().ToString() : "";
                 slotNames[i].text = card != null ? $"{card.Data.DisplayName}\n{RunUiText.DeliveryName(card.Data)}\n" : "";
             }

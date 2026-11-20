@@ -21,5 +21,8 @@ namespace DeckArpg.Gameplay
         }
 
         public static Color For(in AttackPayload payload) => payload.IsZeroBreaker ? Zero : For(payload.Element);
+
+        /// <summary>A card face in the HUD: the element colour at a stronger alpha than world FX.</summary>
+        public static Color CardFace(Element element) => For(element) * new Color(1f, 1f, 1f, 1.8f);
     }
 }

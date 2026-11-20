@@ -67,10 +67,7 @@ namespace DeckArpg.UI
                 // Unaffordable cards stay clickable (the click explains the shortfall) but look dimmed.
                 RunWidgets.Paint(tile, sold || affordable ? color : Color.Lerp(color, new Color(0.1f, 0.1f, 0.12f), 0.6f));
                 tile.Button.interactable = !sold;
-                tile.Badge.text = RunUiText.CardValue(card);
-                tile.BadgeLabel.text = card.Rarity.ToString().ToUpperInvariant();
-                tile.Title.text = card.DisplayName;
-                tile.Body.text = RunUiText.CardDetails(card);
+                RunWidgets.ShowCard(tile, card);
                 tile.Footer.text = sold ? "SOLD" : affordable ? $"{price} currency" : $"{price}  ·  need {price - run.Currency} more";
                 tile.Footer.color = sold || affordable ? RunWidgets.Gold : RunWidgets.Warning;
             }

@@ -27,7 +27,6 @@ namespace DeckArpg.UI
     /// <summary>Greybox widget builders for the run screens (on top of <see cref="UiFactory"/>).</summary>
     internal static class RunWidgets
     {
-        public static readonly Color PanelColor = new Color(0.08f, 0.09f, 0.12f, 0.95f);
         public static readonly Color ButtonColor = new Color(0.22f, 0.24f, 0.3f, 1f);
         public static readonly Color Muted = new Color(0.75f, 0.78f, 0.85f);
         public static readonly Color Gold = new Color(1f, 0.85f, 0.35f);
@@ -99,6 +98,15 @@ namespace DeckArpg.UI
             tile.Footer = Label(tile.Rect, "Footer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 16f),
                 new Vector2(w, 40f), 24, TextAnchor.MiddleCenter, Gold);
             return tile;
+        }
+
+        /// <summary>Fills a tile's badge, rarity label, title and body for a card (draft and shop show cards alike).</summary>
+        public static void ShowCard(OptionTile tile, Core.CardData card, int upgrade = 0)
+        {
+            tile.Badge.text = RunUiText.CardValue(card, upgrade);
+            tile.BadgeLabel.text = card.Rarity.ToString().ToUpperInvariant();
+            tile.Title.text = card.DisplayName;
+            tile.Body.text = RunUiText.CardDetails(card, upgrade);
         }
 
         /// <summary>Sets a tile's colour; the button tint darkens it when disabled.</summary>

@@ -1,4 +1,3 @@
-using System;
 using DeckArpg.Core;
 using UnityEngine;
 
@@ -21,9 +20,6 @@ namespace DeckArpg.Gameplay
         private BossEnemy boss;
         private CombatActionController player;
         private float answeredSleightTime = float.NaN;
-
-        /// <summary>A Big Deadlock finished and its outcome was applied (AWins = player).</summary>
-        public event Action<ClashOutcome, Vector3> BigDeadlockApplied;
 
         public CombatActionController Player => player;
 
@@ -182,7 +178,6 @@ namespace DeckArpg.Gameplay
             }
 
             ClashSystem.ReportBig(outcome, playerPayload, bossPayload, position);
-            BigDeadlockApplied?.Invoke(outcome, position);
         }
     }
 }

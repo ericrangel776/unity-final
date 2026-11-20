@@ -10,7 +10,6 @@ namespace DeckArpg.Gameplay
     [RequireComponent(typeof(BossEnemy))]
     public sealed class BossStateFx : MonoBehaviour
     {
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         public static readonly Color ReloadColor = new Color(0.4f, 0.85f, 1f, 1f);
         public static readonly Color ExhaustedColor = new Color(1f, 0.45f, 0.2f, 1f);
         public const int OrbitCards = 6;
@@ -19,9 +18,7 @@ namespace DeckArpg.Gameplay
         private const int Segments = 64;
 
         private BossEnemy boss;
-        private HitFlash hitFlash;
-        private Renderer[] bodyRenderers;
-        private MaterialPropertyBlock block;
+        private BodyTint tint;
         private Transform root;
         private LineRenderer countdown, burst;
         private readonly LineRenderer[] cards = new LineRenderer[OrbitCards];
@@ -39,9 +36,7 @@ namespace DeckArpg.Gameplay
         private void Awake()
         {
             boss = GetComponent<BossEnemy>();
-            hitFlash = GetComponent<HitFlash>();
-            bodyRenderers = GetComponentsInChildren<Renderer>();
-            block = new MaterialPropertyBlock();
+            tint = BodyTint.For(gameObject);
 
             root = new GameObject("BossStateFx").transform;
             countdown = FxShapes.CreateLine(root, "Countdown", Segments, 0.16f);
@@ -128,11 +123,9 @@ namespace DeckArpg.Gameplay
 
         private void ApplyTint(Color color)
         {
-            // The hit flash wins while it plays; the tint comes back right after.
-            if (hitFlash != null && hitFlash.IsFlashing) return;
+            // The hit flash (a higher BodyTint layer) wins while it plays; the tint comes back right after.
             float pulse = 0.55f + 0.2f * Mathf.Sin(Time.unscaledTime * 8f);
-            block.SetColor(BaseColorId, Color.Lerp(Color.white, color, pulse));
-            foreach (var r in bodyRenderers) if (r != null) r.SetPropertyBlock(block);
+            tint.Set(BodyTint.Layer.State, color, pulse, lerpFromWhite: true);
             tinted = true;
         }
 
@@ -140,8 +133,7 @@ namespace DeckArpg.Gameplay
         {
             if (!tinted) return;
             tinted = false;
-            if (hitFlash != null && hitFlash.IsFlashing) return;
-            foreach (var r in bodyRenderers) if (r != null) r.SetPropertyBlock(null);
+            tint.Clear(BodyTint.Layer.State);
         }
     }
 }

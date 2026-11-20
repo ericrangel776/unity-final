@@ -14,7 +14,6 @@ namespace DeckArpg.UI
     {
         public const int SortingOrder = RunScreens.SortingOrder + 10;
         private static readonly Color Back = new Color(0.05f, 0.06f, 0.08f, 0.75f);
-        private static readonly Color Gold = new Color(1f, 0.85f, 0.35f);
         private static readonly Color Momentum = new Color(1f, 0.55f, 0.25f);
 
         [Tooltip("Found in the scene if empty.")]
@@ -25,6 +24,9 @@ namespace DeckArpg.UI
         private GameObject burnChip, chillChip;
         private Text burnText, chillText;
         private ElementStatusEffects playerEffects;
+        // Last inputs drawn; text is rebuilt only when these change (LateUpdate runs every frame).
+        private (int room, int currency, int stacks, int relicCount, int ashen) shown = (-1, -1, -1, -1, -1);
+        private int shownBurnTenths = -1, shownChillTenths = -1;
 
         public bool IsVisible => strip != null && strip.activeSelf;
         /// <summary>The player's BURN / CHILL chips, shown only while the status lasts.</summary>
@@ -51,7 +53,7 @@ namespace DeckArpg.UI
             strip = rect.gameObject;
 
             room = Field(rect, "Room", 0f, 220f, Color.white);
-            currency = Field(rect, "Currency", 220f, 200f, Gold);
+            currency = Field(rect, "Currency", 220f, 200f, RunWidgets.Gold);
             momentum = Field(rect, "Momentum", 420f, 300f, Momentum);
             relics = Field(rect, "Relics", 720f, 680f, Color.white);
             burnChip = Chip(rect, "BurnChip", 0f, ElementColors.For(Core.Element.Fire), out burnText);
@@ -85,11 +87,17 @@ namespace DeckArpg.UI
             if (strip.activeSelf != visible) strip.SetActive(visible);
             if (!visible) return;
 
-            room.text = RunUiText.Room(run.RoomNumber);
-            currency.text = $"Currency {run.Currency}";
-            momentum.text = RunUiText.Momentum(run.Momentum.Stacks);
             int ashen = director.PlayerRelics != null ? director.PlayerRelics.AshenStacks : 0;
-            relics.text = RunUiText.Relics(run.Relics, ashen);
+            var now = (run.RoomNumber, run.Currency, run.Momentum.Stacks, run.Relics.Count, ashen);
+            if (now != shown)
+            {
+                // Relics are only ever added, so the count stands in for the set.
+                if (now.RoomNumber != shown.room) room.text = RunUiText.Room(run.RoomNumber);
+                if (now.Currency != shown.currency) currency.text = $"Currency {run.Currency}";
+                if (now.Stacks != shown.stacks) momentum.text = RunUiText.Momentum(run.Momentum.Stacks);
+                if (now.Count != shown.relicCount || ashen != shown.ashen) relics.text = RunUiText.Relics(run.Relics, ashen);
+                shown = now;
+            }
 
             if (playerEffects == null && director.Player != null)
                 playerEffects = director.Player.GetComponent<ElementStatusEffects>();
@@ -97,8 +105,17 @@ namespace DeckArpg.UI
             bool chilled = playerEffects != null && playerEffects.IsChilled;
             if (burnChip.activeSelf != burning) burnChip.SetActive(burning);
             if (chillChip.activeSelf != chilled) chillChip.SetActive(chilled);
-            if (burning) burnText.text = RunUiText.StatusChip("BURN", playerEffects.BurnRemaining);
-            if (chilled) chillText.text = RunUiText.StatusChip("CHILL", playerEffects.ChillRemaining);
+            if (burning) SetChip(burnText, "BURN", playerEffects.BurnRemaining, ref shownBurnTenths);
+            if (chilled) SetChip(chillText, "CHILL", playerEffects.ChillRemaining, ref shownChillTenths);
+        }
+
+        private static void SetChip(Text text, string label, float secondsLeft, ref int shownTenths)
+        {
+            // The chip shows tenths of a second, so only a new tenth needs a new string.
+            int tenths = Mathf.CeilToInt(Mathf.Max(0f, secondsLeft) * 10f - 1e-4f);
+            if (tenths == shownTenths) return;
+            shownTenths = tenths;
+            text.text = RunUiText.StatusChip(label, secondsLeft);
         }
     }
 }

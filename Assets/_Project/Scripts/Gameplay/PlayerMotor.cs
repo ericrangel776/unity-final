@@ -36,7 +36,6 @@ namespace DeckArpg.Gameplay
         /// <summary>Scales walking speed (e.g. the Perfect-reload boost). Dash and lunge are unaffected.</summary>
         public float MoveSpeedMultiplier { get => moveSpeedMultiplier; set => moveSpeedMultiplier = Mathf.Max(0f, value); }
         public float DashCooldownRemaining => dashCooldownRemaining;
-        public float DashDuration => dashDuration;
 
         private void Awake()
         {
@@ -72,8 +71,7 @@ namespace DeckArpg.Gameplay
 
         public void SetAimDirection(Vector3 direction)
         {
-            direction.y = 0f;
-            if (direction.sqrMagnitude > 0.0001f) AimDirection = direction.normalized;
+            AimDirection = FlatDirection.Of(direction, AimDirection);
         }
 
         /// <summary>A dash started (SFX).</summary>

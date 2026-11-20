@@ -162,9 +162,7 @@ namespace DeckArpg.UI
             {
                 var screen = cam.WorldToScreenPoint(player.position + Vector3.up);
                 if (screen.z < 0f) return false;
-                // Overlay canvases take a null camera; camera-space canvases need theirs.
-                var canvasCam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, canvasCam, out basePos);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, UiFactory.CanvasCamera(canvas), out basePos);
             }
 
             var limit = canvasRect.rect.size * 0.5f - BarHalfExtents - Vector2.one * EdgeMargin;

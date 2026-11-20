@@ -9,7 +9,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
 
 namespace DeckArpg.Editor
 {
@@ -34,9 +33,13 @@ namespace DeckArpg.Editor
         /// <summary>Player flinch is shorter than the dummy's default so getting hit stays fair.</summary>
         public const float PlayerHitFlinch = 0.15f;
 
+        private static readonly Color FloorColor = new Color(0.32f, 0.34f, 0.38f);
+        private static readonly Color WallColor = new Color(0.2f, 0.21f, 0.25f);
+
         [MenuItem("DeckArpg/Build M1 Arena")]
         public static void Build()
         {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             var playerDeck = StarterContentBuilder.BuildPlayerStarterDeck();
             var dummyDeck = StarterContentBuilder.BuildDummyDeck();
 
@@ -44,8 +47,8 @@ namespace DeckArpg.Editor
             StarterContentBuilder.EnsureFolder(MaterialFolder);
             StarterContentBuilder.EnsureFolder("Assets/_Project/Scenes");
 
-            var floorMat = GetOrCreateMaterial("Floor", new Color(0.32f, 0.34f, 0.38f));
-            var wallMat = GetOrCreateMaterial("Wall", new Color(0.2f, 0.21f, 0.25f));
+            var floorMat = GetOrCreateMaterial("Floor", FloorColor);
+            var wallMat = GetOrCreateMaterial("Wall", WallColor);
             var playerMat = GetOrCreateMaterial("Player", new Color(0.25f, 0.55f, 0.95f));
             var enemyMat = GetOrCreateMaterial("Enemy", new Color(0.85f, 0.3f, 0.25f));
             var accentMat = GetOrCreateMaterial("Accent", new Color(0.95f, 0.95f, 0.95f));
@@ -80,6 +83,7 @@ namespace DeckArpg.Editor
         [MenuItem("DeckArpg/Build M3 Run Scene")]
         public static void BuildRunScene()
         {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             if (AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath) == null ||
                 AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefabPath) == null)
                 Build();
@@ -87,8 +91,8 @@ namespace DeckArpg.Editor
             var dummyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefabPath);
             StarterContentBuilder.BuildRunContent();
 
-            var floorMat = GetOrCreateMaterial("Floor", new Color(0.32f, 0.34f, 0.38f));
-            var wallMat = GetOrCreateMaterial("Wall", new Color(0.2f, 0.21f, 0.25f));
+            var floorMat = GetOrCreateMaterial("Floor", FloorColor);
+            var wallMat = GetOrCreateMaterial("Wall", WallColor);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             BuildEnvironment(floorMat, wallMat);

@@ -10,7 +10,7 @@ namespace DeckArpg.UI
     /// </summary>
     public sealed class RunEndView : RunScreen
     {
-        private static readonly Color VictoryColor = new Color(1f, 0.85f, 0.35f);
+        private static readonly Color VictoryColor = RunWidgets.Gold;
         private static readonly Color DefeatColor = new Color(0.95f, 0.4f, 0.35f);
 
         private Text title, stats, path;

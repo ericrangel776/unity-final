@@ -40,6 +40,8 @@ namespace DeckArpg.UI
         private readonly Text[] handValues = new Text[DeckCycle.HandSize];
         private readonly Image[] pips = new Image[PipCount];
         private readonly List<BossPip> pipState = new List<BossPip>();
+        private (BossState state, int tenths, int sleight) shownState = ((BossState)(-1), -1, -1);
+        private (int left, int stocked, int spent, int deleted, int burned, bool midCycle) shownCounter = (-1, -1, -1, -1, -1, false);
 
         public BossEnemy Boss => boss;
         public bool IsVisible => panel != null && panel.activeSelf;
@@ -95,7 +97,7 @@ namespace DeckArpg.UI
                 handCards[i] = UiFactory.CreateImage(rect, $"BossCard{i + 1}", new Vector2(0f, 1f), new Vector2(0f, 1f),
                     new Vector2(16f + i * 52f, -72f), new Vector2(46f, 64f), EmptyCard);
                 handValues[i] = UiFactory.CreateText(handCards[i].transform, "Value", 30, TextAnchor.MiddleCenter, Color.white);
-                AddReadableOutline(handValues[i]);
+                UiFactory.ReadableOutline(handValues[i], 1.5f);
             }
 
             // Deck counter: 15 pips and a line of text.
@@ -130,15 +132,21 @@ namespace DeckArpg.UI
         {
             if (panel == null) return;
             bool show = boss != null && boss.Status != null && !boss.Status.IsDead;
-            panel.SetActive(show);
+            if (panel.activeSelf != show) panel.SetActive(show);
             if (!show) return;
 
             var status = boss.Status;
             hpFill.rectTransform.localScale = new Vector3(status.MaxHp > 0 ? Mathf.Clamp01(status.Hp / (float)status.MaxHp) : 0f, 1f, 1f);
-            postureFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(status.Posture / status.MaxPosture), 1f, 1f);
+            postureFill.rectTransform.localScale = new Vector3(status.MaxPosture > 0f ? Mathf.Clamp01(status.Posture / status.MaxPosture) : 0f, 1f, 1f);
 
             int sleight = boss.PendingSleight.HasValue ? boss.PendingSleight.Value.Value : 0;
-            stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);
+            // The state line shows tenths of a second: rebuild it only when the state, the tenth or the value changes.
+            var nowState = (boss.State, (int)System.Math.Round(Mathf.Max(0f, boss.StateRemaining) * 10f, System.MidpointRounding.AwayFromZero), sleight);
+            if (nowState != shownState)
+            {
+                shownState = nowState;
+                stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);
+            }
             stateText.color = boss.State == BossState.SleightWindup ? SleightColor
                 : boss.State == BossState.ReloadWindow ? ReloadColor
                 : boss.State == BossState.Exhausted ? ExhaustedColor : new Color(0.7f, 0.7f, 0.75f);
@@ -149,28 +157,24 @@ namespace DeckArpg.UI
             {
                 var card = cycle.Hand[i];
                 if (card != null) inHand++;
-                handCards[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyCard;
-                handValues[i].text = card != null ? card.GetEffectiveValue().ToString() : "";
+                handCards[i].color = card != null ? ElementColors.CardFace(card.Data.Element) : EmptyCard;
+                handValues[i].text = card != null ? RunUiText.Number(card.GetEffectiveValue()) : "";
             }
 
             int left = cycle.DrawCount + inHand;
+            bool midCycle = boss.State == BossState.Idle || boss.State == BossState.SleightWindup;
+            var nowCounter = (left, cycle.StockCount, cycle.DiscardCount, cycle.DeletedThisCycleCount, cycle.BurnedCount, midCycle);
+            if (nowCounter == shownCounter) return;
+            shownCounter = nowCounter;
             pipState.Clear();
             pipState.AddRange(RunUiText.BossPips(left, cycle.StockCount, cycle.DiscardCount,
                 cycle.DeletedThisCycleCount, cycle.BurnedCount));
             for (int i = 0; i < PipCount; i++)
                 pips[i].color = i < pipState.Count ? PipColor(pipState[i]) : BarBack;
-            bool midCycle = boss.State == BossState.Idle || boss.State == BossState.SleightWindup;
             counterText.text = RunUiText.BossCounter(left, cycle.StockCount, cycle.DiscardCount,
                 cycle.DeletedThisCycleCount, cycle.BurnedCount, BossRules.ExhaustDeleteThreshold, midCycle);
         }
 
-        /// <summary>A dark outline so white numbers stay readable on light (Physical) cards.</summary>
-        public static void AddReadableOutline(Text text)
-        {
-            var outline = text.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
-            outline.effectDistance = new Vector2(1.5f, -1.5f);
-        }
 
         public static Color PipColor(BossPip pip)
         {

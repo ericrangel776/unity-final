@@ -3,12 +3,6 @@ using System.Collections.Generic;
 
 namespace DeckArpg.Core
 {
-    /// <summary>
-    /// Pure-C# deck state for one combatant: draw queue, 3-card hand, reserved 0-Parry slot,
-    /// discard, burned pile, and cards deleted from the current cycle by 0-breaks.
-    /// Zero-breakers skip the draw queue: they go straight to the Parry slot (overflow waits in
-    /// a reserve) and never occupy a hand slot. <c>DeckRuntimeManager</c> wraps this for scenes.
-    /// </summary>
     /// <summary>Outcome of stocking a card toward a Sleight.</summary>
     public enum StockResult
     {
@@ -30,6 +24,12 @@ namespace DeckArpg.Core
         Effect
     }
 
+    /// <summary>
+    /// Pure-C# deck state for one combatant: draw queue, 3-card hand, reserved 0-Parry slot,
+    /// discard, burned pile, and cards deleted from the current cycle by 0-breaks.
+    /// Zero-breakers skip the draw queue: they go straight to the Parry slot (overflow waits in
+    /// a reserve) and never occupy a hand slot. <c>DeckRuntimeManager</c> wraps this for scenes.
+    /// </summary>
     public sealed class DeckCycle
     {
         public const int HandSize = 3;
@@ -414,12 +414,7 @@ namespace DeckArpg.Core
 
         private void ShuffleInto(List<RuntimeCardInstance> cards)
         {
-            // Fisher-Yates with the injected RNG so tests and seeded runs are deterministic.
-            for (int i = cards.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (cards[i], cards[j]) = (cards[j], cards[i]);
-            }
+            ListShuffle.Shuffle(cards, rng);
             if (SpacingRule != null)
             {
                 // Only the queue part is spaced: 0-cards never enter it.

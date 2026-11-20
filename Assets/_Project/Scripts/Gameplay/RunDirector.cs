@@ -377,7 +377,7 @@ namespace DeckArpg.Gameplay
             if (State != state) throw new InvalidOperationException($"RunDirector is in {State}, expected {state}.");
         }
 
-        // ---- manual driving until the step 6 screens exist (Inspector ⋮ menu) ----
+        // ---- debug: drive the run by hand from the Inspector ⋮ menu ----
 
         [ContextMenu("Run/Choose Door 1")] private void DebugDoor1() => ChooseDoor(0);
         [ContextMenu("Run/Choose Door 2")] private void DebugDoor2() => ChooseDoor(Math.Min(1, Run.CurrentOffer.Count - 1));

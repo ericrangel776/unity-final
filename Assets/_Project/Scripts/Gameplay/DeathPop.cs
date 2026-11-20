@@ -1,4 +1,3 @@
-using DeckArpg.Core;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -23,8 +22,6 @@ namespace DeckArpg.Gameplay
         [Tooltip("Additive particle material. A shared runtime one is created if left empty.")]
         [SerializeField] private Material particleMaterial;
 
-        private static Material sharedRuntimeMaterial;
-
         private CombatantStatus status;
         private Transform[] visuals;
         private Renderer[] visualRenderers;
@@ -39,10 +36,6 @@ namespace DeckArpg.Gameplay
         public int LastBurstCount { get; private set; }
         public Color LastBurstColor { get; private set; }
         public Material ParticleMaterial { get => particleMaterial; set => particleMaterial = value; }
-
-        // Domain reload may be disabled: don't keep a destroyed material across play sessions.
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => sharedRuntimeMaterial = null;
 
         private void Awake()
         {
@@ -95,12 +88,7 @@ namespace DeckArpg.Gameplay
 
         private void BuildBurst()
         {
-            var material = particleMaterial;
-            if (material == null)
-            {
-                if (sharedRuntimeMaterial == null) sharedRuntimeMaterial = ClashImpactFx.CreateParticleMaterial();
-                material = sharedRuntimeMaterial;
-            }
+            var material = particleMaterial != null ? particleMaterial : ClashImpactFx.SharedParticleMaterial;
             burst = ClashImpactFx.CreateSystem(transform, "DeathPopFx", material, maxParticles: 128);
             var main = burst.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);

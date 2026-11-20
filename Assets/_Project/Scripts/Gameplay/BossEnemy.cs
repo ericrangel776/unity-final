@@ -73,7 +73,6 @@ namespace DeckArpg.Gameplay
         public event Action ExhaustedStarted;
         /// <summary>A reload window or Exhausted ended; the boss is back to normal.</summary>
         public event Action RecoveredFromStagger;
-        public event Action<BossState> StateChanged;
 
         private void Awake()
         {
@@ -179,7 +178,7 @@ namespace DeckArpg.Gameplay
             }
         }
 
-        /// <summary>Global clash hook (step 4). The base boss doesn't clash while busy: the hit lands on the body.</summary>
+        /// <summary>Global clash hook. The base boss doesn't clash while busy: the hit lands on the body.</summary>
         public Func<AttackHitbox, bool> BusyClashResolver { get; set; }
 
         public bool ResolveBusyClash(AttackHitbox incoming) => BusyClashResolver != null && BusyClashResolver(incoming);
@@ -330,17 +329,13 @@ namespace DeckArpg.Gameplay
         {
             StateDuration = seconds;
             StateRemaining = seconds;
-            if (State == next) return;
             State = next;
-            StateChanged?.Invoke(next);
         }
 
         private Vector3 AimDirection()
         {
             if (body.Target == null) return transform.forward;
-            var d = body.Target.position - transform.position;
-            d.y = 0f;
-            return d.sqrMagnitude > 0.0001f ? d.normalized : transform.forward;
+            return FlatDirection.Of(body.Target.position - transform.position, transform.forward);
         }
 
         private void FaceTarget()

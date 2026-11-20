@@ -125,8 +125,7 @@ namespace DeckArpg.UI
             var cam = Camera.main;
             if (cam == null) return;
             var screen = cam.WorldToScreenPoint(worldPosition);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)root.parent, screen, null, out var local);
-            root.anchoredPosition = local;
+            root.anchoredPosition = UiFactory.ScreenToCanvasLocal((RectTransform)root.parent, screen);
         }
 
         private static string HandLine(DeckCycle cycle)

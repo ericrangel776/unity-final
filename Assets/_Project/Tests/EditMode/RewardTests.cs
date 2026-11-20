@@ -13,6 +13,30 @@ namespace DeckArpg.Tests.EditMode
         [SetUp] public void SetUp() => cards = new TestCards();
         [TearDown] public void TearDown() => cards.DestroyAll();
 
+        [TestCase(100, 20, 20)]
+        [TestCase(101, 10, 11)] // 10.1 rounds up
+        [TestCase(95, 45, 43)]  // 42.75 rounds up
+        [TestCase(0, 50, 0)]
+        [TestCase(7, 0, 0)]
+        public void PercentCeil_RoundsUp(int value, int percent, int expected)
+        {
+            Assert.AreEqual(expected, RewardRules.PercentCeil(value, percent));
+        }
+
+        [TestCase(-1, 10)]
+        [TestCase(10, -1)]
+        public void PercentCeil_RejectsNegatives(int value, int percent)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => RewardRules.PercentCeil(value, percent));
+        }
+
+        [TestCase(10, 25, 3)] // 2.5 rounds half up
+        [TestCase(10, 24, 2)]
+        public void PercentHalfUp_RoundsHalfUp(int value, int percent, int expected)
+        {
+            Assert.AreEqual(expected, RewardRules.PercentHalfUp(value, percent));
+        }
+
         private static MapCard Room(MapCardKind kind, int n) =>
             new MapCard(kind, n, kind == MapCardKind.EliteTrial ? EliteTrial.Hexer : EliteTrial.None);
 

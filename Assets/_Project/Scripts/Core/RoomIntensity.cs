@@ -109,7 +109,8 @@ namespace DeckArpg.Core
         /// <summary>Hexer: HP lost per Card Break you suffer (2 at I >= 7).</summary>
         public static int HexerHpPerBreak(int intensity) => BandStep(intensity, 0, 0, 2);
 
-        private static int BandStep(int number, int low, int mid, int high)
+        /// <summary>Low, mid or high by the band of the number (1-9).</summary>
+        internal static int BandStep(int number, int low, int mid, int high)
         {
             switch (Band(number))
             {

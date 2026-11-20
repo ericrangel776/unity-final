@@ -61,7 +61,7 @@ namespace DeckArpg.UI
         {
             if (e.Result.Outcome != ClashOutcome.AWins && e.Result.Outcome != ClashOutcome.BWins) return;
             var loser = e.Result.Outcome == ClashOutcome.AWins ? e.B : e.A;
-            string value = loser.IsZeroBreaker ? "0" : loser.Value.ToString();
+            string value = loser.IsZeroBreaker ? "0" : RunUiText.Number(loser.Value);
             var color = ElementColors.For(loser);
             color.a = 1f;
 
@@ -211,8 +211,7 @@ namespace DeckArpg.UI
                 if (cam == null) return;
                 var canvasRect = (RectTransform)root.parent;
                 var screen = cam.WorldToScreenPoint(worldPosition);
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, null, out var local);
-                root.anchoredPosition = local;
+                root.anchoredPosition = UiFactory.ScreenToCanvasLocal(canvasRect, screen);
             }
         }
     }

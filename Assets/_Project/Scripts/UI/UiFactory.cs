@@ -27,6 +27,18 @@ namespace DeckArpg.UI
             return canvas;
         }
 
+        /// <summary>Overlay canvases convert screen points with a null camera; camera-space canvases need theirs.</summary>
+        public static Camera CanvasCamera(Canvas canvas) =>
+            canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+
+        /// <summary>Screen point -> local point in a canvas rect, with the right camera for its render mode.</summary>
+        public static Vector2 ScreenToCanvasLocal(RectTransform canvasRect, Vector3 screen)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen,
+                CanvasCamera(canvasRect.GetComponent<Canvas>()), out var local);
+            return local;
+        }
+
         public static RectTransform CreateRect(Transform parent, string name, Vector2 anchor, Vector2 pivot,
             Vector2 anchoredPosition, Vector2 size)
         {
@@ -66,6 +78,18 @@ namespace DeckArpg.UI
             var outline = rt.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(0f, 0f, 0f, 0.8f);
             return text;
+        }
+
+        /// <summary>
+        /// Darkens and widens a text's outline so white numbers stay readable on light cards. Reuses the outline
+        /// <see cref="CreateText"/> adds; a second one would copy the text mesh again.
+        /// </summary>
+        public static void ReadableOutline(Text text, float distance)
+        {
+            var outline = text.GetComponent<Outline>();
+            if (outline == null) outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            outline.effectDistance = new Vector2(distance, -distance);
         }
     }
 }

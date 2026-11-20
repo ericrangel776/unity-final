@@ -36,8 +36,7 @@ namespace DeckArpg.Core
         public int ApplyCurrencyBonus(int baseAmount)
         {
             if (baseAmount < 0) throw new ArgumentOutOfRangeException(nameof(baseAmount));
-            long scaled = (long)baseAmount * (100 + Stacks * CurrencyPercentPerStack);
-            return (int)((scaled + 50) / 100);
+            return RewardRules.PercentHalfUp(baseAmount, 100 + Stacks * CurrencyPercentPerStack);
         }
 
         /// <summary>A Blue card's rolled Quality plus one per stack, clamped to [1, 9].</summary>

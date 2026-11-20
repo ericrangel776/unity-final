@@ -56,6 +56,13 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [Test]
+        public void ScreensCanvas_HasAGraphicRaycaster_SoButtonsTakeMouseClicks()
+        {
+            Assert.IsNotNull(screens.Canvas.GetComponent<UnityEngine.UI.GraphicRaycaster>(),
+                "without a raycaster the EventSystem never hits screen buttons");
+        }
+
+        [Test]
         public void Screens_SortAboveEveryCombatHudCanvas()
         {
             foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))

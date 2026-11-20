@@ -1,4 +1,3 @@
-using System;
 using DeckArpg.Core;
 using UnityEngine;
 
@@ -17,7 +16,6 @@ namespace DeckArpg.Gameplay
         private AttackPayload burnSource;
         private AttackPayload slamSource;
         private float slamWindow;
-        private bool wasBurning, wasChilled;
 
         public CombatantStatus Status => status;
         public bool IsBurning => state.IsBurning;
@@ -30,9 +28,6 @@ namespace DeckArpg.Gameplay
         public float DurationScale { get => state.DurationScale; set => state.DurationScale = value; }
         /// <summary>True while a Wind hit's slam window is open.</summary>
         public bool IsSlamWindowOpen => slamWindow > 0f;
-
-        /// <summary>A status started, refreshed or ended (pips, HUD chips).</summary>
-        public event Action StatusChanged;
 
         private void Awake() => status = GetComponent<CombatantStatus>();
 
@@ -57,7 +52,6 @@ namespace DeckArpg.Gameplay
             if (slamWindow > 0f) slamWindow -= dt;
             int burn = state.Tick(dt);
             if (burn > 0) status.TakeEffectDamage(burn, Element.Fire, burnSource);
-            RaiseIfChanged();
         }
 
         /// <summary>Starts or refreshes a burn of <paramref name="totalDamage"/> from <paramref name="source"/>.</summary>
@@ -66,21 +60,18 @@ namespace DeckArpg.Gameplay
             if (status.IsDead) return;
             burnSource = source;
             state.ApplyBurn(totalDamage, isSleight);
-            RaiseIfChanged(force: true);
         }
 
         public void ApplyChill(bool isSleight)
         {
             if (status.IsDead) return;
             state.ApplyChill(isSleight);
-            RaiseIfChanged(force: true);
         }
 
         public void Clear()
         {
             state.Clear();
             slamWindow = 0f;
-            RaiseIfChanged();
         }
 
         /// <summary>
@@ -102,15 +93,6 @@ namespace DeckArpg.Gameplay
             if (payload.Element != Element.Wind) return;
             slamSource = payload;
             slamWindow = ElementRules.WindSlamWindowSeconds;
-        }
-
-        private void RaiseIfChanged(bool force = false)
-        {
-            bool burning = state.IsBurning, chilled = state.IsChilled;
-            if (!force && burning == wasBurning && chilled == wasChilled) return;
-            wasBurning = burning;
-            wasChilled = chilled;
-            StatusChanged?.Invoke();
         }
     }
 }
