@@ -24,19 +24,29 @@ namespace DeckArpg.Core
         public const float SleightChillSeconds = 4f;
 
         // Chain (Lightning)
-        public const int ChainTargets = 3;
+        public const int ChainTargets = 5;
         /// <summary>Each hop is measured from the previous link (XZ plane).</summary>
-        public const float ChainHopRadius = 4f;
-        /// <summary>Chain damage = ceil(hitDamage * 0.5), at least 1.</summary>
-        public const float ChainDamageFraction = 0.5f;
+        public const float ChainHopRadius = 6f;
+        /// <summary>Chain damage = ceil(hitDamage * 0.6), at least 1.</summary>
+        public const float ChainDamageFraction = 0.6f;
+        /// <summary>Stun on each chained enemy (scaled by the victim's status duration scale: 0.5 on boss/Elites).</summary>
+        public const float ChainJoltSeconds = 0.4f;
+        /// <summary>Freeze when a chain fires (under the 0.2 s input buffer, like every other freeze).</summary>
+        public const float ChainHitStopSeconds = 0.07f;
 
         // Physical
         public const float PhysicalBreakPostureMultiplier = 1.5f;
 
         // Wind
-        public const float WindKnockbackMultiplier = 2.5f;
+        public const float WindKnockbackMultiplier = 3f;
+        /// <summary>
+        /// A Wind push decays over this long instead of the normal 0.15 s, so it carries ~4 u (Gust 6) and slams happen.
+        /// </summary>
+        public const float WindKnockbackDecaySeconds = 0.4f;
         /// <summary>Posture added by a slam, as a fraction of the victim's MaxPosture; once per gust hit.</summary>
-        public const float WindSlamPostureFraction = 0.3f;
+        public const float WindSlamPostureFraction = 0.5f;
+        /// <summary>Slam damage = ceil(gust hit damage * 0.5), at least 1.</summary>
+        public const float WindSlamDamageFraction = 0.5f;
         /// <summary>A wall/body bump this soon after a Wind hit counts as a slam.</summary>
         public const float WindSlamWindowSeconds = 0.5f;
         /// <summary>Knockback speed (m/s) that must still be left at the bump.</summary>
@@ -79,8 +89,14 @@ namespace DeckArpg.Core
         /// <summary>Total burn from a hit: ceil(hitDamage * 0.4), at least 1. 0 when the hit dealt no damage.</summary>
         public static int BurnTotal(int hitDamage) => CeilFraction(hitDamage, 4);
 
-        /// <summary>Damage each chain link takes: ceil(hitDamage * 0.5), at least 1. 0 for no damage.</summary>
-        public static int ChainDamage(int hitDamage) => CeilFraction(hitDamage, 5);
+        /// <summary>Damage each chain link takes: ceil(hitDamage * 0.6), at least 1. 0 for no damage.</summary>
+        public static int ChainDamage(int hitDamage) => CeilFraction(hitDamage, 6);
+
+        /// <summary>Wall/body slam damage: ceil(gustHitDamage * 0.5), at least 1. 0 for no damage.</summary>
+        public static int SlamDamage(int gustHitDamage) => CeilFraction(gustHitDamage, 5);
+
+        /// <summary>Jolt stun on a chained enemy: 0.4 s times its duration scale (0.5 on boss/Elites), never negative.</summary>
+        public static float JoltSeconds(float durationScale) => ChainJoltSeconds * Mathf.Max(0f, durationScale);
 
         /// <summary>Finisher shockwave damage: ceil(sleightTotal * 0.3), at least 1. 0 for no damage.</summary>
         public static int FinisherDamage(int sleightTotalDamage) => CeilFraction(sleightTotalDamage, 3);
@@ -109,9 +125,14 @@ namespace DeckArpg.Core
                 ? PhysicalBreakPostureMultiplier
                 : 1f;
 
-        /// <summary>Knockback multiplier for an element: 2.5 for Wind, else 1.</summary>
+        /// <summary>Knockback multiplier for an element: 3 for Wind, else 1.</summary>
         public static float KnockbackScale(Element element) =>
             element == Element.Wind ? WindKnockbackMultiplier : 1f;
+
+        /// <summary>How long a push from this element takes to decay: <see cref="WindKnockbackDecaySeconds"/> for Wind,
+        /// else <paramref name="defaultSeconds"/>.</summary>
+        public static float KnockbackDecaySeconds(Element element, float defaultSeconds) =>
+            element == Element.Wind ? WindKnockbackDecaySeconds : defaultSeconds;
 
         /// <summary>
         /// Picks up to <see cref="ChainTargets"/> links: each is the nearest unvisited candidate within

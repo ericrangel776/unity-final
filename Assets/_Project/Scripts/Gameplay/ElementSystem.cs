@@ -8,18 +8,23 @@ namespace DeckArpg.Gameplay
 {
     /// <summary>
     /// Applies element statuses on landed hits and fires the same-element finisher shockwave (one per scene;
-    /// docs/specs/element-mechanics.md). Fire burns, Ice chills, Lightning chains to up to 3 of the victim's
-    /// teammates. Physical (break posture) and Wind (knockback, slam) live in the clash and knockback code.
+    /// docs/specs/element-mechanics.md). Fire burns, Ice chills, Lightning chains to up to 5 of the victim's
+    /// teammates and jolts (briefly stuns) each one. Physical (break posture) and Wind (knockback, slam) live in the clash and knockback code.
     /// Effect damage never applies a status or chains again. Also draws the chain line and the finisher ring.
     /// </summary>
     public sealed class ElementSystem : MonoBehaviour
     {
-        public const float ChainLineSeconds = 0.12f;
+        public const float ChainLineSeconds = 0.3f;
+        public const float ChainLineWidth = 0.22f;
+        /// <summary>Each chain segment is drawn as this many jagged sub-segments, re-jittered every frame.</summary>
+        public const int ChainBoltSubdivisions = 5;
+        public const float ChainBoltJitter = 0.35f;
         public const float FinisherRingSeconds = 0.25f;
 
         private readonly List<CombatantStatus> candidates = new List<CombatantStatus>();
         private readonly List<Vector3> candidatePositions = new List<Vector3>();
         private readonly List<Vector3> chainPoints = new List<Vector3>();
+        private readonly List<Vector3> boltAnchors = new List<Vector3>();
         private LineRenderer chainLine;
         private LineRenderer finisherRing;
         private float chainLineRemaining;
@@ -36,7 +41,7 @@ namespace DeckArpg.Gameplay
 
         private void Awake()
         {
-            chainLine = FxShapes.CreateLine(transform, "ChainLine", 2, 0.08f);
+            chainLine = FxShapes.CreateLine(transform, "ChainLine", 2, ChainLineWidth);
             chainLine.enabled = false;
             finisherRing = FxShapes.CreateLine(transform, "FinisherRing", 48, 0.12f);
             finisherRing.enabled = false;
@@ -78,8 +83,9 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>
-        /// Jumps from <paramref name="from"/> to up to 3 of its living teammates (nearest first, 4 u per hop), dealing
-        /// <paramref name="damage"/> effect damage to each. Returns how many links landed.
+        /// Jumps from <paramref name="from"/> to up to 5 of its living teammates (nearest first, 6 u per hop), dealing
+        /// <paramref name="damage"/> effect damage to each and jolting the survivors (a short stun, halved on the boss
+        /// and Elites). Returns how many links landed.
         /// </summary>
         public int Chain(CombatantStatus from, int damage, in AttackPayload source)
         {
@@ -102,7 +108,9 @@ namespace DeckArpg.Gameplay
             {
                 var target = candidates[i];
                 chainPoints.Add(candidatePositions[i] + Vector3.up * CombatantStatus.HitFeedbackHeight);
-                if (target != null) target.TakeEffectDamage(damage, Element.Lightning, source);
+                if (target == null || !target.TakeEffectDamage(damage, Element.Lightning, source) || target.IsDead) continue;
+                var fx = EffectsOf(target);
+                target.ApplyStun(ElementRules.JoltSeconds(fx != null ? fx.DurationScale : 1f));
             }
             ShowChain(chainPoints);
             ChainFired?.Invoke(chainPoints.ToArray());
@@ -177,11 +185,32 @@ namespace DeckArpg.Gameplay
 
         private void ShowChain(List<Vector3> points)
         {
-            chainLine.positionCount = points.Count;
-            for (int i = 0; i < points.Count; i++) chainLine.SetPosition(i, points[i]);
+            boltAnchors.Clear();
+            boltAnchors.AddRange(points);
+            chainLine.positionCount = (points.Count - 1) * ChainBoltSubdivisions + 1;
+            LayOutBolt();
             FxShapes.SetColor(chainLine, ClashImpactFx.Opaque(ElementColors.For(Element.Lightning)));
+            chainLine.startWidth = chainLine.endWidth = ChainLineWidth;
             chainLine.enabled = true;
             chainLineRemaining = ChainLineSeconds;
+        }
+
+        /// <summary>Jagged bolt through the anchors: the anchors stay put, the points between them jitter.</summary>
+        private void LayOutBolt()
+        {
+            int index = 0;
+            for (int seg = 0; seg < boltAnchors.Count - 1; seg++)
+            {
+                var a = boltAnchors[seg];
+                var b = boltAnchors[seg + 1];
+                for (int k = 0; k < ChainBoltSubdivisions; k++)
+                {
+                    var p = Vector3.Lerp(a, b, k / (float)ChainBoltSubdivisions);
+                    if (k > 0) p += UnityEngine.Random.insideUnitSphere * ChainBoltJitter;
+                    chainLine.SetPosition(index++, p);
+                }
+            }
+            chainLine.SetPosition(index, boltAnchors[boltAnchors.Count - 1]);
         }
 
         private void ShowFinisherRing(Vector3 center, Element element)
@@ -201,6 +230,13 @@ namespace DeckArpg.Gameplay
             {
                 chainLineRemaining -= dt;
                 if (chainLineRemaining <= 0f) chainLine.enabled = false;
+                else
+                {
+                    LayOutBolt();
+                    // Thins out as it fades: full width for the first half, then down to a third.
+                    float t = Mathf.Clamp01(chainLineRemaining / ChainLineSeconds);
+                    chainLine.startWidth = chainLine.endWidth = ChainLineWidth * Mathf.Lerp(0.33f, 1f, t * 2f);
+                }
             }
             if (ringElapsed >= 0f)
             {

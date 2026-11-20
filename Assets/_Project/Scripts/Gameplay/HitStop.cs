@@ -38,12 +38,14 @@ namespace DeckArpg.Gameplay
         {
             ClashSystem.ClashOccurred += HandleClash;
             CombatantStatus.AnyHitLanded += HandleHit;
+            ElementSystem.ChainFired += HandleChain;
         }
 
         private void OnDisable()
         {
             ClashSystem.ClashOccurred -= HandleClash;
             CombatantStatus.AnyHitLanded -= HandleHit;
+            ElementSystem.ChainFired -= HandleChain;
             // Never leave the game frozen if the owner is disabled or the scene unloads mid-freeze.
             if (owner == this)
             {
@@ -59,6 +61,9 @@ namespace DeckArpg.Gameplay
         // chains, finisher) return 0 and don't freeze.
         private void HandleHit(HitInfo hit) =>
             Freeze(HitJuiceRules.BodyHitStopSeconds(hit.Payload, hit.Victim.Team, hit.Damage, hit.IsEffect));
+
+        // A Lightning chain landing gets its own beat (docs/specs/element-mechanics.md, wind/lightning tuning).
+        private void HandleChain(Vector3[] points) => Freeze(ElementRules.ChainHitStopSeconds);
 
         /// <summary>Freezes for <paramref name="seconds"/> of real time; overlapping calls extend, never stack.</summary>
         public void Freeze(float seconds)

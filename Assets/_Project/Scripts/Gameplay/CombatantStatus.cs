@@ -212,14 +212,25 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>
-        /// A push with no damage (the Wind finisher shockwave): knockback from <paramref name="payload"/> along
-        /// <paramref name="fromDirection"/>, with the Wind resistance applied. Raises <see cref="KnockedBackBy"/>.
+        /// A push with no damage (the Wind finisher shockwave, a Gust that lost a telegraph clash): knockback from
+        /// <paramref name="payload"/> along <paramref name="fromDirection"/>, with the Wind resistance applied. Raises
+        /// <see cref="KnockedBackBy"/>.
         /// </summary>
         public void ApplyKnockback(in AttackPayload payload, Vector3 fromDirection)
         {
             if (IsInvulnerable || IsDead || payload.Team == team || payload.IsPoke) return;
-            Push(fromDirection, KnockbackSpeedFrom(payload));
+            Push(fromDirection, payload);
             KnockedBackBy?.Invoke(payload);
+        }
+
+        /// <summary>
+        /// An effect stun (Lightning jolt): at least <paramref name="seconds"/> of stun. No flinch event, so it pauses a
+        /// telegraph instead of cancelling it. Ignored when dead or for non-positive durations.
+        /// </summary>
+        public void ApplyStun(float seconds)
+        {
+            if (IsDead || seconds <= 0f) return;
+            stunRemaining = Mathf.Max(stunRemaining, seconds);
         }
 
         /// <summary>
@@ -235,7 +246,7 @@ namespace DeckArpg.Gameplay
         private void React(in AttackPayload payload, Vector3 fromDirection, int damage)
         {
             // A poke is damage only: no shove (can't keep enemies at bay) and no flinch.
-            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, KnockbackSpeedFrom(payload));
+            var direction = payload.IsPoke ? Flatten(fromDirection) : Push(fromDirection, payload);
             HitTaken?.Invoke(damage, direction);
             if (!payload.IsPoke) KnockedBackBy?.Invoke(payload);
 
@@ -250,12 +261,19 @@ namespace DeckArpg.Gameplay
             CombatMath.KnockbackSpeed(payload) *
             (payload.Element == Element.Wind ? Mathf.Max(0f, KnockbackTakenMultiplier) : 1f);
 
+        /// <summary>Pushes along the flattened direction, decaying at the payload element's rate (Wind lasts longer).</summary>
+        private Vector3 Push(Vector3 direction, in AttackPayload payload) =>
+            Push(direction, KnockbackSpeedFrom(payload),
+                ElementRules.KnockbackDecaySeconds(payload.Element, knockbackDecaySeconds));
+
         /// <summary>Sets a decaying push along the flattened direction. Returns the unit direction used.</summary>
-        private Vector3 Push(Vector3 direction, float speed)
+        private Vector3 Push(Vector3 direction, float speed) => Push(direction, speed, knockbackDecaySeconds);
+
+        private Vector3 Push(Vector3 direction, float speed, float decaySeconds)
         {
             direction = Flatten(direction);
             KnockbackVelocity = direction * speed;
-            knockbackDecayRate = knockbackDecaySeconds > 0f ? speed / knockbackDecaySeconds : float.MaxValue;
+            knockbackDecayRate = decaySeconds > 0f ? speed / decaySeconds : float.MaxValue;
             return direction;
         }
 

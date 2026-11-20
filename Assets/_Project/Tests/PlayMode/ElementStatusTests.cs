@@ -268,7 +268,7 @@ namespace DeckArpg.Tests.PlayMode
         // ---- Lightning ----
 
         [Test]
-        public void LightningHit_ChainsToThreeOfFourClustered_NotTheStragglerOrThePlayer()
+        public void LightningHit_ChainsToFiveOfSixClustered_NotTheStragglerOrThePlayer()
         {
             var victim = MakeBody(Team.Enemy, Vector3.zero);
             var cluster = new[]
@@ -277,8 +277,10 @@ namespace DeckArpg.Tests.PlayMode
                 MakeBody(Team.Enemy, new Vector3(2f, 0f, 0f)),
                 MakeBody(Team.Enemy, new Vector3(3f, 0f, 0f)),
                 MakeBody(Team.Enemy, new Vector3(4f, 0f, 0f)),
+                MakeBody(Team.Enemy, new Vector3(5f, 0f, 0f)),
+                MakeBody(Team.Enemy, new Vector3(6f, 0f, 0f)),
             };
-            var straggler = MakeBody(Team.Enemy, new Vector3(0f, 0f, -5f));
+            var straggler = MakeBody(Team.Enemy, new Vector3(0f, 0f, -7f));
             var player = MakeBody(Team.Player, new Vector3(0f, 0f, 1f));
 
             Vector3[] line = null;
@@ -286,20 +288,59 @@ namespace DeckArpg.Tests.PlayMode
             ElementSystem.ChainFired += handler;
             try
             {
-                victim.TakeHit(Card(Element.Lightning, 4)); // 12 -> chains 6
+                victim.TakeHit(Card(Element.Lightning, 4)); // 12 -> chains ceil(7.2) = 8
             }
             finally
             {
                 ElementSystem.ChainFired -= handler;
             }
 
-            for (int i = 0; i < 3; i++) Assert.AreEqual(cluster[i].MaxHp - 6, cluster[i].Hp, $"link {i}");
-            Assert.AreEqual(cluster[3].MaxHp, cluster[3].Hp, "max 3 links");
-            Assert.AreEqual(straggler.MaxHp, straggler.Hp, "5 u away: out of reach");
+            for (int i = 0; i < 5; i++) Assert.AreEqual(cluster[i].MaxHp - 8, cluster[i].Hp, $"link {i}");
+            Assert.AreEqual(cluster[5].MaxHp, cluster[5].Hp, "max 5 links");
+            Assert.AreEqual(straggler.MaxHp, straggler.Hp, "7 u from the victim, farther from every link: out of reach");
             Assert.AreEqual(player.MaxHp, player.Hp, "never jumps to the attacker's team");
             Assert.IsNotNull(line);
-            Assert.AreEqual(4, line.Length, "victim + 3 links");
+            Assert.AreEqual(6, line.Length, "victim + 5 links");
             Assert.IsTrue(system.IsChainLineVisible);
+        }
+
+        [Test]
+        public void ChainLinks_AreJolted_HalvedOnToughEnemies()
+        {
+            var victim = MakeBody(Team.Enemy, Vector3.zero);
+            var mob = MakeBody(Team.Enemy, new Vector3(1f, 0f, 0f));
+            var elite = MakeBody(Team.Enemy, new Vector3(2f, 0f, 0f));
+            Fx(elite).DurationScale = ElementRules.EliteBossDurationScale;
+            var noFx = MakeBody(Team.Enemy, new Vector3(3f, 0f, 0f), withEffects: false);
+
+            victim.TakeHit(Card(Element.Lightning, 4));
+
+            Assert.AreEqual(ElementRules.ChainJoltSeconds, mob.StunRemaining, Eps);
+            Assert.AreEqual(ElementRules.ChainJoltSeconds * 0.5f, elite.StunRemaining, Eps);
+            Assert.AreEqual(ElementRules.ChainJoltSeconds, noFx.StunRemaining, Eps, "no effects component: full jolt");
+        }
+
+        [Test]
+        public void ChainJolt_NeverShortensALongerStun()
+        {
+            var victim = MakeBody(Team.Enemy, Vector3.zero);
+            var link = MakeBody(Team.Enemy, new Vector3(1f, 0f, 0f));
+            link.ApplyBreak(); // 0.8 s break stun
+            float before = link.StunRemaining;
+            Assert.Greater(before, ElementRules.ChainJoltSeconds);
+            victim.TakeHit(Card(Element.Lightning, 4));
+            Assert.AreEqual(before, link.StunRemaining, Eps);
+        }
+
+        [Test]
+        public void ChainLink_KilledByTheJump_IsNotJolted()
+        {
+            var victim = MakeBody(Team.Enemy, Vector3.zero);
+            var link = MakeBody(Team.Enemy, new Vector3(1f, 0f, 0f));
+            link.SetHp(1);
+            victim.TakeHit(Card(Element.Lightning, 4));
+            Assert.IsTrue(link.IsDead);
+            Assert.IsFalse(link.IsStunned);
         }
 
         [Test]
@@ -358,7 +399,7 @@ namespace DeckArpg.Tests.PlayMode
         // ---- Wind ----
 
         [Test]
-        public void WindHit_PushesTwoAndAHalfTimesAsHard_BossHalvesIt()
+        public void WindHit_PushesThreeTimesAsHard_BossHalvesIt()
         {
             var a = MakeBody(Team.Enemy, Vector3.zero);
             var b = MakeBody(Team.Enemy, new Vector3(20f, 0f, 0f));
@@ -368,8 +409,22 @@ namespace DeckArpg.Tests.PlayMode
             b.TakeHit(Card(Element.Wind, 5), Vector3.forward);
             boss.TakeHit(Card(Element.Wind, 5), Vector3.forward);
             float baseSpeed = a.KnockbackVelocity.magnitude;
-            Assert.AreEqual(baseSpeed * 2.5f, b.KnockbackVelocity.magnitude, Eps);
-            Assert.AreEqual(baseSpeed * 2.5f * 0.5f, boss.KnockbackVelocity.magnitude, Eps);
+            Assert.AreEqual(baseSpeed * 3f, b.KnockbackVelocity.magnitude, Eps);
+            Assert.AreEqual(baseSpeed * 3f * 0.5f, boss.KnockbackVelocity.magnitude, Eps);
+        }
+
+        [UnityTest]
+        public IEnumerator WindPush_OutlastsANormalPush()
+        {
+            var a = MakeBody(Team.Enemy, Vector3.zero);
+            var b = MakeBody(Team.Enemy, new Vector3(20f, 0f, 0f));
+            a.TakeHit(Card(Element.Physical, 6), Vector3.forward);
+            b.TakeHit(Card(Element.Wind, 6), Vector3.forward);
+            // Scaled time: knockback decays with Time.deltaTime.
+            float start = Time.time, end = Time.realtimeSinceStartup + 2f;
+            while (Time.time - start < 0.2f && Time.realtimeSinceStartup < end) yield return null;
+            Assert.AreEqual(Vector3.zero, a.KnockbackVelocity, "a normal push is gone after 0.15 s");
+            Assert.Greater(b.KnockbackVelocity.magnitude, ElementRules.WindSlamMinSpeed, "a Wind push still carries slam speed");
         }
 
         [Test]
@@ -394,12 +449,16 @@ namespace DeckArpg.Tests.PlayMode
             yield return null;
             Physics.SyncTransforms();
 
-            enemy.Status.TakeHit(Card(Element.Wind, 5), Vector3.right);
+            var gust = Card(Element.Wind, 5);
+            enemy.Status.TakeHit(gust, Vector3.right);
+            int hpAfterHit = enemy.Status.Hp;
             Assert.IsTrue(Fx(enemy).IsSlamWindowOpen);
             float end = Time.realtimeSinceStartup + 1f;
             while (enemy.Status.Posture <= 0f && Time.realtimeSinceStartup < end) yield return null;
             float slam = ElementRules.WindSlamPostureFraction * enemy.Status.MaxPosture;
-            Assert.AreEqual(slam, enemy.Status.Posture, 2f, "30% of max posture (minus a frame of decay)");
+            Assert.AreEqual(slam, enemy.Status.Posture, 2f, "50% of max posture (minus a frame of decay)");
+            Assert.AreEqual(hpAfterHit - ElementRules.SlamDamage(CombatMath.Damage(gust)), enemy.Status.Hp,
+                "the slam deals half the gust's hit");
             Assert.IsFalse(Fx(enemy).IsSlamWindowOpen, "once per gust hit");
             yield return new WaitForSeconds(0.2f);
             Assert.LessOrEqual(enemy.Status.Posture, slam, "no second slam from further bumps");

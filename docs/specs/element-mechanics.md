@@ -342,3 +342,20 @@ Close the Unity Editor first (`tasklist //FI "IMAGENAME eq Unity.exe"`). Wrap ea
   `timeout 1200 ".../Unity.exe" -batchmode -projectPath "$(pwd -W)" -runTests -testPlatform PlayMode -testFilter DeckArpg.Tests.PlayMode.HudScreenshotCapture -testResults "$(pwd -W)/TestResults/screens.xml" -logFile "$(pwd -W)/TestResults/screens.log"`,
   then view the PNGs in `TestResults/screens/`.
 - Feel: the user's playtest sign-off (required).
+
+## Addendum: Wind + Lightning tuning pass (2026-11-19, after the first playtest)
+
+Playtest feedback: "make the wind effect much stronger and make the lightning effect more impressive". Gameplay first;
+visuals stay greybox (animation is the last big step).
+
+| Item | Before | After |
+|---|---|---|
+| Wind knockback multiplier | x2.5 | **x3** |
+| Wind push decay | 0.15 s (shared) | **0.4 s** (`WindKnockbackDecaySeconds`): Gust 6 carries ~4 u, Tempest 8 ~4.7 u, boss half |
+| Wind slam | +30% max posture | **+50% max posture and effect damage = ceil(gust hit x 0.5)** |
+| Gust that loses/ties a telegraph clash | cancelled, no effect | **still shoves (no damage, no cancel)**, so the enemy's swing tends to whiff. Clash rules unchanged |
+| Chain targets / hop radius / damage | 3 / 4 u / 50% | **5 / 6 u / 60%** |
+| Chain jolt | none | **0.4 s stun on each surviving link** (x duration scale: 0.2 s on boss/Elites). No flinch event, so it pauses a telegraph rather than cancelling it |
+| Chain feedback | 8 cm straight line, 0.12 s | **22 cm jagged bolt re-jittered each frame, 0.3 s, thinning out; 0.07 s hit-stop; 14-spark burst per link** |
+
+The user picked "shove even on a loss" over letting Wind bypass telegraph clashes, so "higher value breaks lower" holds.

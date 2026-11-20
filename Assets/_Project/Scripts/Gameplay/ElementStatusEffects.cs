@@ -7,7 +7,7 @@ namespace DeckArpg.Gameplay
     /// <summary>
     /// One combatant's element statuses (docs/specs/element-mechanics.md): burn ticks deal effect damage, chill slows
     /// movement (read through <see cref="SpeedMultiplier"/>), and a Wind hit opens a short window in which a wall or
-    /// body bump adds posture once (the slam). The rules live in <see cref="ElementStatusState"/>.
+    /// body bump slams once (effect damage plus posture). The rules live in <see cref="ElementStatusState"/>.
     /// </summary>
     [RequireComponent(typeof(CombatantStatus))]
     public sealed class ElementStatusEffects : MonoBehaviour
@@ -15,6 +15,7 @@ namespace DeckArpg.Gameplay
         private readonly ElementStatusState state = new ElementStatusState();
         private CombatantStatus status;
         private AttackPayload burnSource;
+        private AttackPayload slamSource;
         private float slamWindow;
         private bool wasBurning, wasChilled;
 
@@ -83,20 +84,24 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>
-        /// The mover's knockback ran into a wall or body. Inside a Wind hit's window, with enough push left, it adds
-        /// <see cref="ElementRules.WindSlamPostureFraction"/> of max posture once and closes the window.
+        /// The mover's knockback ran into a wall or body. Inside a Wind hit's window, with enough push left, it slams
+        /// once: effect damage of <see cref="ElementRules.SlamDamage"/> (half the gust's hit) plus
+        /// <see cref="ElementRules.WindSlamPostureFraction"/> of max posture, then closes the window.
         /// </summary>
         public void NotifyKnockbackBlocked()
         {
             if (slamWindow <= 0f || status.IsDead) return;
             if (status.KnockbackVelocity.magnitude < ElementRules.WindSlamMinSpeed) return;
             slamWindow = 0f;
+            status.TakeEffectDamage(ElementRules.SlamDamage(CombatMath.Damage(slamSource)), Element.Wind, slamSource);
             status.AddPostureDamage(ElementRules.WindSlamPostureFraction * status.MaxPosture);
         }
 
         private void HandleKnockedBack(AttackPayload payload)
         {
-            if (payload.Element == Element.Wind) slamWindow = ElementRules.WindSlamWindowSeconds;
+            if (payload.Element != Element.Wind) return;
+            slamSource = payload;
+            slamWindow = ElementRules.WindSlamWindowSeconds;
         }
 
         private void RaiseIfChanged(bool force = false)

@@ -48,13 +48,46 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(expected, ElementRules.BurnTotal(hit));
         }
 
-        [TestCase(7, 4)]
-        [TestCase(8, 4)]
+        [TestCase(7, 5)]
+        [TestCase(8, 5)]
+        [TestCase(10, 6)]
         [TestCase(1, 1)]
         [TestCase(0, 0)]
-        public void ChainDamage_IsCeilHalf_AtLeastOne(int hit, int expected)
+        public void ChainDamage_IsCeilSixtyPercent_AtLeastOne(int hit, int expected)
         {
             Assert.AreEqual(expected, ElementRules.ChainDamage(hit));
+        }
+
+        [TestCase(18, 9)]
+        [TestCase(7, 4)]
+        [TestCase(1, 1)]
+        [TestCase(0, 0)]
+        public void SlamDamage_IsCeilHalf_AtLeastOne(int hit, int expected)
+        {
+            Assert.AreEqual(expected, ElementRules.SlamDamage(hit));
+        }
+
+        [Test]
+        public void JoltSeconds_ScalesWithDurationScale()
+        {
+            Assert.AreEqual(0.4f, ElementRules.JoltSeconds(1f), Eps);
+            Assert.AreEqual(0.2f, ElementRules.JoltSeconds(ElementRules.EliteBossDurationScale), Eps);
+            Assert.AreEqual(0f, ElementRules.JoltSeconds(-1f), Eps);
+        }
+
+        [Test]
+        public void KnockbackDecaySeconds_WindLastsLonger()
+        {
+            Assert.AreEqual(0.4f, ElementRules.KnockbackDecaySeconds(Element.Wind, 0.15f), Eps);
+            Assert.AreEqual(0.15f, ElementRules.KnockbackDecaySeconds(Element.Physical, 0.15f), Eps);
+            Assert.AreEqual(0.15f, ElementRules.KnockbackDecaySeconds(Element.Lightning, 0.15f), Eps);
+        }
+
+        [Test]
+        public void ChainHitStop_StaysUnderTheInputBuffer()
+        {
+            Assert.Greater(ElementRules.ChainHitStopSeconds, 0f);
+            Assert.Less(ElementRules.ChainHitStopSeconds, 0.2f);
         }
 
         [TestCase(66, 20)]
@@ -88,7 +121,7 @@ namespace DeckArpg.Tests.EditMode
         [Test]
         public void KnockbackScale_WindOnly()
         {
-            Assert.AreEqual(2.5f, ElementRules.KnockbackScale(Element.Wind), Eps);
+            Assert.AreEqual(3f, ElementRules.KnockbackScale(Element.Wind), Eps);
             Assert.AreEqual(1f, ElementRules.KnockbackScale(Element.Physical), Eps);
             Assert.AreEqual(1f, ElementRules.KnockbackScale(Element.Fire), Eps);
         }
@@ -118,18 +151,19 @@ namespace DeckArpg.Tests.EditMode
         [Test]
         public void PickChain_StopsAtAGapWiderThanTheRadius()
         {
-            var c = new List<Vector3> { new Vector3(2f, 0, 0), new Vector3(6.5f, 0, 0) };
+            var c = new List<Vector3> { new Vector3(2f, 0, 0), new Vector3(8.5f, 0, 0) };
             CollectionAssert.AreEqual(new[] { 0 }, ElementRules.PickChain(Vector3.zero, c));
         }
 
         [Test]
-        public void PickChain_CapsAtThreeTargets()
+        public void PickChain_CapsAtFiveTargets()
         {
             var c = new List<Vector3>
             {
-                new Vector3(1, 0, 0), new Vector3(2, 0, 0), new Vector3(3, 0, 0), new Vector3(4, 0, 0)
+                new Vector3(1, 0, 0), new Vector3(2, 0, 0), new Vector3(3, 0, 0), new Vector3(4, 0, 0),
+                new Vector3(5, 0, 0), new Vector3(6, 0, 0)
             };
-            CollectionAssert.AreEqual(new[] { 0, 1, 2 }, ElementRules.PickChain(Vector3.zero, c));
+            CollectionAssert.AreEqual(new[] { 0, 1, 2, 3, 4 }, ElementRules.PickChain(Vector3.zero, c));
         }
 
         [Test]

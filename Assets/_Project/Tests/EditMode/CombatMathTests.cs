@@ -155,11 +155,11 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void KnockbackSpeed_Wind_IsTwoAndAHalfTimes()
+        public void KnockbackSpeed_Wind_IsThreeTimes()
         {
             var phys = new AttackPayload(1, Team.Player, 4, false, false, 0, CardShape.Strike, Element.Physical);
             var wind = new AttackPayload(1, Team.Player, 4, false, false, 0, CardShape.Strike, Element.Wind);
-            Assert.AreEqual(CombatMath.KnockbackSpeed(phys) * 2.5f, CombatMath.KnockbackSpeed(wind), 1e-4f);
+            Assert.AreEqual(CombatMath.KnockbackSpeed(phys) * 3f, CombatMath.KnockbackSpeed(wind), 1e-4f);
         }
 
         [Test]

@@ -112,7 +112,12 @@ namespace DeckArpg.Gameplay
                 // A body that is winding up a telegraph clashes its card with ours first.
                 var winder = status.GetComponent<TrainingDummyEnemy>();
                 if (winder != null) winder.ResolveTelegraphClash(this);
-                if (!IsLive) return; // lost or tied: our action was cancelled
+                if (!IsLive)
+                {
+                    // Lost or tied: our action was cancelled. Wind still shoves (no damage), so the swing tends to whiff.
+                    if (winder != null && Payload.Element == Element.Wind) status.ApplyKnockback(Payload, status.transform.position - source);
+                    return;
+                }
                 // Hits during i-frames are not consumed, so dashing through only protects while dashing.
                 bool canCounter = !brokeInClash.Contains(status);
                 if (status.TakeHit(Payload, status.transform.position - source, canCounter))
