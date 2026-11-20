@@ -16,6 +16,14 @@ namespace DeckArpg.Tests.EditMode
             return new RuntimeCardInstance(data);
         }
 
+        /// <summary>A Physical/Strike heal card (like Mend).</summary>
+        public RuntimeCardInstance Heal(int value)
+        {
+            var data = CardData.Create($"test_heal_{value}_{created.Count}", value, heal: true);
+            created.Add(data);
+            return new RuntimeCardInstance(data);
+        }
+
         public RuntimeCardInstance Zero()
         {
             var data = CardData.Create($"test_zero_{created.Count}", 1, zeroBreaker: true);

@@ -253,6 +253,7 @@ namespace DeckArpg.UI
                 case RelicId.TemperedCoil: return "Tempered Coil";
                 case RelicId.CinderLantern: return "Cinder Lantern";
                 case RelicId.GildedQuill: return "Gilded Quill";
+                case RelicId.HeartwoodSeed: return "Heartwood Seed";
                 default: return relic.ToString();
             }
         }
@@ -268,6 +269,7 @@ namespace DeckArpg.UI
                 case RelicId.TemperedCoil: return "A Perfect reload restores\n1 burned card.";
                 case RelicId.CinderLantern: return "The first Overburn each room\ncosts no HP.";
                 case RelicId.GildedQuill: return $"Drafts offer +{RelicRules.GildedQuillExtraOptions} card.\nSkipping pays +{RelicRules.GildedQuillExtraSkipBonus} more.";
+                case RelicId.HeartwoodSeed: return $"+{RelicRules.HeartwoodSeedMaxHp} max HP (and heal {RelicRules.HeartwoodSeedMaxHp}).\nOverburn costs 10% of max HP.";
                 default: return "";
             }
         }
@@ -282,6 +284,7 @@ namespace DeckArpg.UI
                 case RelicId.TemperedCoil: return "Coil";
                 case RelicId.CinderLantern: return "Lantern";
                 case RelicId.GildedQuill: return "Quill";
+                case RelicId.HeartwoodSeed: return "Seed";
                 default: return relic.ToString();
             }
         }

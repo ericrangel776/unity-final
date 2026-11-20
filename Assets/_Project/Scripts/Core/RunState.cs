@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DeckArpg.Core
 {
-    /// <summary>The 6 relics. Rules in <see cref="RelicRules"/>; fight effects in Gameplay's RelicEffects (docs/specs/m3-relics.md).</summary>
+    /// <summary>The relics. Rules in <see cref="RelicRules"/>; fight effects in Gameplay's RelicEffects (docs/specs/m3-relics.md).</summary>
     public enum RelicId
     {
         ShatteredHourglass,
@@ -11,7 +11,9 @@ namespace DeckArpg.Core
         IronWillIdol,
         TemperedCoil,
         CinderLantern,
-        GildedQuill
+        GildedQuill,
+        /// <summary>Appended last so serialized ints don't shift. On pickup: +15 max HP and heal 15.</summary>
+        HeartwoodSeed
     }
 
     public enum RunPhase
@@ -41,6 +43,7 @@ namespace DeckArpg.Core
             if (startingDeck == null) throw new ArgumentNullException(nameof(startingDeck));
             if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
             foreach (var card in startingDeck) if (card != null) deck.Add(new RuntimeCardInstance(card));
+            StartingMaxHp = maxHp;
             MaxHp = maxHp;
             Hp = maxHp;
             Rng = new Random(seed);
@@ -48,7 +51,9 @@ namespace DeckArpg.Core
 
         public IReadOnlyList<RuntimeCardInstance> Deck => deck;
         public int Currency { get; private set; }
-        public int MaxHp { get; }
+        /// <summary>Max HP at run start. Boss HP scales from this, so max-HP upgrades don't toughen the boss.</summary>
+        public int StartingMaxHp { get; }
+        public int MaxHp { get; private set; }
         public int Hp { get; private set; }
         public Momentum Momentum { get; } = new Momentum();
         public IReadOnlyCollection<RelicId> Relics => relics;
@@ -168,6 +173,14 @@ namespace DeckArpg.Core
             SetHp(Hp + amount);
         }
 
+        /// <summary>Raises max HP by <paramref name="amount"/> and heals the same amount (clamped to the new max).</summary>
+        public void IncreaseMaxHp(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            MaxHp += amount;
+            Heal(amount);
+        }
+
         public RuntimeCardInstance AddCard(CardData data, int permanentUpgrade = 0)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
@@ -180,8 +193,13 @@ namespace DeckArpg.Core
         public bool RemoveCard(RuntimeCardInstance card) => card != null && deck.Remove(card);
         public bool OwnsCard(RuntimeCardInstance card) => card != null && deck.Contains(card);
 
-        /// <summary>False if already owned.</summary>
-        public bool AddRelic(RelicId relic) => relics.Add(relic);
+        /// <summary>False if already owned. Pickup effects (Heartwood Seed's max HP) apply only when newly added.</summary>
+        public bool AddRelic(RelicId relic)
+        {
+            if (!relics.Add(relic)) return false;
+            if (relic == RelicId.HeartwoodSeed) IncreaseMaxHp(RelicRules.HeartwoodSeedMaxHp);
+            return true;
+        }
         public bool HasRelic(RelicId relic) => relics.Contains(relic);
 
         private void RequirePhase(RunPhase phase)
