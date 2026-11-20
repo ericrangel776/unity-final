@@ -34,8 +34,9 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(Team.Player, prefab.GetComponent<CombatantStatus>().Team);
 
             var deck = StartingDeck(prefab);
-            Assert.AreEqual(10, deck.Length);
+            Assert.AreEqual(11, deck.Length);
             Assert.AreEqual(1, deck.Count(c => c.IsZeroBreaker), "Starter deck has exactly one 0-Parry.");
+            Assert.AreEqual(1, deck.Count(c => c.IsHeal), "Starter deck has exactly one heal (Mend 3).");
             Assert.IsTrue(deck.All(c => c.IsZeroBreaker || (c.BaseValue >= CardValue.Min && c.BaseValue <= CardValue.Max)));
         }
 

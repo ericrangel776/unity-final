@@ -201,13 +201,52 @@ namespace DeckArpg.Tests.EditMode
         public void GeneratedContent_IsValid() => CollectionAssert.IsEmpty(Generated().Validate());
 
         [Test]
-        public void GeneratedPool_HasTwentyCards_EightSevenFive()
+        public void GeneratedPool_HasTwentyThreeCards_NineEightSix()
         {
             var pool = Generated().DraftPool;
-            Assert.AreEqual(20, pool.Count);
-            Assert.AreEqual(8, pool.Count(c => c.Rarity == Rarity.Common));
-            Assert.AreEqual(7, pool.Count(c => c.Rarity == Rarity.Uncommon));
-            Assert.AreEqual(5, pool.Count(c => c.Rarity == Rarity.Rare));
+            Assert.AreEqual(23, pool.Count);
+            Assert.AreEqual(9, pool.Count(c => c.Rarity == Rarity.Common));
+            Assert.AreEqual(8, pool.Count(c => c.Rarity == Rarity.Uncommon));
+            Assert.AreEqual(6, pool.Count(c => c.Rarity == Rarity.Rare));
+        }
+
+        [Test]
+        public void GeneratedPool_HasThreeHealCards_Mend357_OneOfEachRarity()
+        {
+            var heals = Generated().DraftPool.Where(c => c.IsHeal).OrderBy(c => c.BaseValue).ToList();
+            CollectionAssert.AreEqual(new[] { "mend_3", "mend_5", "mend_7" }, heals.Select(c => c.CardId));
+            CollectionAssert.AreEqual(new[] { 3, 5, 7 }, heals.Select(c => c.BaseValue));
+            CollectionAssert.AreEqual(new[] { Rarity.Common, Rarity.Uncommon, Rarity.Rare }, heals.Select(c => c.Rarity));
+        }
+
+        [Test]
+        public void GeneratedHealCards_ArePhysicalStrike()
+        {
+            var content = Generated();
+            var heals = content.DraftPool.Concat(content.StarterDeck).Where(c => c != null && c.IsHeal).ToList();
+            Assert.IsNotEmpty(heals);
+            foreach (var c in heals)
+            {
+                Assert.AreEqual(Element.Physical, c.Element, c.CardId);
+                Assert.AreEqual(CardShape.Strike, c.Shape, c.CardId);
+            }
+        }
+
+        [Test]
+        public void GeneratedContent_NoZeroBreakerIsAHeal()
+        {
+            var content = Generated();
+            var all = content.DraftPool.Concat(content.StarterDeck).Concat(content.MobDeck).Concat(content.HexfireDeck)
+                .Concat(content.EliteDeck).Concat(content.BossDeck).Append(content.EnemyZero).Where(c => c != null);
+            foreach (var c in all) Assert.IsFalse(c.IsZeroBreaker && c.IsHeal, c.CardId);
+        }
+
+        [Test]
+        public void GeneratedEnemyDecks_HaveNoHealCards()
+        {
+            var content = Generated();
+            var enemy = content.MobDeck.Concat(content.HexfireDeck).Concat(content.EliteDeck).Concat(content.BossDeck);
+            Assert.IsFalse(enemy.Any(c => c != null && c.IsHeal), "enemy decks stay as they are");
         }
 
         [Test]
@@ -232,11 +271,13 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void GeneratedStarterDeck_IsTheM1Deck()
+        public void GeneratedStarterDeck_IsTheM1DeckPlusMend()
         {
             var starter = Generated().StarterDeck;
-            Assert.AreEqual(10, starter.Count);
+            Assert.AreEqual(11, starter.Count);
             Assert.AreEqual(1, starter.Count(c => c.IsZeroBreaker));
+            Assert.AreEqual(1, starter.Count(c => c.IsHeal));
+            Assert.AreEqual("mend_3", starter.Single(c => c.IsHeal).CardId);
         }
 
         [Test]

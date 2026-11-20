@@ -262,6 +262,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: af95e5983747f2f408f34f7c2ed95268, type: 2}
   - {fileID: 11400000, guid: 72213917a75763a45936c4bd528aa62b, type: 2}
   - {fileID: 11400000, guid: d264d234aa215b346aa958fc925ef48c, type: 2}
+  - {fileID: 11400000, guid: 7d1b5c88e9522d84f84a8ecee6c2a8de, type: 2}
   - {fileID: 11400000, guid: 80e267642295e3d489ce40c260c04fd3, type: 2}
   seed: 0
 --- !u!114 &6959820947352314712
