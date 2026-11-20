@@ -57,10 +57,16 @@ namespace DeckArpg.Gameplay
             def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform;
             def.ImpulseDuration = 0.25f;
 
-            var material = particleMaterial != null ? particleMaterial : CreateParticleMaterial();
+            var material = particleMaterial != null ? particleMaterial : SharedParticleMaterial;
             sparks = BuildSparks(material);
             ring = BuildRing(material);
             volume = BuildVolume();
+        }
+
+        // The profile is built at runtime, so nothing else frees it.
+        private void OnDestroy()
+        {
+            if (volume != null && volume.sharedProfile != null) Destroy(volume.sharedProfile);
         }
 
         private void Start()
@@ -211,6 +217,16 @@ namespace DeckArpg.Gameplay
             v.sharedProfile = profile;
             return v;
         }
+
+        private static Material sharedParticleMaterial;
+
+        // Domain reload may be disabled: don't keep a destroyed material across play sessions.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => sharedParticleMaterial = null;
+
+        /// <summary>One runtime particle material shared by every FX component whose slot is left empty.</summary>
+        public static Material SharedParticleMaterial =>
+            sharedParticleMaterial != null ? sharedParticleMaterial : (sharedParticleMaterial = CreateParticleMaterial());
 
         /// <summary>Additive URP particle material with a soft round dot, used if none is assigned.</summary>
         public static Material CreateParticleMaterial()

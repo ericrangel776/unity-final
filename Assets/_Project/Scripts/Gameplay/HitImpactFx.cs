@@ -41,7 +41,7 @@ namespace DeckArpg.Gameplay
             def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform;
             def.ImpulseDuration = 0.2f;
 
-            var material = particleMaterial != null ? particleMaterial : ClashImpactFx.CreateParticleMaterial();
+            var material = particleMaterial != null ? particleMaterial : ClashImpactFx.SharedParticleMaterial;
             sparks = ClashImpactFx.CreateSystem(transform, "HitSparks", material, maxParticles: 128);
             var main = sparks.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);

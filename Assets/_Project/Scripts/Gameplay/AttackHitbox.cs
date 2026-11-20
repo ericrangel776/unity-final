@@ -41,8 +41,6 @@ namespace DeckArpg.Gameplay
         public bool IsLive => initialized && !cancelled;
         /// <summary>ChainArc: despawn after the first body hit (the chain does the crowd work).</summary>
         public bool DespawnOnBodyHit { get; internal set; }
-        /// <summary>True once the windup has passed and body contacts deal damage.</summary>
-        public bool CanHitBodies => IsLive && bodyHitDelay <= 0f;
 
         internal void InitBox(CombatActionController owner, in AttackPayload payload, Vector3 size, float duration,
             float windup, bool visible)
@@ -244,14 +242,8 @@ namespace DeckArpg.Gameplay
 
         private void AddVisual(PrimitiveType type, Vector3 scale)
         {
-            var visual = GameObject.CreatePrimitive(type);
-            // Immediate: a deferred Destroy would leave a solid collider on our rigidbody for a frame.
-            DestroyImmediate(visual.GetComponent<Collider>());
-            visual.name = "Visual";
-            visual.transform.SetParent(transform, false);
+            var visual = FxShapes.CreateVisual(type, "Visual", transform, ElementColors.For(Payload));
             visual.transform.localScale = scale;
-            var r = visual.GetComponent<Renderer>();
-            r.material.color = ElementColors.For(Payload);
             this.visual = visual.transform;
         }
     }

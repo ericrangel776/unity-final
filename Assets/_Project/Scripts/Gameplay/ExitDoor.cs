@@ -68,16 +68,11 @@ namespace DeckArpg.Gameplay
 
         private static void AddPart(Transform parent, PrimitiveType type, string name, Vector3 localPos, Vector3 scale, Color color)
         {
-            var part = GameObject.CreatePrimitive(type);
-            part.name = name;
-            part.transform.SetParent(parent, false);
+            // Visual only (no collider): the door is entered by distance, and colliders would block the walk-in.
+            var part = FxShapes.CreateVisual(type, name, parent, color);
             part.transform.localPosition = localPos;
             part.transform.localScale = scale;
-            // Visual only: the door is entered by distance, and colliders would block the walk-in.
-            Destroy(part.GetComponent<Collider>());
-            var renderer = part.GetComponent<Renderer>();
-            renderer.material.color = color;
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            part.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
     }
 }

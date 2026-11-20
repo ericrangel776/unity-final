@@ -114,13 +114,8 @@ namespace DeckArpg.Gameplay
 
         private Transform CreatePip(string name, Color color)
         {
-            var pip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            DestroyImmediate(pip.GetComponent<Collider>());
-            pip.name = name;
-            pip.transform.SetParent(transform, false);
-            var r = pip.GetComponent<Renderer>();
-            r.material.color = ClashImpactFx.Opaque(color);
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var pip = FxShapes.CreateVisual(PrimitiveType.Sphere, name, transform, ClashImpactFx.Opaque(color));
+            pip.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             pip.SetActive(false);
             return pip.transform;
         }
