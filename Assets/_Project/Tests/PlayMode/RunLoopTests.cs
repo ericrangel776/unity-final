@@ -322,6 +322,7 @@ namespace DeckArpg.Tests.PlayMode
         public void FullRun_FiveRoomsThenBoss_EndsInVictory()
         {
             director.RestartRun(9);
+            director.Run.IncreaseMaxHp(15); // max-HP upgrades must not toughen the boss
             bool? ended = null;
             BossEnemy spawnedBoss = null;
             director.RunEnded += victory => ended = victory;
@@ -341,8 +342,9 @@ namespace DeckArpg.Tests.PlayMode
                             var boss = director.Enemies[0].GetComponent<BossEnemy>();
                             Assert.IsNotNull(boss, "The boss room spawns a BossEnemy.");
                             Assert.AreSame(boss, director.Boss);
-                            Assert.AreEqual(BossRules.MaxHp(director.Run.Floor, player.MaxHp), boss.Status.MaxHp,
-                                "boss HP is relative to the player's");
+                            Assert.AreEqual(BossRules.MaxHp(director.Run.Floor, director.Run.StartingMaxHp), boss.Status.MaxHp,
+                                "boss HP is relative to the player's starting max HP");
+                            Assert.AreEqual(150, boss.Status.MaxHp, "floor-1 boss stays 150 after a +15 max-HP upgrade");
                             Assert.AreSame(boss, spawnedBoss);
                             Assert.IsNotNull(director.Enemies[0].Deck.Cycle.SpacingRule, "Spacing set before the deal.");
                             var hud = Object.FindAnyObjectByType<DeckArpg.UI.BossHudView>();
