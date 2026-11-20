@@ -277,11 +277,7 @@ namespace DeckArpg.Gameplay
             return direction;
         }
 
-        private static Vector3 Flatten(Vector3 direction)
-        {
-            direction.y = 0f;
-            return direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
-        }
+        private static Vector3 Flatten(Vector3 direction) => FlatDirection.Of(direction, Vector3.zero);
 
         /// <summary>Card break at the baseline margin with no shove.</summary>
         public void ApplyBreak() => ApplyBreak(CombatMath.BaselineBreakMargin, Vector3.zero);

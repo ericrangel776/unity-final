@@ -335,9 +335,7 @@ namespace DeckArpg.Gameplay
         private Vector3 AimDirection()
         {
             if (body.Target == null) return transform.forward;
-            var d = body.Target.position - transform.position;
-            d.y = 0f;
-            return d.sqrMagnitude > 0.0001f ? d.normalized : transform.forward;
+            return FlatDirection.Of(body.Target.position - transform.position, transform.forward);
         }
 
         private void FaceTarget()

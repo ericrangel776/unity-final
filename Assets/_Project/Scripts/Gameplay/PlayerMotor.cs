@@ -71,8 +71,7 @@ namespace DeckArpg.Gameplay
 
         public void SetAimDirection(Vector3 direction)
         {
-            direction.y = 0f;
-            if (direction.sqrMagnitude > 0.0001f) AimDirection = direction.normalized;
+            AimDirection = FlatDirection.Of(direction, AimDirection);
         }
 
         /// <summary>A dash started (SFX).</summary>

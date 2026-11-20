@@ -151,9 +151,7 @@ namespace DeckArpg.Gameplay
         private AttackHitbox SpawnScaled(in AttackPayload payload, Vector3 aimDirection, RuntimeCardInstance source, float scale,
             bool aroundSelf = false)
         {
-            aimDirection.y = 0f;
-            if (aimDirection.sqrMagnitude < 0.0001f) aimDirection = transform.forward;
-            aimDirection.Normalize();
+            aimDirection = FlatDirection.Of(aimDirection, transform.forward);
 
             var stamped = OutgoingDamageScale != 1f && OutgoingDamageScale > 0f
                 ? payload.WithDamageScale(OutgoingDamageScale) : payload;
