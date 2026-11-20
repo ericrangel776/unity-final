@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Hex Flare 6
   isZeroBreaker: 0
   baseValue: 6
-  shape: 2
+  shape: 1
   element: 1
   isHeal: 0
   isPremium: 0

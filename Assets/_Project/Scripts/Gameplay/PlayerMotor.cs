@@ -20,6 +20,7 @@ namespace DeckArpg.Gameplay
 
         private CharacterController controller;
         private CombatantStatus status;
+        private ElementStatusEffects elementFx;
         private Vector2 moveInput;
         private Vector3 dashDirection;
         private Vector3 lungeDirection;
@@ -41,6 +42,13 @@ namespace DeckArpg.Gameplay
         {
             controller = GetComponent<CharacterController>();
             status = GetComponent<CombatantStatus>();
+            elementFx = GetComponent<ElementStatusEffects>();
+        }
+
+        // Again here: runtime-built players (tests) may add the effects component after Awake.
+        private void Start()
+        {
+            if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
         }
 
         public void SetMoveInput(Vector2 input) => moveInput = Vector2.ClampMagnitude(input, 1f);
@@ -127,7 +135,11 @@ namespace DeckArpg.Gameplay
             if (!IsDashing) horizontal += status.KnockbackVelocity;
 
             verticalVelocity = controller.isGrounded ? -1f : verticalVelocity + gravity * dt;
-            controller.Move((horizontal + Vector3.up * verticalVelocity) * dt);
+            var flags = controller.Move((horizontal + Vector3.up * verticalVelocity) * dt);
+            // A bump during a Wind push is a slam (ElementStatusEffects decides whether it counts).
+            if ((flags & CollisionFlags.Sides) != 0 && !IsDashing && status.KnockbackVelocity != Vector3.zero &&
+                elementFx != null)
+                elementFx.NotifyKnockbackBlocked();
 
             if (AimDirection.sqrMagnitude > 0f) transform.rotation = Quaternion.LookRotation(AimDirection);
         }

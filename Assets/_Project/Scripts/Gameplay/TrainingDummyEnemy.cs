@@ -41,6 +41,7 @@ namespace DeckArpg.Gameplay
         private CombatActionController combat;
         private DeckRuntimeManager deck;
         private CombatantStatus status;
+        private ElementStatusEffects elementFx;
         private State state;
         private float timer;
         private int telegraphSlot = -1;
@@ -93,6 +94,7 @@ namespace DeckArpg.Gameplay
             combat = GetComponent<CombatActionController>();
             deck = GetComponent<DeckRuntimeManager>();
             status = GetComponent<CombatantStatus>();
+            elementFx = GetComponent<ElementStatusEffects>();
             status.Team = Team.Enemy;
             spawnPosition = transform.position;
         }
@@ -115,6 +117,8 @@ namespace DeckArpg.Gameplay
 
         private void Start()
         {
+            // Again here: runtime-built enemies (tests) may add the effects component after Awake.
+            if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
             if (target == null)
             {
                 var player = FindAnyObjectByType<PlayerMotor>();
@@ -134,21 +138,25 @@ namespace DeckArpg.Gameplay
                 else Destroy(gameObject);
                 return;
             }
-            // Before the stun check so a flinched dummy still slides back.
-            if (status.KnockbackVelocity != Vector3.zero) body.Move(status.KnockbackVelocity * Time.deltaTime);
+            // Before the stun check so a flinched dummy still slides back. A bump during a Wind push is a slam.
+            if (status.KnockbackVelocity != Vector3.zero &&
+                (body.Move(status.KnockbackVelocity * Time.deltaTime) & CollisionFlags.Sides) != 0 && elementFx != null)
+                elementFx.NotifyKnockbackBlocked();
             if (status.IsStunned || target == null) return;
+            // Chill slows movement and the wind-up/recover timers alike.
+            float speed = elementFx != null ? elementFx.SpeedMultiplier : 1f;
             if (TurnHook != null && TurnHook.IsBusy) return;
 
             var toTarget = target.position - transform.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(toTarget);
 
-            timer -= Time.deltaTime;
+            timer -= Time.deltaTime * speed;
             switch (state)
             {
                 case State.Approach:
                     if (toTarget.magnitude > attackRange * 0.8f)
-                        body.SimpleMove(toTarget.normalized * moveSpeed);
+                        body.SimpleMove(toTarget.normalized * (moveSpeed * speed));
                     else if (timer <= 0f)
                         BeginTelegraph();
                     break;

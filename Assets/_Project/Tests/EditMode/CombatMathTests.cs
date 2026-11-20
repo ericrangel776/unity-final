@@ -153,5 +153,20 @@ namespace DeckArpg.Tests.EditMode
         {
             Assert.AreEqual(CombatMath.MinCrowdStunScale, CombatMath.CrowdStunScale(enemies), 1e-5f);
         }
+
+        [Test]
+        public void KnockbackSpeed_Wind_IsThreeTimes()
+        {
+            var phys = new AttackPayload(1, Team.Player, 4, false, false, 0, CardShape.Strike, Element.Physical);
+            var wind = new AttackPayload(1, Team.Player, 4, false, false, 0, CardShape.Strike, Element.Wind);
+            Assert.AreEqual(CombatMath.KnockbackSpeed(phys) * 3f, CombatMath.KnockbackSpeed(wind), 1e-4f);
+        }
+
+        [Test]
+        public void KnockbackSpeed_WindZeroBreaker_IsStillZero()
+        {
+            var p = new AttackPayload(1, Team.Player, 0, true, false, 0, CardShape.Strike, Element.Wind);
+            Assert.AreEqual(0f, CombatMath.KnockbackSpeed(p));
+        }
     }
 }

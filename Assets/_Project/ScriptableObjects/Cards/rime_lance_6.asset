@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: rime_lance_6
   m_EditorClassIdentifier: DeckArpg.Core::DeckArpg.Core.CardData
   cardId: rime_lance_6
-  displayName: Rime Lance 6
+  displayName: Rime Burst 6
   isZeroBreaker: 0
   baseValue: 6
-  shape: 1
+  shape: 2
   element: 2
   isHeal: 0
   isPremium: 0

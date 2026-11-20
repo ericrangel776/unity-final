@@ -10,6 +10,8 @@ namespace DeckArpg.Core
         public readonly int Value;
         /// <summary>Slot 1's shape defines the attack.</summary>
         public readonly CardShape Shape;
+        /// <summary>Slot 1's delivery (its element, plus its shape if Physical) decides how the attack travels.</summary>
+        public readonly Delivery Delivery;
         /// <summary>Slot 2's element defines the status effect.</summary>
         public readonly Element Element;
         /// <summary>Slot 3's composed value (1-9), which scales damage.</summary>
@@ -17,8 +19,10 @@ namespace DeckArpg.Core
         /// <summary>All three composed elements match (finisher shockwave trigger).</summary>
         public readonly bool AllSameElement;
 
-        public SleightResult(int value, CardShape shape, Element element, int finisherValue, bool allSameElement)
+        public SleightResult(int value, CardShape shape, Element element, int finisherValue, bool allSameElement,
+            Delivery? delivery = null)
         {
+            Delivery = delivery ?? ElementRules.DeliveryFor(Element.Physical, shape);
             Value = value;
             Shape = shape;
             Element = element;
@@ -49,12 +53,18 @@ namespace DeckArpg.Core
         /// Hits a Sleight of this shape can land on one body: Strike combo 3, Throw boomerang 2 (out + back),
         /// Arcana blast 1. Total damage is split across them.
         /// </summary>
-        public static int HitCount(CardShape shape)
+        public static int HitCount(CardShape shape) => HitCount(ElementRules.DeliveryFor(Element.Physical, shape));
+
+        /// <summary>
+        /// Hits a Sleight of this delivery can land on one body: Strike combo 3, Projectile boomerang 2 (out + back),
+        /// 1 for everything else. Total damage is split across them.
+        /// </summary>
+        public static int HitCount(Delivery delivery)
         {
-            switch (shape)
+            switch (delivery)
             {
-                case CardShape.Strike: return 3;
-                case CardShape.Throw: return 2;
+                case Delivery.Strike: return 3;
+                case Delivery.Projectile: return 2;
                 default: return 1;
             }
         }
@@ -70,7 +80,8 @@ namespace DeckArpg.Core
             var e1 = first.Data.Element;
             var e2 = second.Data.Element;
             var e3 = third.Data.Element;
-            return new SleightResult(v1 + v2 + v3, first.Data.Shape, e2, v3, e1 == e2 && e2 == e3);
+            return new SleightResult(v1 + v2 + v3, first.Data.Shape, e2, v3, e1 == e2 && e2 == e3,
+                ElementRules.DeliveryFor(e1, first.Data.Shape));
         }
 
         /// <summary>The value slot <paramref name="slot"/> contributes after mirroring.</summary>

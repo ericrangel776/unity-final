@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: cinder_nova_6
   m_EditorClassIdentifier: DeckArpg.Core::DeckArpg.Core.CardData
   cardId: cinder_nova_6
-  displayName: Cinder Nova 6
+  displayName: Cinder Bolt 6
   isZeroBreaker: 0
   baseValue: 6
-  shape: 2
+  shape: 1
   element: 1
   isHeal: 0
   isPremium: 0

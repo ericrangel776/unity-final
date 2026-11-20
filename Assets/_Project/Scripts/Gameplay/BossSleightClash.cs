@@ -118,7 +118,7 @@ namespace DeckArpg.Gameplay
 
         private AttackPayload Anticipated() =>
             AttackPayload.FromSleight(boss.PendingSleight.Value, boss.Status.OwnerId, Team.Enemy, Time.frameCount,
-                SleightRules.HitCount(boss.PendingSleight.Value.Shape));
+                SleightRules.HitCount(boss.PendingSleight.Value.Delivery));
 
         // ---- Big Deadlock ("winner takes all") ----
 
@@ -148,7 +148,7 @@ namespace DeckArpg.Gameplay
                     boss.Combat.CancelActiveAction();
                     var combined = new AttackPayload(playerPayload.OwnerId, Team.Player,
                         playerPayload.Value + bossPayload.Value, false, true, Time.frameCount, playerPayload.Shape,
-                        playerPayload.Element, playerPayload.FinisherValue, 1);
+                        playerPayload.Element, playerPayload.FinisherValue, 1, delivery: playerPayload.Delivery);
                     var away = playerOwner != null ? boss.transform.position - playerOwner.transform.position : Vector3.zero;
                     // Winner takes all: the combined hit ignores the boss's guard.
                     float guard = boss.Status.DamageTakenMultiplier;
@@ -165,7 +165,8 @@ namespace DeckArpg.Gameplay
                     {
                         playerOwner.CancelActiveAction();
                         var full = new AttackPayload(bossPayload.OwnerId, Team.Enemy, bossPayload.Value, false, true,
-                            Time.frameCount, bossPayload.Shape, bossPayload.Element, bossPayload.FinisherValue, 1)
+                            Time.frameCount, bossPayload.Shape, bossPayload.Element, bossPayload.FinisherValue, 1,
+                            delivery: bossPayload.Delivery)
                             .WithDamageScale(bossPayload.DamageScale);
                         var away = playerOwner.transform.position - boss.transform.position;
                         playerOwner.Status.TakeHit(full, away, canCounter: false, nonLethal: true);

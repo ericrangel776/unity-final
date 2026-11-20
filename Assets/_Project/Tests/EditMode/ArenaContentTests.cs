@@ -66,6 +66,30 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(0f, cc.minMoveDistance);
         }
 
+        [TestCase(PlayerPrefab)]
+        [TestCase(DummyPrefab)]
+        public void CharacterPrefabs_HaveElementStatusComponents(string path)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            Assert.IsNotNull(prefab.GetComponent<ElementStatusEffects>(), "ElementStatusEffects missing (rebuild).");
+            Assert.IsNotNull(prefab.GetComponent<ElementStatusFx>(), "ElementStatusFx missing (rebuild).");
+        }
+
+        [Test]
+        public void ArenaScene_HasOneElementSystem()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                int count = scene.GetRootGameObjects().Sum(r => r.GetComponentsInChildren<ElementSystem>().Length);
+                Assert.AreEqual(1, count, "ElementSystem missing or duplicated (rebuild the arena).");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         [Test]
         public void ArenaScene_ContainsPlayerDummyHudAndMainCamera()
         {

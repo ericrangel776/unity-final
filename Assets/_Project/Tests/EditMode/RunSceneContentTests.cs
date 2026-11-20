@@ -81,5 +81,20 @@ namespace DeckArpg.Tests.EditMode
                 EditorSceneManager.CloseScene(scene, true);
             }
         }
+
+        [Test]
+        public void RunScene_HasOneElementSystem()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                int count = scene.GetRootGameObjects().Sum(r => r.GetComponentsInChildren<ElementSystem>().Length);
+                Assert.AreEqual(1, count, "ElementSystem missing or duplicated (rebuild the scene).");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
     }
 }

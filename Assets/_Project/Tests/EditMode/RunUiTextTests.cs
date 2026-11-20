@@ -190,11 +190,11 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void CardDetails_ListsShapeElement_PremiumAndUpgrade()
+        public void CardDetails_ListsDeliveryElement_PremiumAndUpgrade()
         {
             var card = CardData.Create("c", 4, CardShape.Throw, Element.Fire, premium: true);
             var details = RunUiText.CardDetails(card, 1);
-            StringAssert.StartsWith("Throw · Fire", details);
+            StringAssert.StartsWith("Fireball · Fire", details);
             StringAssert.Contains("Premium", details);
             StringAssert.Contains("Pre-upgraded +1", details);
             StringAssert.DoesNotContain("Pre-upgraded", RunUiText.CardDetails(card));
@@ -233,8 +233,31 @@ namespace DeckArpg.Tests.EditMode
         {
             var data = CardData.Create("c", 4, CardShape.Arcana, Element.Ice, displayName: "Frost 4");
             var card = new RuntimeCardInstance(data) { PermanentRunUpgradeMod = 2 };
-            Assert.AreEqual("6   Frost 4  +2   ·   Arcana · Ice", RunUiText.DeckCell(card));
-            Assert.AreEqual("6   Frost 4  +2   ·   Arcana · Ice   (already Premium)", RunUiText.DeckCell(card, "already Premium"));
+            Assert.AreEqual("6   Frost 4  +2   ·   Frost Blast · Ice", RunUiText.DeckCell(card));
+            Assert.AreEqual("6   Frost 4  +2   ·   Frost Blast · Ice   (already Premium)", RunUiText.DeckCell(card, "already Premium"));
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void StatusChip_ShowsSecondsRoundedUpToATenth()
+        {
+            Assert.AreEqual("BURN 2.5s", RunUiText.StatusChip("BURN", 2.5f));
+            Assert.AreEqual("CHILL 1.9s", RunUiText.StatusChip("CHILL", 1.81f));
+            Assert.AreEqual("BURN 0.1s", RunUiText.StatusChip("BURN", 0.02f));
+            Assert.AreEqual("BURN 0.0s", RunUiText.StatusChip("BURN", -1f));
+        }
+
+        [TestCase(CardShape.Strike, Element.Physical, "Strike")]
+        [TestCase(CardShape.Throw, Element.Physical, "Throw")]
+        [TestCase(CardShape.Arcana, Element.Physical, "Burst")]
+        [TestCase(CardShape.Throw, Element.Fire, "Fireball")]
+        [TestCase(CardShape.Arcana, Element.Ice, "Frost Blast")]
+        [TestCase(CardShape.Throw, Element.Lightning, "Chain Arc")]
+        [TestCase(CardShape.Strike, Element.Wind, "Gust")]
+        public void DeliveryName_FollowsTheElementDecidesDeliveryRule(CardShape shape, Element element, string expected)
+        {
+            var data = CardData.Create("d", 4, shape, element);
+            Assert.AreEqual(expected, RunUiText.DeliveryName(data));
             UnityEngine.Object.DestroyImmediate(data);
         }
 

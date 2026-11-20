@@ -150,6 +150,33 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator LowerWindCard_IsBroken_ButStillShovesTheEnemy()
+        {
+            var (player, dummy) = Pair();
+            yield return BeginTelegraph(dummy);
+            player.Spawn(new AttackPayload(player.Status.OwnerId, Team.Player, 3, false, false, Time.frameCount,
+                CardShape.Strike, Element.Wind), Vector3.forward);
+
+            yield return Physics();
+
+            Assert.AreEqual(ClashOutcome.BWins, clashes[0].Result.Outcome);
+            Assert.IsTrue(player.Status.IsStunned, "The lower Gust is still broken.");
+            Assert.AreEqual(dummy.Status.MaxHp, dummy.Status.Hp, "A broken Gust deals no damage.");
+            Assert.Greater(dummy.Status.KnockbackVelocity.z, 0f, "...but it shoves the enemy away from the player.");
+            Assert.IsNotNull(dummy.CurrentTelegraph, "The wind-up is not cancelled, only pushed out of reach.");
+        }
+
+        [UnityTest]
+        public IEnumerator LowerPhysicalCard_DoesNotShove()
+        {
+            var (player, dummy) = Pair();
+            yield return BeginTelegraph(dummy);
+            player.Spawn(Card(player, 3), Vector3.forward);
+            yield return Physics();
+            Assert.AreEqual(Vector3.zero, dummy.Status.KnockbackVelocity);
+        }
+
+        [UnityTest]
         public IEnumerator Poke_DuringTelegraph_OnlyDamages()
         {
             var (player, dummy) = Pair();
