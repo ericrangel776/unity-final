@@ -372,6 +372,65 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         /// <summary>Freezes the world, lets the views lay out for two frames, then saves the camera's texture.</summary>
+        /// <summary>
+        /// Heal rework (docs/specs/heal-rework.md): the green "+3" Mend card in the hand, the channel ring mid-fill and
+        /// the green heal number, as heal_*.png.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CaptureHeal()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+            director.RestartRun(5);
+            director.ChooseDoor(0); // room 1 is always a fight
+            Assert.AreEqual(RunDirectorState.Fighting, director.State);
+            foreach (var e in director.Enemies) e.Target = null; // hold their AI still
+            // Well out of swing reach: a dummy already in range keeps swinging even without a target.
+            RunTestHelpers.Place(director.Player, director.Enemies[0].transform.position + new Vector3(0f, 0f, -8f));
+            float settle = Time.realtimeSinceStartup + 1.5f;
+            while (Time.realtimeSinceStartup < settle) yield return null;
+
+            var player = director.Player.GetComponent<CombatantStatus>();
+            int hitsTaken = 0;
+            player.HitTaken += (d, dir2) => hitsTaken++;
+            var cycle = director.Player.GetComponent<DeckRuntimeManager>().Cycle;
+            player.SetHp(40);
+            // Cycle non-heal cards out until Mend is in the hand.
+            int healSlot = -1;
+            for (int guard = 0; guard < 12 && healSlot < 0; guard++)
+            {
+                for (int i = 0; i < DeckCycle.HandSize; i++)
+                    if (cycle.Hand[i] != null && cycle.Hand[i].IsHeal) healSlot = i;
+                if (healSlot >= 0) break;
+                for (int i = 0; i < DeckCycle.HandSize; i++)
+                    if (cycle.Hand[i] != null && cycle.TryPlay(i, out _)) break;
+            }
+            Assert.GreaterOrEqual(healSlot, 0, "Mend never reached the hand.");
+            yield return Capture(dir, "heal_1_hand_card");
+
+            var channel = director.Player.HealChannel;
+            int healed = -1;
+            channel.Completed += a => healed = a;
+            Assert.IsTrue(director.Player.Execute(CombatCommand.PlaySlot1 + healSlot));
+            Assert.IsTrue(channel.IsChannelling);
+            // Frame-driven, not wall-clock: batchmode frames are long, so a real-time wait can overshoot the 0.5 s channel.
+            while (channel.IsChannelling && channel.Progress01 < 0.4f) yield return null;
+            Assert.IsTrue(channel.IsChannelling, "the channel ended before the mid-fill shot");
+            yield return Capture(dir, "heal_2_channel_ring");
+
+            while (channel.IsChannelling) yield return null;
+            Assert.AreEqual(0, hitsTaken, "nothing hit the player during the shot");
+            Assert.AreEqual(9, healed, "Mend 3 heals 9");
+            Assert.AreEqual(49, player.Hp);
+            float pop = Time.realtimeSinceStartup + 0.1f;
+            while (Time.realtimeSinceStartup < pop) yield return null;
+            yield return Capture(dir, "heal_3_heal_number");
+            Debug.Log($"Heal screenshots written to {dir}");
+        }
+
         private IEnumerator Capture(string dir, string name)
         {
             Time.timeScale = 0f;

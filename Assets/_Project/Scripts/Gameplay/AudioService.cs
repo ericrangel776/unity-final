@@ -84,6 +84,7 @@ namespace DeckArpg.Gameplay
             DeadlockController.Resolved += HandleDeadlock;
             CombatActionController.AnyHitboxSpawned += HandleHitbox;
             CombatantStatus.AnyHitTaken += HandleHit;
+            CombatantStatus.AnyHealed += HandleHealed;
             if (started) BindInstances();
         }
 
@@ -114,6 +115,7 @@ namespace DeckArpg.Gameplay
             DeadlockController.Resolved -= HandleDeadlock;
             CombatActionController.AnyHitboxSpawned -= HandleHitbox;
             CombatantStatus.AnyHitTaken -= HandleHit;
+            CombatantStatus.AnyHealed -= HandleHealed;
             instancesBound = false;
             BindPlayer(null, null);
             if (director != null)
@@ -225,6 +227,12 @@ namespace DeckArpg.Gameplay
 
         private void HandleHit(CombatantStatus victim, int damage) => Play(SfxId.Hit);
         private void HandleDash() => Play(SfxId.Dash);
+
+        /// <summary>Only the player's heals chime.</summary>
+        private void HandleHealed(CombatantStatus who, int amount)
+        {
+            if (who != null && who.Team == Team.Player) Play(SfxId.Heal);
+        }
 
         private void HandleReload(ReloadGrade grade) =>
             Play(grade == ReloadGrade.Perfect || grade == ReloadGrade.Good ? SfxId.ReloadPerfect : SfxId.ReloadMiss);

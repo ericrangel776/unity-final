@@ -32,6 +32,8 @@ namespace DeckArpg.Tests.EditMode
             Assert.IsNotNull(prefab.GetComponent<PlayerCombatInput>());
             Assert.IsNotNull(prefab.GetComponent<CombatActionController>());
             Assert.AreEqual(Team.Player, prefab.GetComponent<CombatantStatus>().Team);
+            Assert.IsNotNull(prefab.GetComponent<HealChannel>(), "heal channel on the prefab");
+            Assert.IsNotNull(prefab.GetComponent<HealChannelFx>(), "heal ring on the prefab");
 
             var deck = StartingDeck(prefab);
             Assert.AreEqual(11, deck.Length);

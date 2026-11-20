@@ -119,6 +119,21 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator PlayerHeal_PlaysTheHealChime_EnemyHealDoesNot()
+        {
+            var enemy = Combatant(Team.Enemy, Vector3.zero).Status;
+            enemy.SetHp(10);
+            enemy.Heal(5);
+            CollectionAssert.DoesNotContain(played, SfxId.Heal);
+
+            var player = Combatant(Team.Player, Vector3.right * 5f).Status;
+            player.SetHp(10);
+            player.Heal(5);
+            CollectionAssert.Contains(played, SfxId.Heal);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator Dash_PlaysADash()
         {
             var go = new GameObject("Runner");

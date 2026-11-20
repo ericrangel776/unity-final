@@ -363,6 +363,61 @@ namespace DeckArpg.Tests.PlayMode
             yield return null;
         }
 
+        // ---- feedback ring (step 8) ----
+
+        [UnityTest]
+        public IEnumerator Ring_VisibleOnlyWhileChannelling_FillTracksProgress()
+        {
+            MakePlayer(-3, -3, -3, -3);
+            var fx = player.AddComponent<HealChannelFx>();
+            yield return null;
+            yield return null;
+            Assert.IsFalse(fx.RingVisible, "hidden when idle");
+
+            StartChannel();
+            yield return WaitRealtime(0.2f);
+            Time.timeScale = 0f; // freeze the channel so the drawn fill and the progress agree
+            yield return null;
+            yield return null;
+            Assert.IsTrue(fx.RingVisible);
+            float progress = channel.Progress01;
+            Assert.Greater(progress, 0f);
+            Assert.Less(progress, 1f);
+            Assert.AreEqual(progress, fx.ShownFill, 1e-5f);
+
+            // The arc's last point sits at fill x 360 degrees around the feet, clockwise from the front.
+            var ring = fx.Ring;
+            var last = ring.GetPosition(ring.positionCount - 1);
+            var first = ring.GetPosition(0);
+            var center = first - Vector3.forward * HealChannelFx.Radius;
+            float angle = Mathf.Atan2(last.x - center.x, last.z - center.z);
+            if (angle < 0f) angle += Mathf.PI * 2f;
+            Assert.AreEqual(progress * Mathf.PI * 2f, angle, 0.02f);
+            Assert.AreEqual(player.transform.position.y - 1f + HealChannelFx.Height, first.y, 1e-3f, "at the feet");
+
+            Time.timeScale = 1f;
+            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return null;
+            yield return null;
+            Assert.IsFalse(fx.RingVisible, "hidden after completing");
+            Assert.AreEqual(0f, fx.ShownFill);
+        }
+
+        [UnityTest]
+        public IEnumerator Ring_HidesWhenInterrupted()
+        {
+            MakePlayer(-3, -3, -3, -3);
+            var fx = player.AddComponent<HealChannelFx>();
+            StartChannel();
+            yield return null;
+            yield return null;
+            Assert.IsTrue(fx.RingVisible);
+            status.ApplyBreak();
+            yield return null;
+            yield return null;
+            Assert.IsFalse(fx.RingVisible);
+        }
+
         // ---- movement ----
 
         [UnityTest]
