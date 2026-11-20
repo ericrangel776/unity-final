@@ -6,7 +6,7 @@ using UnityEngine;
 namespace DeckArpg.Editor
 {
     /// <summary>
-    /// Creates the placeholder card assets for the M1 prototype. Idempotent: existing assets are
+    /// Creates the placeholder card assets, decks and run content. Idempotent: existing assets are
     /// reused, never overwritten, so hand-tuned values survive a rebuild.
     /// </summary>
     public static class StarterContentBuilder

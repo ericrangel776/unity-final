@@ -74,7 +74,6 @@ namespace DeckArpg.Gameplay
         public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
         public float MoveSpeed => moveSpeed;
         public float TelegraphSeconds => telegraphSeconds;
-        public float RecoverSeconds => recoverSeconds;
 
         /// <summary>
         /// Room tempo: moves faster and winds up/recovers quicker by <paramref name="multiplier"/> (1 = unchanged).
@@ -199,8 +198,6 @@ namespace DeckArpg.Gameplay
                     return;
                 }
                 cycle.Reload();
-                state = State.Recover;
-                timer = recoverSeconds;
                 return;
             }
 

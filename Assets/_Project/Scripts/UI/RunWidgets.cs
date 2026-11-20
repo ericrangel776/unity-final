@@ -27,7 +27,6 @@ namespace DeckArpg.UI
     /// <summary>Greybox widget builders for the run screens (on top of <see cref="UiFactory"/>).</summary>
     internal static class RunWidgets
     {
-        public static readonly Color PanelColor = new Color(0.08f, 0.09f, 0.12f, 0.95f);
         public static readonly Color ButtonColor = new Color(0.22f, 0.24f, 0.3f, 1f);
         public static readonly Color Muted = new Color(0.75f, 0.78f, 0.85f);
         public static readonly Color Gold = new Color(1f, 0.85f, 0.35f);

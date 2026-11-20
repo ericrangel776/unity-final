@@ -41,7 +41,7 @@ namespace DeckArpg.Core
         public const float BaseKnockback = 3f;
         public const float KnockbackPerPoint = 0.6f;
 
-        /// <summary>Initial push speed (m/s) a body hit gives its victim, x2.5 for Wind. 0-cards don't push.</summary>
+        /// <summary>Initial push speed (m/s) a body hit gives its victim, x3 for Wind. 0-cards don't push.</summary>
         public static float KnockbackSpeed(in AttackPayload payload) =>
             payload.IsZeroBreaker
                 ? 0f

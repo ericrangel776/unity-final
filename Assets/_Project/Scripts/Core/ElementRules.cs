@@ -11,8 +11,6 @@ namespace DeckArpg.Core
     public static class ElementRules
     {
         // Burn (Fire)
-        /// <summary>Total burn damage = ceil(hitDamage * 0.4), at least 1.</summary>
-        public const float BurnFraction = 0.4f;
         public const float BurnSeconds = 3f;
         public const float SleightBurnSeconds = 4f;
         public const float BurnTickSeconds = 0.5f;
@@ -27,8 +25,6 @@ namespace DeckArpg.Core
         public const int ChainTargets = 5;
         /// <summary>Each hop is measured from the previous link (XZ plane).</summary>
         public const float ChainHopRadius = 6f;
-        /// <summary>Chain damage = ceil(hitDamage * 0.6), at least 1.</summary>
-        public const float ChainDamageFraction = 0.6f;
         /// <summary>Stun on each chained enemy (scaled by the victim's status duration scale: 0.5 on boss/Elites).</summary>
         public const float ChainJoltSeconds = 0.4f;
         /// <summary>Freeze when a chain fires (under the 0.2 s input buffer, like every other freeze).</summary>
@@ -45,8 +41,6 @@ namespace DeckArpg.Core
         public const float WindKnockbackDecaySeconds = 0.4f;
         /// <summary>Posture added by a slam, as a fraction of the victim's MaxPosture; once per gust hit.</summary>
         public const float WindSlamPostureFraction = 0.5f;
-        /// <summary>Slam damage = ceil(gust hit damage * 0.5), at least 1.</summary>
-        public const float WindSlamDamageFraction = 0.5f;
         /// <summary>A wall/body bump this soon after a Wind hit counts as a slam.</summary>
         public const float WindSlamWindowSeconds = 0.5f;
         /// <summary>Knockback speed (m/s) that must still be left at the bump.</summary>
@@ -58,8 +52,6 @@ namespace DeckArpg.Core
 
         // Same-element finisher shockwave (player Sleights only)
         public const float FinisherRadius = 3.5f;
-        /// <summary>Of the Sleight's total (unsplit) damage, rounded up.</summary>
-        public const float FinisherDamageFraction = 0.3f;
         /// <summary>Scaled time after the Sleight fires, so hit-stop pauses it.</summary>
         public const float FinisherDelaySeconds = 0.35f;
         public const float PhysicalFinisherPostureFraction = 0.2f;

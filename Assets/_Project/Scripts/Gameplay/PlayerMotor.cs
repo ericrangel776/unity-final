@@ -36,7 +36,6 @@ namespace DeckArpg.Gameplay
         /// <summary>Scales walking speed (e.g. the Perfect-reload boost). Dash and lunge are unaffected.</summary>
         public float MoveSpeedMultiplier { get => moveSpeedMultiplier; set => moveSpeedMultiplier = Mathf.Max(0f, value); }
         public float DashCooldownRemaining => dashCooldownRemaining;
-        public float DashDuration => dashDuration;
 
         private void Awake()
         {
