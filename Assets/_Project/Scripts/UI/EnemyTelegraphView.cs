@@ -17,6 +17,7 @@ namespace DeckArpg.UI
         private Text valueText;
         private Text hpText;
         private Image fill;
+        private (int hp, bool stunned, bool dead) shownStatus = (-1, false, false);
 
         private void Awake()
         {
@@ -53,12 +54,15 @@ namespace DeckArpg.UI
 
             var card = enemy.CurrentTelegraph;
             valueText.text = card == null ? "" : enemy.IsTelegraphVeiled ? "?"
-                : card.IsZeroBreaker ? "0" : card.GetEffectiveValue().ToString();
+                : card.IsZeroBreaker ? "0" : RunUiText.Number(card.GetEffectiveValue());
             float progress = enemy.TelegraphProgress;
             fill.enabled = card != null;
             fill.rectTransform.sizeDelta = new Vector2(120f, 120f * progress);
 
             var status = enemy.Status;
+            var now = (status.Hp, status.IsStunned, status.IsDead);
+            if (now == shownStatus) return;
+            shownStatus = now;
             hpText.text = status.IsDead ? "down" : status.IsStunned ? $"STUNNED  {status.Hp}" : $"HP {status.Hp}";
         }
     }

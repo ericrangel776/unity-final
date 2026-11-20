@@ -6,6 +6,22 @@ namespace DeckArpg.Tests.EditMode
 {
     public class RunUiTextTests
     {
+        [TestCase(0, "0")]
+        [TestCase(9, "9")]
+        [TestCase(99, "99")]
+        [TestCase(100, "100")]
+        [TestCase(-3, "-3")]
+        public void Number_FormatsLikeToString(int n, string expected)
+        {
+            Assert.AreEqual(expected, RunUiText.Number(n));
+        }
+
+        [Test]
+        public void Number_ReusesTheSameStringForSmallValues()
+        {
+            Assert.AreSame(RunUiText.Number(7), RunUiText.Number(7));
+        }
+
         [Test]
         public void Room_ShowsNumberOutOfSix()
         {

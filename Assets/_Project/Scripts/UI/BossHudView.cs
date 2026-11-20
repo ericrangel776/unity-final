@@ -40,6 +40,8 @@ namespace DeckArpg.UI
         private readonly Text[] handValues = new Text[DeckCycle.HandSize];
         private readonly Image[] pips = new Image[PipCount];
         private readonly List<BossPip> pipState = new List<BossPip>();
+        private (BossState state, int tenths, int sleight) shownState = ((BossState)(-1), -1, -1);
+        private (int left, int stocked, int spent, int deleted, int burned, bool midCycle) shownCounter = (-1, -1, -1, -1, -1, false);
 
         public BossEnemy Boss => boss;
         public bool IsVisible => panel != null && panel.activeSelf;
@@ -130,7 +132,7 @@ namespace DeckArpg.UI
         {
             if (panel == null) return;
             bool show = boss != null && boss.Status != null && !boss.Status.IsDead;
-            panel.SetActive(show);
+            if (panel.activeSelf != show) panel.SetActive(show);
             if (!show) return;
 
             var status = boss.Status;
@@ -138,7 +140,13 @@ namespace DeckArpg.UI
             postureFill.rectTransform.localScale = new Vector3(status.MaxPosture > 0f ? Mathf.Clamp01(status.Posture / status.MaxPosture) : 0f, 1f, 1f);
 
             int sleight = boss.PendingSleight.HasValue ? boss.PendingSleight.Value.Value : 0;
-            stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);
+            // The state line shows tenths of a second: rebuild it only when the state, the tenth or the value changes.
+            var nowState = (boss.State, (int)System.Math.Round(Mathf.Max(0f, boss.StateRemaining) * 10f, System.MidpointRounding.AwayFromZero), sleight);
+            if (nowState != shownState)
+            {
+                shownState = nowState;
+                stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);
+            }
             stateText.color = boss.State == BossState.SleightWindup ? SleightColor
                 : boss.State == BossState.ReloadWindow ? ReloadColor
                 : boss.State == BossState.Exhausted ? ExhaustedColor : new Color(0.7f, 0.7f, 0.75f);
@@ -150,16 +158,19 @@ namespace DeckArpg.UI
                 var card = cycle.Hand[i];
                 if (card != null) inHand++;
                 handCards[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyCard;
-                handValues[i].text = card != null ? card.GetEffectiveValue().ToString() : "";
+                handValues[i].text = card != null ? RunUiText.Number(card.GetEffectiveValue()) : "";
             }
 
             int left = cycle.DrawCount + inHand;
+            bool midCycle = boss.State == BossState.Idle || boss.State == BossState.SleightWindup;
+            var nowCounter = (left, cycle.StockCount, cycle.DiscardCount, cycle.DeletedThisCycleCount, cycle.BurnedCount, midCycle);
+            if (nowCounter == shownCounter) return;
+            shownCounter = nowCounter;
             pipState.Clear();
             pipState.AddRange(RunUiText.BossPips(left, cycle.StockCount, cycle.DiscardCount,
                 cycle.DeletedThisCycleCount, cycle.BurnedCount));
             for (int i = 0; i < PipCount; i++)
                 pips[i].color = i < pipState.Count ? PipColor(pipState[i]) : BarBack;
-            bool midCycle = boss.State == BossState.Idle || boss.State == BossState.SleightWindup;
             counterText.text = RunUiText.BossCounter(left, cycle.StockCount, cycle.DiscardCount,
                 cycle.DeletedThisCycleCount, cycle.BurnedCount, BossRules.ExhaustDeleteThreshold, midCycle);
         }

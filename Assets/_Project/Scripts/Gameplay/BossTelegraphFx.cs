@@ -21,6 +21,7 @@ namespace DeckArpg.Gameplay
         private Transform root;
         private LineRenderer outer, inner;
         private TextMesh label;
+        private int shownLabelValue = int.MinValue;
 
         public bool IsShowing => root != null && root.gameObject.activeSelf;
         public bool IsSleightStyle { get; private set; }
@@ -81,7 +82,12 @@ namespace DeckArpg.Gameplay
             label.gameObject.SetActive(sleight);
             if (sleight)
             {
-                label.text = boss.PendingSleight.HasValue ? $"SLEIGHT {boss.PendingSleight.Value.Value}" : "SLEIGHT";
+                int value = boss.PendingSleight.HasValue ? boss.PendingSleight.Value.Value : -1;
+                if (value != shownLabelValue)
+                {
+                    shownLabelValue = value;
+                    label.text = value >= 0 ? $"SLEIGHT {value}" : "SLEIGHT";
+                }
                 // On the ring's near edge (toward the camera): above the boss it would leave the top of the screen.
                 var cam = Camera.main;
                 var toward = cam != null ? -cam.transform.forward : Vector3.back;
