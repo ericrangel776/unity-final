@@ -74,7 +74,7 @@ namespace DeckArpg.Core
 
                 foreach (var family in families) kinds.Add(RandomKind(family, rng));
             }
-            Shuffle(kinds, rng);
+            ListShuffle.Shuffle(kinds, rng);
             return kinds;
         }
 
@@ -87,7 +87,7 @@ namespace DeckArpg.Core
                 CardValue.Clamp(c),                   // mid
                 CardValue.Clamp(c + 1 + rng.Next(3))  // high: c+1..c+3
             };
-            Shuffle(numbers, rng);
+            ListShuffle.Shuffle(numbers, rng);
             return numbers;
         }
 
@@ -103,15 +103,6 @@ namespace DeckArpg.Core
         }
 
         private static MapCardKind Other(MapCardKind[] pair, MapCardKind taken) => pair[0] == taken ? pair[1] : pair[0];
-
-        private static void Shuffle<T>(IList<T> list, Random rng)
-        {
-            for (int i = list.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (list[i], list[j]) = (list[j], list[i]);
-            }
-        }
 
         private static void RequireRoom(int room)
         {

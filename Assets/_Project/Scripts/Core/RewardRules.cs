@@ -89,6 +89,14 @@ namespace DeckArpg.Core
             return (int)(((long)value * percent + 50) / 100);
         }
 
+        /// <summary><paramref name="percent"/>% of <paramref name="value"/>, rounded up. Integer math.</summary>
+        public static int PercentCeil(int value, int percent)
+        {
+            if (value < 0) throw new ArgumentOutOfRangeException(nameof(value));
+            if (percent < 0) throw new ArgumentOutOfRangeException(nameof(percent));
+            return (int)(((long)value * percent + 99) / 100);
+        }
+
         private static int Pick(RewardTier tier, int muted, int steady, int fierce, int frantic)
         {
             switch (tier)

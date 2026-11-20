@@ -20,8 +20,8 @@ namespace DeckArpg.Core
             }
         }
 
-        public static int StockCount(int quality) => Band(quality, 3, 4, 5);
-        public static int StockRarityShift(int quality) => Band(quality, 0, 1, 1);
+        public static int StockCount(int quality) => RoomIntensity.BandStep(quality, 3, 4, 5);
+        public static int StockRarityShift(int quality) => RoomIntensity.BandStep(quality, 0, 1, 1);
 
         /// <summary><c>40 + 20 x earlier purges</c>, halved (rounded up) at Quality 7-9.</summary>
         public static int PurgeCost(int earlierPurges, int quality)
@@ -33,22 +33,12 @@ namespace DeckArpg.Core
 
         /// <summary>A purge may not take the deck below <see cref="MinDeckSize"/>.</summary>
         public static bool CanPurge(int deckCount) => deckCount > MinDeckSize;
-
-        internal static int Band(int quality, int low, int mid, int high)
-        {
-            switch (RoomIntensity.Band(quality))
-            {
-                case IntensityBand.Low: return low;
-                case IntensityBand.Mid: return mid;
-                default: return high;
-            }
-        }
     }
 
     /// <summary>Ember Forge numbers, by Quality band.</summary>
     public static class ForgeRules
     {
-        public static int UpgradeAmount(int quality) => ShopRules.Band(quality, 1, 2, 3);
+        public static int UpgradeAmount(int quality) => RoomIntensity.BandStep(quality, 1, 2, 3);
 
         /// <summary>Quality 7-9: one upgrade AND one Premium (on a different card). Otherwise one or the other.</summary>
         public static bool GrantsBoth(int quality) => RoomIntensity.Band(quality) == IntensityBand.High;
@@ -68,13 +58,13 @@ namespace DeckArpg.Core
     /// <summary>Still Waters numbers, by Quality band.</summary>
     public static class RestRules
     {
-        public static int HealPercent(int quality) => ShopRules.Band(quality, 20, 30, 45);
+        public static int HealPercent(int quality) => RoomIntensity.BandStep(quality, 20, 30, 45);
 
         /// <summary>Percent of max HP, rounded up.</summary>
         public static int HealAmount(int maxHp, int quality)
         {
             if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
-            return (int)(((long)maxHp * HealPercent(quality) + 99) / 100);
+            return RewardRules.PercentCeil(maxHp, HealPercent(quality));
         }
     }
 

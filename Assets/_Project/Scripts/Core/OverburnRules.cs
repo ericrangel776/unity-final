@@ -15,8 +15,7 @@ namespace DeckArpg.Core
         {
             if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
             if (usesThisRoom < 0) throw new ArgumentOutOfRangeException(nameof(usesThisRoom));
-            long scaled = (long)maxHp * (usesThisRoom + 1) * CostPercentPerUse;
-            return (int)((scaled + 99) / 100);
+            return RewardRules.PercentCeil(maxHp, (usesThisRoom + 1) * CostPercentPerUse);
         }
 
         /// <summary>Never lethal: you must keep at least 1 HP after paying.</summary>

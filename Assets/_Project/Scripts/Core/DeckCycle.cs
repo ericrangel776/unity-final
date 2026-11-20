@@ -414,12 +414,7 @@ namespace DeckArpg.Core
 
         private void ShuffleInto(List<RuntimeCardInstance> cards)
         {
-            // Fisher-Yates with the injected RNG so tests and seeded runs are deterministic.
-            for (int i = cards.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (cards[i], cards[j]) = (cards[j], cards[i]);
-            }
+            ListShuffle.Shuffle(cards, rng);
             if (SpacingRule != null)
             {
                 // Only the queue part is spaced: 0-cards never enter it.
