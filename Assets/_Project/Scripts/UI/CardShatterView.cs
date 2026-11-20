@@ -211,8 +211,7 @@ namespace DeckArpg.UI
                 if (cam == null) return;
                 var canvasRect = (RectTransform)root.parent;
                 var screen = cam.WorldToScreenPoint(worldPosition);
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, null, out var local);
-                root.anchoredPosition = local;
+                root.anchoredPosition = UiFactory.ScreenToCanvasLocal(canvasRect, screen);
             }
         }
     }

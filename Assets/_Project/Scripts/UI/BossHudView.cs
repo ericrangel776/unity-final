@@ -135,7 +135,7 @@ namespace DeckArpg.UI
 
             var status = boss.Status;
             hpFill.rectTransform.localScale = new Vector3(status.MaxHp > 0 ? Mathf.Clamp01(status.Hp / (float)status.MaxHp) : 0f, 1f, 1f);
-            postureFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(status.Posture / status.MaxPosture), 1f, 1f);
+            postureFill.rectTransform.localScale = new Vector3(status.MaxPosture > 0f ? Mathf.Clamp01(status.Posture / status.MaxPosture) : 0f, 1f, 1f);
 
             int sleight = boss.PendingSleight.HasValue ? boss.PendingSleight.Value.Value : 0;
             stateText.text = RunUiText.BossState(boss.State, boss.StateRemaining, sleight);

@@ -39,6 +39,8 @@ namespace DeckArpg.UI
             if (director == null) director = FindAnyObjectByType<RunDirector>();
             EnsureEventSystem();
             canvas = UiFactory.CreateOverlayCanvas(transform, "RunScreensCanvas", SortingOrder);
+            // Without a raycaster the EventSystem never hits the screen's buttons, so mouse clicks do nothing.
+            canvas.gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             // Dims the arena behind an open screen and catches clicks that miss a button.
             var dimImage = UiFactory.CreateImage(canvas.transform, "Dim", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0.88f));

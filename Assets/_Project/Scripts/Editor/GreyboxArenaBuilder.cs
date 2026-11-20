@@ -37,6 +37,7 @@ namespace DeckArpg.Editor
         [MenuItem("DeckArpg/Build M1 Arena")]
         public static void Build()
         {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             var playerDeck = StarterContentBuilder.BuildPlayerStarterDeck();
             var dummyDeck = StarterContentBuilder.BuildDummyDeck();
 
@@ -80,6 +81,7 @@ namespace DeckArpg.Editor
         [MenuItem("DeckArpg/Build M3 Run Scene")]
         public static void BuildRunScene()
         {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             if (AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath) == null ||
                 AssetDatabase.LoadAssetAtPath<GameObject>(DummyPrefabPath) == null)
                 Build();

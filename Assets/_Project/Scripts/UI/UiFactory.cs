@@ -27,6 +27,18 @@ namespace DeckArpg.UI
             return canvas;
         }
 
+        /// <summary>Overlay canvases convert screen points with a null camera; camera-space canvases need theirs.</summary>
+        public static Camera CanvasCamera(Canvas canvas) =>
+            canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+
+        /// <summary>Screen point -> local point in a canvas rect, with the right camera for its render mode.</summary>
+        public static Vector2 ScreenToCanvasLocal(RectTransform canvasRect, Vector3 screen)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen,
+                CanvasCamera(canvasRect.GetComponent<Canvas>()), out var local);
+            return local;
+        }
+
         public static RectTransform CreateRect(Transform parent, string name, Vector2 anchor, Vector2 pivot,
             Vector2 anchoredPosition, Vector2 size)
         {

@@ -141,7 +141,7 @@ namespace DeckArpg.UI
         }
 
         // Camera-space canvases (the screenshot capture) need their camera for the conversion; overlay needs null.
-        private Camera CanvasCamera => canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        private Camera CanvasCamera => UiFactory.CanvasCamera(canvas);
 
         private void LateUpdate()
         {
