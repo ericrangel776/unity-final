@@ -18,7 +18,7 @@ namespace DeckArpg.UI
         public const int MaxOptions = 4;
         private static readonly Vector2 TileSize = new Vector2(340f, 440f);
         private const float Gap = 30f;
-        private static readonly Color RelicColor = new Color(0.45f, 0.24f, 0.6f);
+        private static readonly Color RelicColor = DoorChoiceView.FamilyColor(MapFamily.Purple);
         private static readonly Color TakenColor = new Color(0.25f, 0.45f, 0.3f);
 
         private readonly OptionTile[] tiles = new OptionTile[MaxOptions];
@@ -146,10 +146,7 @@ namespace DeckArpg.UI
                 bool taken = reward.IsTaken(i);
                 RunWidgets.Paint(tile, taken ? TakenColor : RarityColor(card.Rarity));
                 tile.Button.interactable = phase == Phase.Draft && !taken;
-                tile.Badge.text = RunUiText.CardValue(card, reward.DraftUpgrade);
-                tile.BadgeLabel.text = card.Rarity.ToString().ToUpperInvariant();
-                tile.Title.text = card.DisplayName;
-                tile.Body.text = RunUiText.CardDetails(card, reward.DraftUpgrade);
+                RunWidgets.ShowCard(tile, card, reward.DraftUpgrade);
                 tile.Footer.text = taken ? "TAKEN" : "";
             }
         }

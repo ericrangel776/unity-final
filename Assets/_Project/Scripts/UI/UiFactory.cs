@@ -79,5 +79,17 @@ namespace DeckArpg.UI
             outline.effectColor = new Color(0f, 0f, 0f, 0.8f);
             return text;
         }
+
+        /// <summary>
+        /// Darkens and widens a text's outline so white numbers stay readable on light cards. Reuses the outline
+        /// <see cref="CreateText"/> adds; a second one would copy the text mesh again.
+        /// </summary>
+        public static void ReadableOutline(Text text, float distance)
+        {
+            var outline = text.GetComponent<Outline>();
+            if (outline == null) outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            outline.effectDistance = new Vector2(distance, -distance);
+        }
     }
 }

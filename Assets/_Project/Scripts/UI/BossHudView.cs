@@ -97,7 +97,7 @@ namespace DeckArpg.UI
                 handCards[i] = UiFactory.CreateImage(rect, $"BossCard{i + 1}", new Vector2(0f, 1f), new Vector2(0f, 1f),
                     new Vector2(16f + i * 52f, -72f), new Vector2(46f, 64f), EmptyCard);
                 handValues[i] = UiFactory.CreateText(handCards[i].transform, "Value", 30, TextAnchor.MiddleCenter, Color.white);
-                AddReadableOutline(handValues[i]);
+                UiFactory.ReadableOutline(handValues[i], 1.5f);
             }
 
             // Deck counter: 15 pips and a line of text.
@@ -157,7 +157,7 @@ namespace DeckArpg.UI
             {
                 var card = cycle.Hand[i];
                 if (card != null) inHand++;
-                handCards[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyCard;
+                handCards[i].color = card != null ? ElementColors.CardFace(card.Data.Element) : EmptyCard;
                 handValues[i].text = card != null ? RunUiText.Number(card.GetEffectiveValue()) : "";
             }
 
@@ -175,13 +175,6 @@ namespace DeckArpg.UI
                 cycle.DeletedThisCycleCount, cycle.BurnedCount, BossRules.ExhaustDeleteThreshold, midCycle);
         }
 
-        /// <summary>A dark outline so white numbers stay readable on light (Physical) cards.</summary>
-        public static void AddReadableOutline(Text text)
-        {
-            var outline = text.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
-            outline.effectDistance = new Vector2(1.5f, -1.5f);
-        }
 
         public static Color PipColor(BossPip pip)
         {

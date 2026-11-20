@@ -19,7 +19,7 @@ namespace DeckArpg.UI
     {
         protected static readonly Vector2 TileSize = new Vector2(300f, 400f);
         protected const float Gap = 26f;
-        protected static readonly Color BlueColor = new Color(0.2f, 0.36f, 0.66f);
+        protected static readonly Color BlueColor = DoorChoiceView.FamilyColor(MapFamily.Blue);
         /// <summary>Button slots: left (Back / the Shop's Purge), centre (Confirm), right (Leave).</summary>
         protected const float SlotX = 380f;
         protected static readonly Vector2 ButtonSize = new Vector2(340f, 60f);

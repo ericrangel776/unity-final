@@ -179,9 +179,7 @@ namespace DeckArpg.UI
                     Vector2.zero, new Vector2(200f, 90f));
                 text = UiFactory.CreateText(rect, "Text", BaseFontSize, TextAnchor.MiddleCenter, Color.white);
                 text.raycastTarget = false;
-                var outline = text.gameObject.AddComponent<Outline>();
-                outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
-                outline.effectDistance = new Vector2(2f, -2f);
+                UiFactory.ReadableOutline(text, 2f);
                 text.enabled = false;
             }
 

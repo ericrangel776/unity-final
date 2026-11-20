@@ -100,6 +100,15 @@ namespace DeckArpg.UI
             return tile;
         }
 
+        /// <summary>Fills a tile's badge, rarity label, title and body for a card (draft and shop show cards alike).</summary>
+        public static void ShowCard(OptionTile tile, Core.CardData card, int upgrade = 0)
+        {
+            tile.Badge.text = RunUiText.CardValue(card, upgrade);
+            tile.BadgeLabel.text = card.Rarity.ToString().ToUpperInvariant();
+            tile.Title.text = card.DisplayName;
+            tile.Body.text = RunUiText.CardDetails(card, upgrade);
+        }
+
         /// <summary>Sets a tile's colour; the button tint darkens it when disabled.</summary>
         public static void Paint(OptionTile tile, Color color)
         {

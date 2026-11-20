@@ -139,7 +139,7 @@ namespace DeckArpg.UI
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var card = cycle.Hand[i];
-                slotImages[i].color = card != null ? ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f) : EmptyColor;
+                slotImages[i].color = card != null ? ElementColors.CardFace(card.Data.Element) : EmptyColor;
                 slotValues[i].text = card != null ? card.GetEffectiveValue().ToString() : "";
                 slotNames[i].text = card != null ? $"{card.Data.DisplayName}\n{RunUiText.DeliveryName(card.Data)}\n" : "";
             }

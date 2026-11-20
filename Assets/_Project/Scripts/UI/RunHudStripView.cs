@@ -14,7 +14,6 @@ namespace DeckArpg.UI
     {
         public const int SortingOrder = RunScreens.SortingOrder + 10;
         private static readonly Color Back = new Color(0.05f, 0.06f, 0.08f, 0.75f);
-        private static readonly Color Gold = new Color(1f, 0.85f, 0.35f);
         private static readonly Color Momentum = new Color(1f, 0.55f, 0.25f);
 
         [Tooltip("Found in the scene if empty.")]
@@ -54,7 +53,7 @@ namespace DeckArpg.UI
             strip = rect.gameObject;
 
             room = Field(rect, "Room", 0f, 220f, Color.white);
-            currency = Field(rect, "Currency", 220f, 200f, Gold);
+            currency = Field(rect, "Currency", 220f, 200f, RunWidgets.Gold);
             momentum = Field(rect, "Momentum", 420f, 300f, Momentum);
             relics = Field(rect, "Relics", 720f, 680f, Color.white);
             burnChip = Chip(rect, "BurnChip", 0f, ElementColors.For(Core.Element.Fire), out burnText);

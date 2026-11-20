@@ -105,7 +105,7 @@ namespace DeckArpg.UI
                     Vector2.zero, new Vector2(MaxChipWidth, ChipHeight), Color.white);
                 chips.Add(image);
                 var value = UiFactory.CreateText(image.transform, "Value", 16, TextAnchor.MiddleCenter, Color.white);
-                BossHudView.AddReadableOutline(value);
+                UiFactory.ReadableOutline(value, 1.5f);
                 chipTexts.Add(value);
                 var outline = image.gameObject.AddComponent<Outline>();
                 outline.effectColor = PremiumOutline;
@@ -137,7 +137,7 @@ namespace DeckArpg.UI
                 if (i < cardChips)
                 {
                     var card = cards[i];
-                    chip.color = ElementColors.For(card.Data.Element) * new Color(1f, 1f, 1f, 1.8f);
+                    chip.color = ElementColors.CardFace(card.Data.Element);
                     chipTexts[i].text = card.GetEffectiveValue().ToString();
                     chipOutlines[i].enabled = card.IsPremium;
                 }
