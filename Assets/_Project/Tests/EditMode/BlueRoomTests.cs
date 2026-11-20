@@ -223,6 +223,126 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(3, data.BaseValue);
         }
 
+        // ---- Shop heal / Vital Draught ----
+
+        [Test]
+        public void Shop_HealAndDraught_Costs()
+        {
+            Assert.AreEqual(40, ShopRules.HealCost);
+            Assert.AreEqual(60, ShopRules.VitalDraughtCost);
+            Assert.AreEqual(10, ShopRules.VitalDraughtMaxHp);
+        }
+
+        [TestCase(2, 25)]
+        [TestCase(5, 25)]
+        [TestCase(7, 35)]
+        [TestCase(9, 35)]
+        public void Shop_HealPercent_ByBand(int quality, int percent) =>
+            Assert.AreEqual(percent, ShopRules.HealPercent(quality));
+
+        [TestCase(100, 5, 25)]
+        [TestCase(100, 8, 35)]
+        [TestCase(110, 5, 28)] // 27.5 -> 28
+        [TestCase(33, 9, 12)]  // 11.55 -> 12
+        public void Shop_HealAmount_RoundedUp(int maxHp, int quality, int heal) =>
+            Assert.AreEqual(heal, ShopRules.HealAmount(maxHp, quality));
+
+        [Test]
+        public void Shop_Heal_SpendsHeals_OncePerVisit()
+        {
+            var run = Run(currency: 100);
+            run.SetHp(50);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.AreEqual(25, shop.HealAmount(run));
+            Assert.IsTrue(shop.TryHeal(run));
+            Assert.AreEqual(75, run.Hp);
+            Assert.AreEqual(60, run.Currency);
+            Assert.IsTrue(shop.HealUsed);
+
+            Assert.IsFalse(shop.TryHeal(run));
+            Assert.AreEqual(75, run.Hp);
+            Assert.AreEqual(60, run.Currency);
+        }
+
+        [Test]
+        public void Shop_Heal_ClampsAtMax()
+        {
+            var run = Run(currency: 100);
+            run.SetHp(90);
+            Assert.IsTrue(new ShopVisit(8, Pool(), new Random(1)).TryHeal(run));
+            Assert.AreEqual(100, run.Hp);
+        }
+
+        [Test]
+        public void Shop_Heal_RejectedAtFullHp_NothingSpent()
+        {
+            var run = Run(currency: 100);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.IsFalse(shop.TryHeal(run));
+            Assert.AreEqual(100, run.Currency);
+            Assert.IsFalse(shop.HealUsed);
+        }
+
+        [Test]
+        public void Shop_Heal_RejectedWhenUnaffordable()
+        {
+            var run = Run(currency: ShopRules.HealCost - 1);
+            run.SetHp(50);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.IsFalse(shop.TryHeal(run));
+            Assert.AreEqual(50, run.Hp);
+            Assert.AreEqual(ShopRules.HealCost - 1, run.Currency);
+            Assert.IsFalse(shop.HealUsed);
+        }
+
+        [Test]
+        public void Shop_Draught_RaisesMaxAndHeals_OncePerVisit()
+        {
+            var run = Run(currency: 200);
+            run.SetHp(50);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.IsTrue(shop.TryBuyDraught(run));
+            Assert.AreEqual(110, run.MaxHp);
+            Assert.AreEqual(60, run.Hp);
+            Assert.AreEqual(140, run.Currency);
+            Assert.IsTrue(shop.DraughtUsed);
+
+            Assert.IsFalse(shop.TryBuyDraught(run));
+            Assert.AreEqual(110, run.MaxHp);
+            Assert.AreEqual(140, run.Currency);
+        }
+
+        [Test]
+        public void Shop_Draught_AllowedAtFullHp()
+        {
+            var run = Run(currency: 60);
+            Assert.IsTrue(new ShopVisit(5, Pool(), new Random(1)).TryBuyDraught(run));
+            Assert.AreEqual(110, run.MaxHp);
+            Assert.AreEqual(110, run.Hp);
+        }
+
+        [Test]
+        public void Shop_Draught_RejectedWhenUnaffordable()
+        {
+            var run = Run(currency: ShopRules.VitalDraughtCost - 1);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.IsFalse(shop.TryBuyDraught(run));
+            Assert.AreEqual(100, run.MaxHp);
+            Assert.IsFalse(shop.DraughtUsed);
+        }
+
+        [Test]
+        public void Shop_HealAndDraught_AreIndependent()
+        {
+            var run = Run(currency: 100);
+            run.SetHp(50);
+            var shop = new ShopVisit(5, Pool(), new Random(1));
+            Assert.IsTrue(shop.TryBuyDraught(run));
+            Assert.IsTrue(shop.TryHeal(run));
+            Assert.AreEqual(0, run.Currency);
+            Assert.AreEqual(60 + 28, run.Hp); // 25% of 110 = 27.5 -> 28
+        }
+
         // ---- Rest ----
 
         [TestCase(100, 2, 20)]
@@ -254,6 +374,42 @@ namespace DeckArpg.Tests.EditMode
             Assert.AreEqual(1, run.Momentum.Stacks);
             Assert.AreEqual(50, run.Hp);
             Assert.IsFalse(rest.TryHeal(run));
+        }
+
+        [TestCase(2, 8)]
+        [TestCase(5, 10)]
+        [TestCase(8, 12)]
+        public void Rest_FortifyMaxHp_ByBand(int quality, int amount)
+        {
+            Assert.AreEqual(amount, RestRules.FortifyMaxHp(quality));
+            Assert.AreEqual(amount, new RestVisit(quality).FortifyAmount);
+        }
+
+        [Test]
+        public void Rest_Fortify_RaisesMaxAndHeals_EndsVisit()
+        {
+            var run = Run();
+            run.SetHp(40);
+            var rest = new RestVisit(5);
+            Assert.IsTrue(rest.TryFortify(run));
+            Assert.AreEqual(110, run.MaxHp);
+            Assert.AreEqual(50, run.Hp);
+            Assert.IsTrue(rest.IsDone);
+            Assert.IsFalse(rest.TryFortify(run));
+            Assert.IsFalse(rest.TryHeal(run));
+            Assert.IsFalse(rest.TryMeditate(run));
+            Assert.AreEqual(110, run.MaxHp);
+        }
+
+        [Test]
+        public void Rest_Heal_ThenFortifyRejected()
+        {
+            var run = Run();
+            run.SetHp(50);
+            var rest = new RestVisit(5);
+            Assert.IsTrue(rest.TryHeal(run));
+            Assert.IsFalse(rest.TryFortify(run));
+            Assert.AreEqual(100, run.MaxHp);
         }
 
         [TestCase(0)]

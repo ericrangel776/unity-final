@@ -33,6 +33,21 @@ namespace DeckArpg.Core
 
         /// <summary>A purge may not take the deck below <see cref="MinDeckSize"/>.</summary>
         public static bool CanPurge(int deckCount) => deckCount > MinDeckSize;
+
+        public const int HealCost = 40;
+        public const int VitalDraughtCost = 60;
+        /// <summary>Vital Draught: max HP gained (and healed).</summary>
+        public const int VitalDraughtMaxHp = 10;
+
+        /// <summary>Shop heal: 25% of max HP, 35% at Quality 7-9.</summary>
+        public static int HealPercent(int quality) => RoomIntensity.BandStep(quality, 25, 25, 35);
+
+        /// <summary>Percent of max HP, rounded up.</summary>
+        public static int HealAmount(int maxHp, int quality)
+        {
+            if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
+            return RewardRules.PercentCeil(maxHp, HealPercent(quality));
+        }
     }
 
     /// <summary>Ember Forge numbers, by Quality band.</summary>
@@ -59,6 +74,9 @@ namespace DeckArpg.Core
     public static class RestRules
     {
         public static int HealPercent(int quality) => RoomIntensity.BandStep(quality, 20, 30, 45);
+
+        /// <summary>Fortify: max HP gained (and healed).</summary>
+        public static int FortifyMaxHp(int quality) => RoomIntensity.BandStep(quality, 8, 10, 12);
 
         /// <summary>Percent of max HP, rounded up.</summary>
         public static int HealAmount(int maxHp, int quality)
@@ -110,6 +128,33 @@ namespace DeckArpg.Core
             run.PurgeCount++;
             return true;
         }
+
+        public bool HealUsed { get; private set; }
+        public bool DraughtUsed { get; private set; }
+
+        public int HealAmount(RunState run) => ShopRules.HealAmount(run.MaxHp, Quality);
+
+        /// <summary>Once per visit. False if already used, at full HP, or unaffordable.</summary>
+        public bool TryHeal(RunState run)
+        {
+            if (run == null) throw new ArgumentNullException(nameof(run));
+            if (HealUsed || run.Hp >= run.MaxHp) return false;
+            if (!run.TrySpend(ShopRules.HealCost)) return false;
+            run.Heal(HealAmount(run));
+            HealUsed = true;
+            return true;
+        }
+
+        /// <summary>Vital Draught: +max HP (and heal the same). Once per visit. False if already used or unaffordable.</summary>
+        public bool TryBuyDraught(RunState run)
+        {
+            if (run == null) throw new ArgumentNullException(nameof(run));
+            if (DraughtUsed) return false;
+            if (!run.TrySpend(ShopRules.VitalDraughtCost)) return false;
+            run.IncreaseMaxHp(ShopRules.VitalDraughtMaxHp);
+            DraughtUsed = true;
+            return true;
+        }
     }
 
     /// <summary>One forge visit. Below Quality 7: one upgrade or one Premium. Quality 7-9: one of each, on different cards.</summary>
@@ -157,7 +202,7 @@ namespace DeckArpg.Core
         }
     }
 
-    /// <summary>One rest visit: heal, or Meditate for +1 Momentum. Only one.</summary>
+    /// <summary>One rest visit: heal, Fortify (+max HP), or Meditate for +1 Momentum. Only one.</summary>
     public sealed class RestVisit
     {
         public int Quality { get; }
@@ -176,6 +221,17 @@ namespace DeckArpg.Core
             if (run == null) throw new ArgumentNullException(nameof(run));
             if (IsDone) return false;
             run.Heal(HealAmount(run));
+            IsDone = true;
+            return true;
+        }
+
+        public int FortifyAmount => RestRules.FortifyMaxHp(Quality);
+
+        public bool TryFortify(RunState run)
+        {
+            if (run == null) throw new ArgumentNullException(nameof(run));
+            if (IsDone) return false;
+            run.IncreaseMaxHp(FortifyAmount);
             IsDone = true;
             return true;
         }
