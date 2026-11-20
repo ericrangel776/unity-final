@@ -74,6 +74,13 @@ The original [*Chain of Memories*](https://www.khwiki.com/Kingdom_Hearts_Chain_o
 | **4. Multi-Hit Sleight & Heal Interrupts** | Long Sleights (*Sonic Blade*, *Ars Arcanum*) and *Cure* spells can be broken on startup by a boss's `0` card, deleting the burned card and negating the entire heal or combo ([TV Tropes GameBreaker](https://tvtropes.org/pmwiki/pmwiki.php/GameBreaker/KingdomHearts); [Reddit Final Boss Thread](https://www.reddit.com/r/KingdomHearts/comments/1u6znij/i_cant_beat_the_final_boss_in_chain_of_memories/)) | **Instant Cast Heals & Per-Hit Sleight Resolution:** Trigger healing/item effects on the activation frame (or grant unbreakable *Bracer* frames via Relics ([TV Tropes](https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/KingdomHeartsChainOfMemories))), and resolve multi-hit Sleights per hit so a late Card Break only cancels remaining hits |
 | **5. Asymmetric Boss Cheating** | Original bosses have arbitrary Sleight rules and dash-teleport invulnerably while reloading so players cannot punish their reload window ([TV Tropes My Rules Are Not Your Rules](https://tvtropes.org/pmwiki/pmwiki.php/Main/MyRulesAreNotYourRules)) | **Honest Boss Deck Counter (Mill Win Condition):** Give bosses a visible 15-card counter. Since breaking a boss card with a `0` deletes it until they reload ([TV Tropes GameBreaker](https://tvtropes.org/pmwiki/pmwiki.php/GameBreaker/KingdomHearts)), parrying their deck down to 0 forces a punishable 4-second exhaustion stagger |
 
+> **Heal rework (2026-11-19, `docs/specs/heal-rework.md`) changes safeguard 4 for heals.** A heal card played from the hand
+> is a 0.5 s channel at half move speed that a direct hit, a Card Break, any flinch or stun, a dash or death cancels (the
+> card is spent). A heal card stocked into a Sleight still heals on the fire frame (3 HP per point of value) and the
+> Sleight attacks as usual. Heal cards are Physical/Strike and are never 0-cards. HP is also a run resource now: Shop heal
+> (40) and Vital Draught (+10 max HP, 60), Rest Fortify (+8/10/12 max HP) and the Heartwood Seed relic (+15 max HP). Boss
+> HP scales from the run's *starting* max HP, so these upgrades never toughen the boss.
+
 ## 5. Unity Technical Architecture & Engineering Pitfalls
 
 ### 5.1 Core C# Data & State Architecture
