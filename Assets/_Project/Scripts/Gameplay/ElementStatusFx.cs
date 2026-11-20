@@ -5,8 +5,8 @@ namespace DeckArpg.Gameplay
 {
     /// <summary>
     /// Greybox readability for element statuses: afflicted bodies pulse in the element colour, and one small pip per
-    /// active status floats above the head. The tint goes through a <see cref="MaterialPropertyBlock"/> and yields
-    /// to <see cref="HitFlash"/> while it flashes. Runs on unscaled time.
+    /// active status floats above the head. The tint is the lowest <see cref="BodyTint"/> layer, so a hit flash or the
+    /// boss's state tint shows over it. Runs on unscaled time.
     /// </summary>
     [RequireComponent(typeof(ElementStatusEffects))]
     public sealed class ElementStatusFx : MonoBehaviour
@@ -21,13 +21,8 @@ namespace DeckArpg.Gameplay
         public const float PulseHz = 3f;
         public const float MaxTint = 0.65f;
 
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-
         private ElementStatusEffects effects;
-        private HitFlash hitFlash;
-        private Renderer[] renderers;
-        private Color[] baseColors;
-        private MaterialPropertyBlock block;
+        private BodyTint tint;
         private Transform burnPip, chillPip;
         private bool tinted;
 
@@ -40,16 +35,8 @@ namespace DeckArpg.Gameplay
         private void Awake()
         {
             effects = GetComponent<ElementStatusEffects>();
-            hitFlash = GetComponent<HitFlash>();
             // Before the pips exist, so they are never tinted.
-            renderers = GetComponentsInChildren<Renderer>();
-            baseColors = new Color[renderers.Length];
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                var m = renderers[i].sharedMaterial;
-                baseColors[i] = m != null && m.HasProperty(BaseColorId) ? m.GetColor(BaseColorId) : Color.white;
-            }
-            block = new MaterialPropertyBlock();
+            tint = BodyTint.For(gameObject);
             burnPip = CreatePip("BurnPip", ElementColors.For(Element.Fire));
             chillPip = CreatePip("ChillPip", ElementColors.For(Element.Ice));
         }
@@ -68,17 +55,10 @@ namespace DeckArpg.Gameplay
                 ClearTint();
                 return;
             }
-            if (hitFlash != null && hitFlash.IsFlashing) return; // the flash owns the block while it plays
-
             var element = burning && (!chilled || Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f) ? Element.Fire : Element.Ice;
             var color = ClashImpactFx.Opaque(ElementColors.For(element));
             float pulse = (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * PulseHz * Mathf.PI * 2f)) * MaxTint;
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                if (renderers[i] == null) continue;
-                block.SetColor(BaseColorId, Color.Lerp(baseColors[i], color, pulse));
-                renderers[i].SetPropertyBlock(block);
-            }
+            tint.Set(BodyTint.Layer.Status, color, pulse);
             CurrentTint = color;
             tinted = true;
         }
@@ -107,9 +87,7 @@ namespace DeckArpg.Gameplay
             if (!tinted) return;
             tinted = false;
             CurrentTint = Color.clear;
-            if (hitFlash != null && hitFlash.IsFlashing) return;
-            foreach (var r in renderers)
-                if (r != null) r.SetPropertyBlock(null);
+            tint.Clear(BodyTint.Layer.Status);
         }
 
         private Transform CreatePip(string name, Color color)

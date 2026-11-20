@@ -3,15 +3,12 @@ using UnityEngine;
 namespace DeckArpg.Gameplay
 {
     /// <summary>
-    /// Flashes every child renderer white for a moment when a damaging body hit lands. Uses a
-    /// <see cref="MaterialPropertyBlock"/> so shared materials are never modified, and unscaled
-    /// time so the flash still plays during hit-stop.
+    /// Flashes every child renderer white for a moment when a damaging body hit lands, on the top
+    /// <see cref="BodyTint"/> layer. Unscaled time, so the flash still plays during hit-stop.
     /// </summary>
     [RequireComponent(typeof(CombatantStatus))]
     public sealed class HitFlash : MonoBehaviour
     {
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-
         [SerializeField] private float flashSeconds = 0.1f;
         [SerializeField] private Color flashColor = Color.white;
         [Tooltip("Flash when one of our cards is broken in a clash.")]
@@ -19,8 +16,7 @@ namespace DeckArpg.Gameplay
         [SerializeField] private Color breakColor = new Color(1f, 0.85f, 0.2f);
 
         private CombatantStatus status;
-        private Renderer[] renderers;
-        private MaterialPropertyBlock block;
+        private BodyTint tint;
         private float remaining;
 
         public bool IsFlashing => remaining > 0f;
@@ -28,8 +24,7 @@ namespace DeckArpg.Gameplay
         private void Awake()
         {
             status = GetComponent<CombatantStatus>();
-            renderers = GetComponentsInChildren<Renderer>();
-            block = new MaterialPropertyBlock();
+            tint = BodyTint.For(gameObject);
         }
 
         public Color CurrentColor { get; private set; }
@@ -55,9 +50,7 @@ namespace DeckArpg.Gameplay
         {
             remaining = seconds;
             CurrentColor = color;
-            block.SetColor(BaseColorId, color);
-            foreach (var r in renderers)
-                if (r != null) r.SetPropertyBlock(block);
+            tint.Set(BodyTint.Layer.Flash, color);
         }
 
         private void LateUpdate()
@@ -70,8 +63,7 @@ namespace DeckArpg.Gameplay
         private void Clear()
         {
             remaining = 0f;
-            foreach (var r in renderers)
-                if (r != null) r.SetPropertyBlock(null);
+            tint.Clear(BodyTint.Layer.Flash);
         }
     }
 }
