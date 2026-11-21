@@ -43,6 +43,10 @@ namespace DeckArpg.Tests.PlayMode
 
         // Stats
         public int CardsPlayed, Parries, Dashes, SleightsFired, ReloadsPerfect, ReloadsOther;
+        // Damage diagnostics (run timing): what the bot was doing when it got hit, and how its clashes went.
+        public int HitsTaken, DamageTaken, ClashesWon, ClashesLost, ClashesNeutral;
+        public readonly Dictionary<string, int> DamageByDecision = new Dictionary<string, int>();
+        private string decision = "idle";
 
         /// <summary>Boss mode: fights <paramref name="target"/> only.</summary>
         public void Init(PlayerCombatInput player, BossEnemy target)
@@ -66,10 +70,51 @@ namespace DeckArpg.Tests.PlayMode
             status = player.GetComponent<CombatantStatus>();
             rng = new System.Random(Seed);
             input.enabled = false; // the bot is the input now
+            CombatantStatus.AnyHitLanded += HandleHitLanded;
+            ClashSystem.ClashOccurred += HandleClash;
+        }
+
+        private void HandleHitLanded(HitInfo hit)
+        {
+            if (hit.Victim != status) return;
+            HitsTaken++;
+            DamageTaken += hit.Damage;
+            string key = hit.IsEffect ? "effect" : decision;
+            DamageByDecision.TryGetValue(key, out int sum);
+            DamageByDecision[key] = sum + hit.Damage;
+        }
+
+        private void HandleClash(ClashEvent e)
+        {
+            bool playerIsA = e.A.Team == Team.Player;
+            if (!playerIsA && e.B.Team != Team.Player) return;
+            if (e.Result.Outcome == ClashOutcome.Neutral) ClashesNeutral++;
+            else if (e.Result.Outcome == (playerIsA ? ClashOutcome.AWins : ClashOutcome.BWins)) ClashesWon++;
+            else if (e.Result.Outcome != ClashOutcome.None) ClashesLost++;
+        }
+
+        /// <summary>Zeroes the per-room counters (the measurement reads them per room).</summary>
+        public void ResetStats()
+        {
+            CardsPlayed = Parries = Dashes = SleightsFired = ReloadsPerfect = ReloadsOther = 0;
+            HitsTaken = DamageTaken = ClashesWon = ClashesLost = ClashesNeutral = 0;
+            DamageByDecision.Clear();
+        }
+
+        /// <summary>One line of the counters, e.g. "hits 4 dmg 51 [answer 27 chip 24] clash W3 L1 N0 cards 9 ...".</summary>
+        public string StatsLine()
+        {
+            var parts = new List<string>();
+            foreach (var pair in DamageByDecision) parts.Add(pair.Key + " " + pair.Value);
+            return $"hits {HitsTaken} dmg {DamageTaken} [{string.Join(" ", parts)}] clash W{ClashesWon} L{ClashesLost} " +
+                   $"N{ClashesNeutral} cards {CardsPlayed} parries {Parries} dashes {Dashes} " +
+                   $"reloads {ReloadsPerfect}/{ReloadsPerfect + ReloadsOther}";
         }
 
         private void OnDestroy()
         {
+            CombatantStatus.AnyHitLanded -= HandleHitLanded;
+            ClashSystem.ClashOccurred -= HandleClash;
             foreach (var pair in swingWatch)
                 if (pair.Key != null) pair.Key.Swung -= pair.Value;
             swingWatch.Clear();
@@ -154,6 +199,7 @@ namespace DeckArpg.Tests.PlayMode
             if (body == null || status.IsDead || body.Status.IsDead)
             {
                 motor.SetMoveInput(Vector2.zero);
+                decision = "idle";
                 if (director != null && !status.IsDead) Idle();
                 return;
             }
@@ -170,6 +216,7 @@ namespace DeckArpg.Tests.PlayMode
             bool canAct = CanAct();
             var cycle = deck.Cycle;
             float reach = Reach(body);
+            decision = status.IsStunned ? "stunned" : motor.IsDashing ? "dashing" : "other";
 
             // 1) A scheduled 0-parry (after a swing / Sleight activation).
             if (parryAt >= 0f && Time.time >= parryAt)
@@ -183,6 +230,7 @@ namespace DeckArpg.Tests.PlayMode
                 // 2) Boss Sleight wind-up: keep a 0 for after it fires, else dash out at the last moment.
                 if (boss.State == BossState.SleightWindup)
                 {
+                    decision = "bossSleight";
                     Move(-toTarget, dist < 4f);
                     if (cycle.ZerosReady == 0 && boss.StateRemaining < 0.2f + ReactionSeconds && motor.TryDash()) Dashes++;
                     return;
@@ -192,6 +240,7 @@ namespace DeckArpg.Tests.PlayMode
                 bool punish = boss.State == BossState.ReloadWindow || boss.State == BossState.Exhausted;
                 if (punish)
                 {
+                    decision = "punish";
                     Move(toTarget, dist > reach * 0.8f);
                     if (!canAct || dist > reach) return;
                     // A Sleight while Exhausted (2x damage): keep stocking once started, start only with time left.
@@ -213,11 +262,13 @@ namespace DeckArpg.Tests.PlayMode
                 int slot = BestAbove(v);
                 if (slot >= 0)
                 {
+                    decision = "answer";
                     Move(toTarget, dist > reach * 0.8f);
                     if (canAct && dist <= reach && Act(CombatCommand.PlaySlot1 + slot)) CardsPlayed++;
                     return;
                 }
-                if (cycle.ZerosReady > 0) { Move(toTarget, dist > reach); return; } // stay close, parry the swing
+                if (cycle.ZerosReady > 0) { decision = "holdParry"; Move(toTarget, dist > reach); return; } // stay close, parry the swing
+                decision = "evade";
                 Move(-toTarget, true);
                 if (body.TelegraphProgress > 0.75f && motor.TryDash()) Dashes++;
                 return;
@@ -228,12 +279,14 @@ namespace DeckArpg.Tests.PlayMode
             if (canAct && status.Hp <= status.MaxHp * HealBelow && PlayHeal()) return;
             if (OutOfCards())
             {
+                decision = "reload";
                 Move(-toTarget, dist < 3f);
                 if (!canAct) return;
                 if (cycle.CanReload) StartReload();
                 else if (dist <= reach) Act(CombatCommand.Poke); // e.g. only a heal left at full HP: poke, never idle
                 return;
             }
+            decision = "chip";
             Move(toTarget, dist > reach * 0.8f);
             if (!canAct || dist > reach) return;
             if (HandCount() >= 2 ? PlayExtreme(highest: false) : PlayExtreme(highest: true)) return;
