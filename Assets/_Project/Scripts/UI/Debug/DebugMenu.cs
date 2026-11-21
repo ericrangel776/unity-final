@@ -23,7 +23,7 @@ namespace DeckArpg.UI
     {
         public const int SortingOrder = 100;
         public const float RefreshSeconds = 0.25f;
-        private const float PanelWidth = 500f, PanelHeight = 1040f, RowHeight = 34f, RowGap = 4f, Pad = 12f;
+        private const float PanelWidth = 500f, PanelHeight = 910f, PanelTop = 152f, RowHeight = 34f, RowGap = 4f, Pad = 12f;
         private const float ContentTop = 104f;
         private static readonly Color PanelColor = new Color(0.07f, 0.08f, 0.11f, 0.94f);
         private static readonly Color TabColor = new Color(0.18f, 0.2f, 0.26f, 1f);
@@ -280,8 +280,9 @@ namespace DeckArpg.UI
             canvas.gameObject.AddComponent<GraphicRaycaster>();
             group = canvas.gameObject.AddComponent<CanvasGroup>();
 
-            var panel = UiFactory.CreateImage(canvas.transform, "Panel", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(16f, 0f), new Vector2(PanelWidth, PanelHeight), PanelColor);
+            // Below the HP readout and the run strip (both top-left/top-centre), above nothing at the bottom-left.
+            var panel = UiFactory.CreateImage(canvas.transform, "Panel", new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(16f, -PanelTop), new Vector2(PanelWidth, PanelHeight), PanelColor);
             panel.raycastTarget = true; // clicks on the panel never reach anything behind it
 
             var title = RunWidgets.Label(panel.transform, "Title", new Vector2(0f, 1f), new Vector2(0f, 1f),
