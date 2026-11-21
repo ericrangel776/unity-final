@@ -48,10 +48,11 @@ namespace DeckArpg.Tests.EditMode
 
         private RunContent Content(List<CardData> starter = null, List<CardData> pool = null, List<CardData> mob = null,
             List<CardData> hex = null, List<CardData> elite = null, List<CardData> boss = null, CardData zero = null,
-            bool noZero = false)
+            bool noZero = false, List<CardData> caster = null, List<CardData> rusher = null)
         {
             var content = RunContent.Create(starter ?? Cards(10), pool ?? ValidPool(), mob ?? Cards(5),
                 hex ?? Cards(5), elite ?? Cards(6), boss ?? Cards(RunContent.BossDeckSize),
+                caster ?? Cards(4), rusher ?? Cards(6),
                 noZero ? null : zero ?? Card(1, zero: true));
             created.Add(content);
             return content;
@@ -117,6 +118,62 @@ namespace DeckArpg.Tests.EditMode
         [TestCase(16)]
         public void Validate_BossDeckMustBeExactlyFifteen(int size) =>
             AssertProblem(Content(boss: Cards(size)), $"BossDeck has {size}");
+
+        [Test]
+        public void Validate_CasterDeckAtFloor() => AssertProblem(Content(caster: Cards(3)), "CasterDeck has 3");
+
+        [Test]
+        public void Validate_RusherDeckAtFloor() => AssertProblem(Content(rusher: Cards(3)), "RusherDeck has 3");
+
+        [Test]
+        public void Validate_CasterDeckWithZero()
+        {
+            var caster = Cards(4);
+            caster.Add(Card(1, zero: true));
+            AssertProblem(Content(caster: caster), "CasterDeck contains 0-card");
+        }
+
+        [Test]
+        public void Validate_RusherDeckWithZero()
+        {
+            var rusher = Cards(4);
+            rusher.Add(Card(1, zero: true));
+            AssertProblem(Content(rusher: rusher), "RusherDeck contains 0-card");
+        }
+
+        [Test]
+        public void Validate_VariantDeckNullEntries()
+        {
+            var caster = Cards(4);
+            caster.Add(null);
+            var rusher = Cards(4);
+            rusher.Add(null);
+            var content = Content(caster: caster, rusher: rusher);
+            AssertProblem(content, "CasterDeck has an empty entry");
+            AssertProblem(content, "RusherDeck has an empty entry");
+        }
+
+        [Test]
+        public void Validate_DuplicateIdAcrossVariantDecks()
+        {
+            var caster = Cards(4);
+            caster.Add(Card(5, id: "vdupe"));
+            var rusher = Cards(4);
+            rusher.Add(Card(2, id: "vdupe"));
+            AssertProblem(Content(caster: caster, rusher: rusher), "'vdupe' is used by two");
+        }
+
+        [Test]
+        public void Validate_DraftPoolCannotHoldVariantCards()
+        {
+            var pool = ValidPool();
+            var caster = Cards(4);
+            var rusher = Cards(4);
+            pool.Add(caster[0]);
+            pool.Add(rusher[0]);
+            var problems = Content(pool: pool, caster: caster, rusher: rusher).Validate();
+            Assert.AreEqual(2, problems.Count(p => p.Contains("is an enemy card")), string.Join(" | ", problems));
+        }
 
         [Test]
         public void Validate_EnemyZeroMissing() => AssertProblem(Content(noZero: true), "EnemyZero is missing");
@@ -188,6 +245,50 @@ namespace DeckArpg.Tests.EditMode
         public void EnemyDeckFor_BlueRoomsThrow(MapCardKind kind) =>
             Assert.Throws<ArgumentException>(() => Content().EnemyDeckFor(kind));
 
+        [TestCase(MapCardKind.Shop, EnemyVariant.Caster)]
+        [TestCase(MapCardKind.Rest, EnemyVariant.Rusher)]
+        public void EnemyDeckFor_VariantInBlueRoomThrows(MapCardKind kind, EnemyVariant variant) =>
+            Assert.Throws<ArgumentException>(() => Content().EnemyDeckFor(kind, variant));
+
+        [TestCase(MapCardKind.Vanguard)]
+        [TestCase(MapCardKind.Hexfire)]
+        [TestCase(MapCardKind.KindledGround)]
+        [TestCase(MapCardKind.BountyWind)]
+        public void EnemyDeckFor_VariantsUseTheirOwnDeckInAnyMobRoom(MapCardKind kind)
+        {
+            var content = Content();
+            Assert.AreSame(content.CasterDeck, content.EnemyDeckFor(kind, EnemyVariant.Caster));
+            Assert.AreSame(content.RusherDeck, content.EnemyDeckFor(kind, EnemyVariant.Rusher));
+            Assert.AreSame(content.EnemyDeckFor(kind), content.EnemyDeckFor(kind, EnemyVariant.Brute));
+        }
+
+        [Test]
+        public void GeneratedCasterDeck_IsProjectileCards_3456()
+        {
+            var deck = Generated().CasterDeck;
+            CollectionAssert.AreEqual(new[] { "caster_bolt_3", "caster_shard_4", "caster_bolt_5", "caster_shard_6" },
+                deck.Select(c => c.CardId));
+            CollectionAssert.AreEqual(new[] { 3, 4, 5, 6 }, deck.Select(c => c.BaseValue));
+            foreach (var c in deck)
+            {
+                Assert.AreEqual(CardShape.Throw, c.Shape, c.CardId);
+                Assert.That(c.Element, Is.EqualTo(Element.Fire).Or.EqualTo(Element.Physical), c.CardId);
+            }
+        }
+
+        [Test]
+        public void GeneratedRusherDeck_IsLowPhysicalStrikes()
+        {
+            var deck = Generated().RusherDeck;
+            CollectionAssert.AreEqual(new[] { 1, 2, 2, 3, 3, 4 }, deck.Select(c => c.BaseValue));
+            foreach (var c in deck)
+            {
+                Assert.AreEqual(CardShape.Strike, c.Shape, c.CardId);
+                Assert.AreEqual(Element.Physical, c.Element, c.CardId);
+                Assert.IsFalse(c.IsHeal || c.IsZeroBreaker, c.CardId);
+            }
+        }
+
         // ---- the generated asset (DeckArpg/Build Run Content) ----
 
         private static RunContent Generated()
@@ -245,7 +346,8 @@ namespace DeckArpg.Tests.EditMode
         public void GeneratedEnemyDecks_HaveNoHealCards()
         {
             var content = Generated();
-            var enemy = content.MobDeck.Concat(content.HexfireDeck).Concat(content.EliteDeck).Concat(content.BossDeck);
+            var enemy = content.MobDeck.Concat(content.HexfireDeck).Concat(content.EliteDeck).Concat(content.BossDeck)
+                .Concat(content.CasterDeck).Concat(content.RusherDeck);
             Assert.IsFalse(enemy.Any(c => c != null && c.IsHeal), "enemy decks stay as they are");
         }
 

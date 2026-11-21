@@ -33,7 +33,7 @@ namespace DeckArpg.Editor
         public static RunContent BuildRunContent()
         {
             var built = RunContent.Create(BuildPlayerStarterDeck(), BuildDraftPool(), BuildDummyDeck(),
-                BuildHexfireDeck(), BuildEliteDeck(), BuildBossDeck(),
+                BuildHexfireDeck(), BuildEliteDeck(), BuildBossDeck(), BuildCasterDeck(), BuildRusherDeck(),
                 GetOrCreate("enemy_counter_0", 1, CardShape.Strike, Element.Physical, "Counter", zero: true));
 
             var existing = AssetDatabase.LoadAssetAtPath<RunContent>(RunContentPath);
@@ -107,6 +107,31 @@ namespace DeckArpg.Editor
                 GetOrCreate("hex_flare_6", 6, CardShape.Throw, Element.Fire, "Hex Flare 6"),
                 GetOrCreate("hex_arc_7", 7, CardShape.Throw, Element.Lightning, "Hex Arc 7"),
             };
+        }
+
+        /// <summary>
+        /// Caster variant: projectile cards only (Bolt = Fire Throw, Shard = Physical Throw). No Lightning/Ice: their
+        /// deliveries don't reach from the Caster's 4-9 u (docs/specs/enemy-variants.md).
+        /// </summary>
+        public static List<CardData> BuildCasterDeck()
+        {
+            return new List<CardData>
+            {
+                GetOrCreate("caster_bolt_3", 3, CardShape.Throw, Element.Fire, "Bolt 3"),
+                GetOrCreate("caster_shard_4", 4, CardShape.Throw, Element.Physical, "Shard 4"),
+                GetOrCreate("caster_bolt_5", 5, CardShape.Throw, Element.Fire, "Bolt 5"),
+                GetOrCreate("caster_shard_6", 6, CardShape.Throw, Element.Physical, "Shard 6"),
+            };
+        }
+
+        /// <summary>Rusher variant: low Physical Strikes.</summary>
+        public static List<CardData> BuildRusherDeck()
+        {
+            var deck = new List<CardData>();
+            int[] values = { 1, 2, 2, 3, 3, 4 };
+            for (int i = 0; i < values.Length; i++)
+                deck.Add(GetOrCreate($"rusher_jab_{i + 1}_{values[i]}", values[i], CardShape.Strike, Element.Physical, $"Jab {values[i]}"));
+            return deck;
         }
 
         /// <summary>Purple Elite: heavy hitters.</summary>
