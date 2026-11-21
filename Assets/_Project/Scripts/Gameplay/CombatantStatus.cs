@@ -71,6 +71,11 @@ namespace DeckArpg.Gameplay
         public bool IsDead => Hp <= 0;
         /// <summary>Set by the dash (i-frames). Hits are ignored while true.</summary>
         public bool IsInvulnerable { get; set; }
+        /// <summary>
+        /// Debug menu: hits and effects still land (events, flinch, FX, clashes) but HP never drops. Separate from
+        /// <see cref="IsInvulnerable"/>, which the dash rewrites.
+        /// </summary>
+        public bool GodMode { get; set; }
         public int OwnerId => gameObject.GetInstanceID();
         public float HitFlinchSeconds { get => hitFlinchSeconds; set => hitFlinchSeconds = Mathf.Max(0f, value); }
         /// <summary>Set while an enemy winds up a telegraph: hits still damage but can't flinch it out of the attack.</summary>
@@ -174,7 +179,7 @@ namespace DeckArpg.Gameplay
                 counterWindowRemaining = 0f;
             }
             if (nonLethal) damage = BossRules.NonLethalDamage(damage, Hp);
-            Hp = Mathf.Max(0, Hp - damage);
+            if (!GodMode) Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
             if (counter) CounterHit?.Invoke(this, damage);
             if (damage > 0)
@@ -205,7 +210,7 @@ namespace DeckArpg.Gameplay
             int damage = amount;
             if (DamageTakenMultiplier != 1f) damage = Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier));
             if (damage <= 0) return false;
-            Hp = Mathf.Max(0, Hp - damage);
+            if (!GodMode) Hp = Mathf.Max(0, Hp - damage);
             Damaged?.Invoke(damage);
             AnyHitTaken?.Invoke(this, damage);
             LastHitElement = element;

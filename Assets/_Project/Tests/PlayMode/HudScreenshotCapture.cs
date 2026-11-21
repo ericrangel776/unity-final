@@ -497,6 +497,48 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"Variant screenshots written to {dir}");
         }
 
+        /// <summary>The F1 debug menu (docs/specs/debug-menu.md): one shot per tab over a live fight, as debug_*.png.</summary>
+        [UnityTest]
+        public IEnumerator CaptureDebugMenu()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            var menu = DeckArpg.UI.DebugMenu.Instance;
+            Assert.IsNotNull(menu, "The debug menu should create itself on play.");
+            director.RestartRun(5);
+            director.DebugEnterRoom(new MapCard(MapCardKind.Hexfire, 7));
+            foreach (var e in director.Enemies) e.Target = null; // hold their AI still
+            RunTestHelpers.Place(director.Player, FrontOf(director.Enemies));
+            menu.FindTargets();
+            menu.Open(); // before the canvas switch below, so the menu's canvas is active and gets moved too
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+            var menuCanvas = menu.GetComponentInChildren<Canvas>(true);
+            // RenderOverlaysToTexture spaces canvases by sorting order (0.01 per step); at order 100 that lands behind
+            // the near plane. Put the menu just in front of every other canvas instead.
+            menuCanvas.planeDistance = cam.nearClipPlane + 0.02f;
+            try
+            {
+                float settle = Time.realtimeSinceStartup + 1.5f;
+                while (Time.realtimeSinceStartup < settle) yield return null;
+                foreach (DeckArpg.UI.DebugTab tab in System.Enum.GetValues(typeof(DeckArpg.UI.DebugTab)))
+                {
+                    menu.SelectTab(tab);
+                    yield return Capture(dir, $"debug_{(int)tab + 1}_{tab.ToString().ToLowerInvariant()}");
+                }
+            }
+            finally
+            {
+                // The menu outlives this scene: put its canvas back on the overlay before the camera goes away.
+                menu.SelectTab(DeckArpg.UI.DebugTab.Run);
+                menu.Close();
+                menuCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                menuCanvas.worldCamera = null;
+            }
+            Debug.Log($"Debug menu screenshots written to {dir}");
+        }
+
         /// <summary>A spot just in front of the enemies' centre, so the follow camera frames the whole group.</summary>
         private static Vector3 FrontOf(System.Collections.Generic.IReadOnlyList<TrainingDummyEnemy> enemies)
         {

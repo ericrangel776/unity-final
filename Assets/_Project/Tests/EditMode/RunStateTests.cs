@@ -264,5 +264,56 @@ namespace DeckArpg.Tests.EditMode
         {
             CollectionAssert.AreEqual(NewRun(5).DealOffer(), NewRun(5).DealOffer());
         }
+
+        // ---- debug offer (docs/specs/debug-menu.md) ----
+
+        [Test]
+        public void DebugSetOffer_ReplacesTheOffer_AndEnterRoomUsesIt()
+        {
+            var run = NewRun();
+            run.DealOffer();
+            var forced = new MapCard(MapCardKind.Hexfire, 7);
+            run.DebugSetOffer(new[] { forced });
+
+            CollectionAssert.AreEqual(new[] { forced }, run.CurrentOffer);
+            Assert.AreEqual(forced, run.EnterRoom(0));
+        }
+
+        [Test]
+        public void DebugSetOffer_DoesNotDrawFromTheRng()
+        {
+            var a = NewRun(9);
+            var b = NewRun(9);
+            a.DebugSetOffer(new[] { new MapCard(MapCardKind.Rest, 3) });
+            Assert.AreEqual(a.Rng.Next(), b.Rng.Next());
+        }
+
+        [Test]
+        public void DebugSetOffer_EliteMarksPurpleOffered()
+        {
+            var run = NewRun();
+            run.DebugSetOffer(new[] { new MapCard(MapCardKind.EliteTrial, 5, EliteTrial.Hexer) });
+            Assert.IsTrue(run.PurpleOffered);
+        }
+
+        [Test]
+        public void DebugSetOffer_OnlyAtADoor()
+        {
+            var run = NewRun();
+            run.DealOffer();
+            run.EnterRoom(0);
+            Assert.Throws<InvalidOperationException>(() =>
+                run.DebugSetOffer(new[] { new MapCard(MapCardKind.Vanguard, 2) }));
+        }
+
+        [TestCase(0)]
+        [TestCase(4)]
+        public void DebugSetOffer_RejectsBadSizes(int n) =>
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                NewRun().DebugSetOffer(Enumerable.Repeat(new MapCard(MapCardKind.Vanguard, 2), n).ToList()));
+
+        [Test]
+        public void DebugSetOffer_RejectsNull() =>
+            Assert.Throws<ArgumentNullException>(() => NewRun().DebugSetOffer(null));
     }
 }

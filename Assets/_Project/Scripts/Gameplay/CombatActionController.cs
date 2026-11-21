@@ -59,6 +59,13 @@ namespace DeckArpg.Gameplay
         [SerializeField] private float sleightArcanaGrowSeconds = 0.35f;
         [Header("Visuals")]
         [SerializeField] private bool showHitboxes = true;
+        /// <summary>Debug menu: overrides every controller's <c>showHitboxes</c> while set (null = each controller's own).</summary>
+        public static bool? DebugShowHitboxes { get; set; }
+        private bool ShowHitboxes => DebugShowHitboxes ?? showHitboxes;
+
+        // Static state survives play sessions when domain reload is disabled.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetDebugStatics() => DebugShowHitboxes = null;
 
         private readonly List<AttackHitbox> active = new List<AttackHitbox>();
         private readonly Dictionary<AttackHitbox, RuntimeCardInstance> sources = new Dictionary<AttackHitbox, RuntimeCardInstance>();
@@ -164,32 +171,32 @@ namespace DeckArpg.Gameplay
             {
                 case Delivery.Projectile:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
-                    hb.InitSphere(this, stamped, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, showHitboxes);
+                    hb.InitSphere(this, stamped, throwRadius * scale, throwLifetime, bodyHitDelay, aimDirection * throwSpeed, ShowHitboxes);
                     break;
                 case Delivery.FrostBlast:
                     go.transform.SetParent(transform, false);
                     go.transform.position = aroundSelf ? origin : origin + aimDirection * frostReach;
-                    hb.InitSphere(this, stamped, frostRadius * scale, frostDuration, bodyHitDelay, Vector3.zero, showHitboxes);
+                    hb.InitSphere(this, stamped, frostRadius * scale, frostDuration, bodyHitDelay, Vector3.zero, ShowHitboxes);
                     break;
                 case Delivery.ChainArc:
                     go.transform.SetPositionAndRotation(origin + aimDirection * 0.6f, Quaternion.LookRotation(aimDirection));
-                    hb.InitSphere(this, stamped, arcRadius * scale, arcLifetime, bodyHitDelay, aimDirection * arcSpeed, showHitboxes);
+                    hb.InitSphere(this, stamped, arcRadius * scale, arcLifetime, bodyHitDelay, aimDirection * arcSpeed, ShowHitboxes);
                     hb.DespawnOnBodyHit = true;
                     break;
                 case Delivery.Gust:
                     go.transform.SetParent(transform, false);
                     go.transform.SetPositionAndRotation(origin + aimDirection * gustReach, Quaternion.LookRotation(aimDirection));
-                    hb.InitBox(this, stamped, gustSize * scale, gustDuration, bodyHitDelay, showHitboxes);
+                    hb.InitBox(this, stamped, gustSize * scale, gustDuration, bodyHitDelay, ShowHitboxes);
                     break;
                 case Delivery.Burst:
                     go.transform.SetParent(transform, false);
                     go.transform.position = origin;
-                    hb.InitSphere(this, stamped, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, showHitboxes);
+                    hb.InitSphere(this, stamped, arcanaRadius * scale, arcanaDuration, bodyHitDelay, Vector3.zero, ShowHitboxes);
                     break;
                 default:
                     go.transform.SetParent(transform, false);
                     go.transform.SetPositionAndRotation(origin + aimDirection * strikeReach, Quaternion.LookRotation(aimDirection));
-                    hb.InitBox(this, stamped, strikeSize * scale, strikeDuration, bodyHitDelay, showHitboxes);
+                    hb.InitBox(this, stamped, strikeSize * scale, strikeDuration, bodyHitDelay, ShowHitboxes);
                     break;
             }
 

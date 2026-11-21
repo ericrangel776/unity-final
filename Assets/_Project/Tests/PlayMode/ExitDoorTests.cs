@@ -162,6 +162,32 @@ namespace DeckArpg.Tests.PlayMode
             screens.Hide();
         }
 
+        [UnityTest]
+        public IEnumerator DebugInputBlocked_StopsKeyboardMovement_WithoutTouchingTheScreensLock()
+        {
+            savedBackground = InputSystem.settings.backgroundBehavior;
+            savedEditorInput = InputSystem.settings.editorInputBehaviorInPlayMode;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            InputSystem.settings.editorInputBehaviorInPlayMode =
+                InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            keyboard = InputSystem.AddDevice<Keyboard>();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W));
+            yield return Frames(2);
+
+            director.Player.DebugInputBlocked = true;
+            yield return null;
+            var player = director.Player.transform;
+            var start = player.position;
+            yield return Realtime(0.3f);
+            Assert.Less(Flat(player.position - start).magnitude, 0.001f, "the debug menu's block holds the player");
+            Assert.IsFalse(director.Player.InputBlocked, "RunScreens' lock is left alone");
+
+            director.Player.DebugInputBlocked = false;
+            start = player.position;
+            yield return Realtime(0.3f);
+            Assert.Greater(Flat(player.position - start).magnitude, 0.05f, "released: W moves again");
+        }
+
         private static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
     }
 }

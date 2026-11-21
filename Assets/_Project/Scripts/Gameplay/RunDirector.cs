@@ -21,7 +21,7 @@ namespace DeckArpg.Gameplay
     /// Blue visit), detects the clear, pays the reward and ends the run on boss kill or player death.
     /// All rules live in <see cref="RunState"/>; this only applies them to the scene. See docs/specs/m3-room-loop.md.
     /// </summary>
-    public sealed class RunDirector : MonoBehaviour
+    public sealed partial class RunDirector : MonoBehaviour
     {
         [SerializeField] private RunContent content;
         [SerializeField] private TrainingDummyEnemy enemyPrefab;
@@ -140,7 +140,8 @@ namespace DeckArpg.Gameplay
             ClearVisits();
             CurrentReward = null;
 
-            Run = new RunState(content.StarterDeck, playerBaseMaxHp, runSeed != 0 ? runSeed : Environment.TickCount);
+            LastSeed = runSeed != 0 ? runSeed : Environment.TickCount;
+            Run = new RunState(content.StarterDeck, playerBaseMaxHp, LastSeed);
             player.ResetForNewRoom();
             playerStatus.SetMaxHp(Run.MaxHp); // drop last run's max-HP upgrades
             playerStatus.Revive();
@@ -243,7 +244,7 @@ namespace DeckArpg.Gameplay
         }
 
         /// <summary>Spawns one enemy per entry of <paramref name="mix"/>, each with its variant's deck, stats and look.</summary>
-        private void SpawnWave(in MapCard room, IReadOnlyList<EnemyVariant> mix)
+        private void SpawnWave(in MapCard room, IReadOnlyList<EnemyVariant> mix, Vector3? positionOverride = null)
         {
             int count = mix.Count;
             float tempo = RoomIntensity.EnemyTempoPercent(room) / 100f;
@@ -260,7 +261,7 @@ namespace DeckArpg.Gameplay
                 if (room.Trial == EliteTrial.Counterpuncher)
                     for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
 
-                var position = WaveSpawnPoint(i, mix);
+                var position = positionOverride ?? WaveSpawnPoint(i, mix);
                 var facing = playerSpawn - position;
                 facing.y = 0f;
                 var enemy = Instantiate(enemyPrefab, position, Quaternion.LookRotation(facing));

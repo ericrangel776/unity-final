@@ -50,6 +50,11 @@ Close the Editor before batchmode runs (a project can only be open once).
 - PlayMode tests: same command with `-testPlatform PlayMode` (and `playmode.*` file names).
 - Result: exit code 0 = all passed; summary in the `<test-run ...>` line of the XML.
 - Lint: none yet; compile errors show as `error CS` lines in the log.
+- Debug menu: press **F1** (or backquote) in Play mode, or in a Development build. It has tabs for Run (force any room,
+  clear, skip wave/boss), Player (god mode, HP, relics, cards), Enemies (spawn variants, freeze AI, statuses), Time
+  (slow-mo/pause via `HitStop.SetBaseTimeScale`, juice toggles) and Info (room/run timers). Add a test hook for a new
+  feature as one `DebugCommand` row in `UI/Debug/DebugCommands.cs`. Tests can force a room with
+  `RunDirector.DebugEnterRoom(new MapCard(...))` instead of seed-hunting.
 
 ## Architecture
 - `Assets/_Project/` - all our code/content (keeps it apart from template/third-party assets).

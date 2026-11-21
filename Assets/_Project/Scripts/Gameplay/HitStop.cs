@@ -22,6 +22,22 @@ namespace DeckArpg.Gameplay
         private static float savedTimeScale = 1f;
         private Coroutine routine;
 
+        /// <summary>
+        /// The time scale the game runs at between freezes (debug slow-mo/pause; 1 normally). Change it only through
+        /// <see cref="SetBaseTimeScale"/> so a freeze restores it instead of overwriting it.
+        /// </summary>
+        public static float BaseTimeScale { get; private set; } = 1f;
+        /// <summary>Debug menu: no freezes while true.</summary>
+        public static bool Disabled { get; set; }
+
+        /// <summary>Sets the between-freezes time scale: now if not frozen, else when the freeze ends.</summary>
+        public static void SetBaseTimeScale(float scale)
+        {
+            BaseTimeScale = Mathf.Max(0f, scale);
+            if (owner != null) savedTimeScale = BaseTimeScale;
+            else Time.timeScale = BaseTimeScale;
+        }
+
         /// <summary>True while any HitStop has the game frozen.</summary>
         public bool IsFrozen => owner != null;
 
@@ -32,6 +48,8 @@ namespace DeckArpg.Gameplay
             Timer.Clear();
             owner = null;
             savedTimeScale = 1f;
+            BaseTimeScale = 1f;
+            Disabled = false;
         }
 
         private void OnEnable()
@@ -68,7 +86,7 @@ namespace DeckArpg.Gameplay
         /// <summary>Freezes for <paramref name="seconds"/> of real time; overlapping calls extend, never stack.</summary>
         public void Freeze(float seconds)
         {
-            if (seconds <= 0f || !isActiveAndEnabled) return;
+            if (seconds <= 0f || !isActiveAndEnabled || Disabled) return;
             Timer.Request(seconds, Time.unscaledTime);
             if (owner != null) return; // already frozen: the owner's routine picks up the new end time
 
