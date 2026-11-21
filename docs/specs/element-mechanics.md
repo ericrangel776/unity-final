@@ -216,7 +216,7 @@ above the head, at the height `HitFeedbackHeight + 0.6`, plus a chain `LineRende
 must not fight `HitFlash`: tint through a `MaterialPropertyBlock` colour that `HitFlash` overrides while flashing.
 
 #### `Assets/_Project/Scripts/Gameplay/ElementColors.cs` (change)
-Add Wind: pale green `(0.6, 1, 0.75, 0.5)`.
+Add Wind: storm-cloud slate grey `(0.33, 0.36, 0.45, 0.5)` (was pale green; changed 2026-11-21 at the user's request).
 
 ### UI
 - `UI/RunHudStripView.cs`: add BURN and CHILL chips with seconds left, shown only while the player has them.

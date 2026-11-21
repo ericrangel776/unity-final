@@ -219,9 +219,9 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
-        public void WindColour_IsPaleGreen_NotThePhysicalGrey()
+        public void WindColour_IsStormGrey_NotThePhysicalGrey()
         {
-            Assert.AreEqual(new Color(0.6f, 1f, 0.75f, 0.5f), DeckArpg.Gameplay.ElementColors.For(Element.Wind));
+            Assert.AreEqual(new Color(0.33f, 0.36f, 0.45f, 0.5f), DeckArpg.Gameplay.ElementColors.For(Element.Wind));
             Assert.AreNotEqual(DeckArpg.Gameplay.ElementColors.For(Element.Physical), DeckArpg.Gameplay.ElementColors.For(Element.Wind));
         }
 

@@ -17,7 +17,7 @@ namespace DeckArpg.Gameplay
                 case Element.Fire: return new Color(1f, 0.45f, 0.15f, 0.5f);
                 case Element.Ice: return new Color(0.4f, 0.8f, 1f, 0.5f);
                 case Element.Lightning: return new Color(1f, 0.9f, 0.2f, 0.5f);
-                case Element.Wind: return new Color(0.6f, 1f, 0.75f, 0.5f);
+                case Element.Wind: return new Color(0.33f, 0.36f, 0.45f, 0.5f); // storm-cloud slate
                 default: return new Color(0.8f, 0.8f, 0.8f, 0.5f);
             }
         }
