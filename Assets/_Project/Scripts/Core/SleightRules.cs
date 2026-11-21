@@ -18,10 +18,13 @@ namespace DeckArpg.Core
         public readonly int FinisherValue;
         /// <summary>All three composed elements match (finisher shockwave trigger).</summary>
         public readonly bool AllSameElement;
+        /// <summary>HP the Sleight heals on its fire frame (<see cref="HealRules.SleightHeal"/>); 0 without heal cards.</summary>
+        public readonly int HealAmount;
 
         public SleightResult(int value, CardShape shape, Element element, int finisherValue, bool allSameElement,
-            Delivery? delivery = null)
+            Delivery? delivery = null, int healAmount = 0)
         {
+            HealAmount = healAmount;
             Delivery = delivery ?? ElementRules.DeliveryFor(Element.Physical, shape);
             Value = value;
             Shape = shape;
@@ -81,7 +84,7 @@ namespace DeckArpg.Core
             var e2 = second.Data.Element;
             var e3 = third.Data.Element;
             return new SleightResult(v1 + v2 + v3, first.Data.Shape, e2, v3, e1 == e2 && e2 == e3,
-                ElementRules.DeliveryFor(e1, first.Data.Shape));
+                ElementRules.DeliveryFor(e1, first.Data.Shape), HealRules.SleightHeal(stocked));
         }
 
         /// <summary>The value slot <paramref name="slot"/> contributes after mirroring.</summary>

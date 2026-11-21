@@ -60,7 +60,7 @@ namespace DeckArpg.Editor
         }
 
         /// <summary>
-        /// 20 draftable cards: 8 Common, 7 Uncommon, 5 Rare (incl. the Null Ward 0-card). Each element's cards author the
+        /// 23 draftable cards: 9 Common, 8 Uncommon, 6 Rare (incl. the Null Ward 0-card and Mend 3/5/7 heals). Each element's cards author the
         /// shape that matches its delivery (Fire/Lightning Throw, Ice Arcana, Wind Strike; docs/specs/element-mechanics.md).
         /// </summary>
         public static List<CardData> BuildDraftPool()
@@ -76,6 +76,7 @@ namespace DeckArpg.Editor
                 GetOrCreate("spark_5", 5, CardShape.Throw, Element.Lightning, "Spark 5", rarity: C),
                 GetOrCreate("volt_burst_4", 4, CardShape.Throw, Element.Lightning, "Volt Arc 4", rarity: C),
                 GetOrCreate("gust_4", 4, CardShape.Strike, Element.Wind, "Gust 4", rarity: C),
+                GetOrCreate("mend_3", 3, CardShape.Strike, Element.Physical, "Mend 3", heal: true, rarity: C),
 
                 GetOrCreate("cleave_8", 8, CardShape.Strike, Element.Physical, "Cleave 8", rarity: U),
                 GetOrCreate("ember_7", 7, CardShape.Throw, Element.Fire, "Ember 7", rarity: U),
@@ -84,11 +85,13 @@ namespace DeckArpg.Editor
                 GetOrCreate("cinder_nova_6", 6, CardShape.Throw, Element.Fire, "Cinder Bolt 6", rarity: U),
                 GetOrCreate("rime_lance_6", 6, CardShape.Arcana, Element.Ice, "Rime Burst 6", rarity: U),
                 GetOrCreate("gust_6", 6, CardShape.Strike, Element.Wind, "Gust 6", rarity: U),
+                GetOrCreate("mend_5", 5, CardShape.Strike, Element.Physical, "Mend 5", heal: true, rarity: U),
 
                 GetOrCreate("cleave_9", 9, CardShape.Strike, Element.Physical, "Cleave 9", rarity: R),
                 GetOrCreate("thunderhead_9", 9, CardShape.Throw, Element.Lightning, "Thunderhead 9", rarity: R),
                 GetOrCreate("inferno_8", 8, CardShape.Throw, Element.Fire, "Inferno 8", rarity: R),
                 GetOrCreate("tempest_8", 8, CardShape.Strike, Element.Wind, "Tempest 8", rarity: R),
+                GetOrCreate("mend_7", 7, CardShape.Strike, Element.Physical, "Mend 7", heal: true, rarity: R),
                 GetOrCreate("null_ward_0", 1, CardShape.Strike, Element.Physical, "Null Ward", zero: true, rarity: R),
             };
         }
@@ -129,7 +132,7 @@ namespace DeckArpg.Editor
             return deck;
         }
 
-        /// <summary>10 cards: Strike 2-7, Ember (Fire Throw) 3 and 5, Frost (Ice Arcana) 4, one 0-Parry.</summary>
+        /// <summary>11 cards: Strike 2-7, Ember (Fire Throw) 3 and 5, Frost (Ice Arcana) 4, Mend 3 (heal), one 0-Parry.</summary>
         public static List<CardData> BuildPlayerStarterDeck()
         {
             var deck = new List<CardData>();
@@ -138,6 +141,7 @@ namespace DeckArpg.Editor
             deck.Add(GetOrCreate("ember_3", 3, CardShape.Throw, Element.Fire, "Ember 3"));
             deck.Add(GetOrCreate("ember_5", 5, CardShape.Throw, Element.Fire, "Ember 5"));
             deck.Add(GetOrCreate("frost_4", 4, CardShape.Arcana, Element.Ice, "Frost 4"));
+            deck.Add(GetOrCreate("mend_3", 3, CardShape.Strike, Element.Physical, "Mend 3", heal: true));
             deck.Add(GetOrCreate("parry_0", 1, CardShape.Strike, Element.Physical, "Parry", zero: true));
             return deck;
         }
@@ -156,7 +160,7 @@ namespace DeckArpg.Editor
         }
 
         private static CardData GetOrCreate(string id, int value, CardShape shape, Element element, string displayName,
-            bool zero = false, Rarity rarity = Rarity.Common)
+            bool zero = false, Rarity rarity = Rarity.Common, bool heal = false)
         {
             EnsureFolder(CardsFolder);
             string path = $"{CardsFolder}/{id}.asset";
@@ -167,7 +171,7 @@ namespace DeckArpg.Editor
                 return existing;
             }
 
-            var card = CardData.Create(id, value, shape, element, zero, displayName: displayName, rarity: rarity);
+            var card = CardData.Create(id, value, shape, element, zero, heal, displayName: displayName, rarity: rarity);
             AssetDatabase.CreateAsset(card, path);
             return card;
         }

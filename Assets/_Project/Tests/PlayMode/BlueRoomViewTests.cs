@@ -273,6 +273,103 @@ namespace DeckArpg.Tests.PlayMode
             if (!sawZero) Assert.Inconclusive("Starter deck has no 0-card to check.");
         }
 
+        // ---- shop heal / Vital Draught ----
+
+        [Test]
+        public void Shop_Heal_Enabled_HealsOncePerVisit()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            var run = director.Run;
+            run.AddCurrency(500);
+            run.SetHp(30);
+            shop.Refresh();
+            int heal = director.CurrentShop.HealAmount(run);
+            Assert.IsTrue(shop.CanHeal);
+            Assert.AreEqual($"Heal {heal} HP ({ShopRules.HealCost})", shop.HealText);
+            int currency = run.Currency;
+
+            shop.BuyHeal();
+
+            Assert.AreEqual(30 + heal, run.Hp);
+            Assert.AreEqual(currency - ShopRules.HealCost, run.Currency);
+            Assert.IsFalse(shop.MessageIsWarning);
+            StringAssert.StartsWith($"Healed {heal} HP", shop.MessageText);
+            Assert.IsFalse(shop.CanHeal);
+            Assert.AreEqual("Heal (bought)", shop.HealText);
+
+            shop.BuyHeal();
+            Assert.AreEqual(30 + heal, run.Hp, "once per visit");
+            Assert.IsTrue(shop.MessageIsWarning);
+        }
+
+        [Test]
+        public void Shop_Heal_DisabledAtFullHp_SaysWhy()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            director.Run.AddCurrency(500);
+            director.Run.SetHp(director.Run.MaxHp);
+            shop.Refresh();
+            Assert.IsFalse(shop.CanHeal);
+            Assert.AreEqual("Heal (full HP)", shop.HealText);
+        }
+
+        [Test]
+        public void Shop_Heal_DisabledWhenBroke_SaysHowMuchMore()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            var run = director.Run;
+            run.TrySpend(run.Currency);
+            run.AddCurrency(15);
+            run.SetHp(30);
+            shop.Refresh();
+            Assert.IsFalse(shop.CanHeal);
+            Assert.AreEqual($"Heal {ShopRules.HealCost} (need {ShopRules.HealCost - 15} more)", shop.HealText);
+            Assert.IsFalse(shop.CanBuyDraught);
+            Assert.AreEqual($"Draught {ShopRules.VitalDraughtCost} (need {ShopRules.VitalDraughtCost - 15} more)",
+                shop.DraughtText);
+        }
+
+        [Test]
+        public void Shop_Draught_RaisesMaxHp_OncePerVisit()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            var run = director.Run;
+            run.AddCurrency(500);
+            int max = run.MaxHp;
+            run.SetHp(50);
+            shop.Refresh();
+            Assert.IsTrue(shop.CanBuyDraught);
+            Assert.AreEqual($"Max HP +{ShopRules.VitalDraughtMaxHp} ({ShopRules.VitalDraughtCost})", shop.DraughtText);
+
+            shop.BuyDraught();
+
+            Assert.AreEqual(max + ShopRules.VitalDraughtMaxHp, run.MaxHp);
+            Assert.AreEqual(50 + ShopRules.VitalDraughtMaxHp, run.Hp);
+            Assert.IsFalse(shop.CanBuyDraught);
+            Assert.AreEqual("Draught (bought)", shop.DraughtText);
+            StringAssert.Contains($"HP {run.Hp}/{run.MaxHp}", shop.StatusText);
+
+            director.LeaveUtility();
+            Assert.AreEqual(max + ShopRules.VitalDraughtMaxHp, director.Player.GetComponent<CombatantStatus>().MaxHp,
+                "the player's status picks up the new max on leaving");
+        }
+
+        [Test]
+        public void Shop_HealButtons_HideInPurgeMode()
+        {
+            var shop = Enter<ShopView>(MapCardKind.Shop);
+            director.Run.AddCurrency(500);
+            director.Run.SetHp(30);
+            shop.Refresh();
+            Assert.IsTrue(shop.CanHeal);
+            shop.TogglePurge();
+            Assert.IsTrue(shop.PurgeMode);
+            Assert.IsFalse(shop.CanHeal);
+            Assert.IsFalse(shop.CanBuyDraught);
+            shop.Back();
+            Assert.IsTrue(shop.CanHeal);
+        }
+
         // ---- rest ----
 
         [Test]
@@ -297,11 +394,44 @@ namespace DeckArpg.Tests.PlayMode
             var rest = Enter<RestView>(MapCardKind.Rest);
             director.Run.Momentum.Reset();
 
-            screens.HandleKey(1);
+            screens.HandleKey(2); // third tile: Heal, Fortify, Meditate
 
             Assert.AreEqual(1, director.Run.Momentum.Stacks);
+            Assert.AreEqual(2, rest.Chosen);
+            Assert.AreEqual("CHOSEN", rest.Tile(2).Footer.text);
+        }
+
+        [Test]
+        public void Rest_ShowsThreeTiles_HealFortifyMeditate()
+        {
+            var rest = Enter<RestView>(MapCardKind.Rest);
+            int gain = director.CurrentRest.FortifyAmount;
+            for (int i = 0; i < 3; i++) Assert.IsTrue(rest.Tile(i).Visible, $"tile {i}");
+            Assert.AreEqual("Rest", rest.Tile(0).Title.text);
+            Assert.AreEqual("Fortify", rest.Tile(1).Title.text);
+            Assert.AreEqual($"+{gain}", rest.Tile(1).Badge.text);
+            StringAssert.StartsWith($"Max HP +{gain} (and heal {gain})", rest.Tile(1).Body.text);
+            Assert.AreEqual("Meditate", rest.Tile(2).Title.text);
+            StringAssert.Contains("3: meditate", rest.HintText);
+        }
+
+        [Test]
+        public void Rest_Fortify_RaisesMaxHp_AndEndsTheChoice()
+        {
+            var rest = Enter<RestView>(MapCardKind.Rest);
+            int max = director.Run.MaxHp;
+            director.Run.SetHp(40);
+            int gain = director.CurrentRest.FortifyAmount;
+
+            screens.HandleKey(1);
+
+            Assert.AreEqual(max + gain, director.Run.MaxHp);
+            Assert.AreEqual(40 + gain, director.Run.Hp);
             Assert.AreEqual(1, rest.Chosen);
             Assert.AreEqual("CHOSEN", rest.Tile(1).Footer.text);
+            Assert.AreEqual($"Max HP +{gain}  ·  HP {40 + gain}/{max + gain}", rest.MessageText);
+            for (int i = 0; i < 3; i++) Assert.IsFalse(rest.Tile(i).Interactable, "only one choice");
+            StringAssert.Contains($"HP {40 + gain}/{max + gain}", rest.StatusText);
         }
 
         [UnityTest]

@@ -16,6 +16,8 @@ namespace DeckArpg.Core
         public const float AshenSigilSpeedPerStack = 0.1f;
         public const int AshenSigilHealPerBurn = 3;
         public const float HourglassPostureDamage = 15f;
+        /// <summary>Heartwood Seed: max HP gained (and healed) once, on pickup.</summary>
+        public const int HeartwoodSeedMaxHp = 15;
 
         private static readonly RelicId[] All = (RelicId[])Enum.GetValues(typeof(RelicId));
 

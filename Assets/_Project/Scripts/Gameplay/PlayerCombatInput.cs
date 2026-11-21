@@ -40,6 +40,7 @@ namespace DeckArpg.Gameplay
         private DeckRuntimeManager deck;
         private CombatantStatus status;
         private ElementStatusEffects elementFx;
+        private HealChannel healChannel;
         private InputAction move, aim, dash, slot1, slot2, slot3, parry, poke, reload, stock;
         private float recoveryRemaining;
         private float respawnRemaining;
@@ -57,6 +58,8 @@ namespace DeckArpg.Gameplay
         /// Only <c>RunScreens</c> writes this (one owner).
         /// </summary>
         public bool InputBlocked { get; set; }
+        /// <summary>The hand-heal channel (added in Awake if the rig lacks one).</summary>
+        public HealChannel HealChannel => healChannel;
 
         /// <summary>Between rooms: drops buffered inputs, cancels live hitboxes and any pending respawn.</summary>
         public void ResetForNewRoom()
@@ -64,6 +67,7 @@ namespace DeckArpg.Gameplay
             buffer.Clear();
             recoveryRemaining = 0f;
             respawnRemaining = 0f;
+            healChannel.Cancel();
             combat.CancelActiveAction();
         }
 
@@ -74,6 +78,8 @@ namespace DeckArpg.Gameplay
             deck = GetComponent<DeckRuntimeManager>();
             status = GetComponent<CombatantStatus>();
             status.Team = Team.Player;
+            healChannel = GetComponent<HealChannel>();
+            if (healChannel == null) healChannel = gameObject.AddComponent<HealChannel>();
 
             var map = InputSystem.actions != null ? InputSystem.actions.FindActionMap("Player") : null;
             if (map == null)
@@ -133,7 +139,9 @@ namespace DeckArpg.Gameplay
             motor.SetMoveInput(move.ReadValue<Vector2>());
             // Chill multiplies with the reload boost. Dash, i-frames and the reload bar are untouched.
             if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
-            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier * (elementFx != null ? elementFx.SpeedMultiplier : 1f);
+            // The heal channel's x0.5 multiplies in too, so the previous value returns when the channel ends.
+            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier * (elementFx != null ? elementFx.SpeedMultiplier : 1f) *
+                                        healChannel.MoveMultiplier;
             ReadAim();
             if (dash.WasPressedThisFrame()) motor.TryDash();
 
@@ -214,6 +222,8 @@ namespace DeckArpg.Gameplay
         {
             int tick = Time.frameCount;
             RuntimeCardInstance card;
+            // A hand heal channels: every card, stock, Parry, Poke, Reload and Overburn waits it out (dash cancels it).
+            if (healChannel.IsChannelling) return false;
             if (deck.Reload.LocksCardPlays && IsCardCommand(command)) return false;
             switch (command)
             {
@@ -229,9 +239,14 @@ namespace DeckArpg.Gameplay
                 case CombatCommand.PlaySlot1:
                 case CombatCommand.PlaySlot2:
                 case CombatCommand.PlaySlot3:
-                    if (!deck.Cycle.TryPlay((int)command - (int)CombatCommand.PlaySlot1, out card)) return false;
+                {
+                    int slot = (int)command - (int)CombatCommand.PlaySlot1;
+                    var handCard = slot < deck.Cycle.Hand.Count ? deck.Cycle.Hand[slot] : null;
+                    if (handCard != null && handCard.IsHeal) return PlayHeal(slot);
+                    if (!deck.Cycle.TryPlay(slot, out card)) return false;
                     combat.Spawn(AttackPayload.FromCard(card, status.OwnerId, Team.Player, tick), motor.AimDirection, card);
                     return true;
+                }
                 case CombatCommand.Parry:
                     if (!deck.Cycle.TryPlayParry(out card)) return false;
                     combat.Spawn(AttackPayload.FromCard(card, status.OwnerId, Team.Player, tick), motor.AimDirection, card);
@@ -248,6 +263,18 @@ namespace DeckArpg.Gameplay
             }
         }
 
+        /// <summary>
+        /// A heal card from the hand: rejected (stays in hand) at full HP. Otherwise it is played (to the discard, as
+        /// any play) and channels; there is no hitbox.
+        /// </summary>
+        private bool PlayHeal(int slot)
+        {
+            if (status.Hp >= status.MaxHp) return false;
+            if (!deck.Cycle.TryPlay(slot, out var card)) return false;
+            healChannel.Begin(card);
+            return true;
+        }
+
         private static bool IsCardCommand(CombatCommand command) =>
             command != CombatCommand.Poke && command != CombatCommand.Reload && command != CombatCommand.Overburn;
 
@@ -257,6 +284,8 @@ namespace DeckArpg.Gameplay
             if (result == StockResult.Rejected) return false;
             if (result == StockResult.Fired)
             {
+                // Sleight heals land on the fire frame; the Sleight still attacks.
+                if (sleight.HealAmount > 0) status.Heal(sleight.HealAmount);
                 var payload = AttackPayload.FromSleight(sleight, status.OwnerId, Team.Player, tick,
                     SleightRules.HitCount(sleight.Delivery), NextSleightZeroProof);
                 NextSleightZeroProof = false;
@@ -269,6 +298,7 @@ namespace DeckArpg.Gameplay
         private void HandleDied()
         {
             deck.Reload.Cancel();
+            healChannel.Cancel();
             combat.CancelActiveAction();
             buffer.Clear();
             if (respawnOnDeath) respawnRemaining = respawnDelay;

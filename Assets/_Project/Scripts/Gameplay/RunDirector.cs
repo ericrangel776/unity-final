@@ -48,6 +48,8 @@ namespace DeckArpg.Gameplay
         private CombatActionController playerCombat;
         private RelicEffects playerRelics;
         private ExitDoor door;
+        /// <summary>The player's authored max HP, so a new run starts from it and not from last run's upgrades.</summary>
+        private int playerBaseMaxHp;
 
         public RunState Run { get; private set; }
         public RunDirectorState State { get; private set; }
@@ -89,6 +91,7 @@ namespace DeckArpg.Gameplay
             playerStatus = player.GetComponent<CombatantStatus>();
             playerDeck = player.GetComponent<DeckRuntimeManager>();
             playerCombat = player.GetComponent<CombatActionController>();
+            playerBaseMaxHp = playerStatus.MaxHp;
             playerRelics = player.GetComponent<RelicEffects>();
             if (playerRelics == null) playerRelics = player.gameObject.AddComponent<RelicEffects>();
             player.RespawnOnDeath = false;
@@ -118,8 +121,9 @@ namespace DeckArpg.Gameplay
             ClearVisits();
             CurrentReward = null;
 
-            Run = new RunState(content.StarterDeck, playerStatus.MaxHp, runSeed != 0 ? runSeed : Environment.TickCount);
+            Run = new RunState(content.StarterDeck, playerBaseMaxHp, runSeed != 0 ? runSeed : Environment.TickCount);
             player.ResetForNewRoom();
+            playerStatus.SetMaxHp(Run.MaxHp); // drop last run's max-HP upgrades
             playerStatus.Revive();
             MovePlayerToSpawn();
             PreparePlayerDeck(null);
@@ -140,7 +144,7 @@ namespace DeckArpg.Gameplay
             MovePlayerToSpawn();
             // Deliberate: HP is restored to what it was when the last room ended. Anything between rooms (Overburn
             // costs, Ashen Sigil heals from Sleights fired at the door) is undone, so the door isn't a free-heal spot.
-            playerStatus.SetHp(Run.Hp);
+            playerStatus.SetMaxHpKeepHp(Run.MaxHp, Run.Hp);
             PreparePlayerDeck(room);
             RoomStarted?.Invoke(room);
 
@@ -176,6 +180,7 @@ namespace DeckArpg.Gameplay
             RequireState(RunDirectorState.Reward);
             if (CurrentReward == null || !CurrentReward.TryPickRelic(index, Run)) return false;
             playerRelics.SetRelics(Run.Relics);
+            playerStatus.SetMaxHpKeepHp(Run.MaxHp, Run.Hp); // Heartwood Seed shows right away
             return true;
         }
 
@@ -185,7 +190,7 @@ namespace DeckArpg.Gameplay
             RequireState(RunDirectorState.Utility);
             Run.CompleteRoom(null);
             ClearVisits();
-            playerStatus.SetHp(Run.Hp); // a rest heal shows right away
+            playerStatus.SetMaxHpKeepHp(Run.MaxHp, Run.Hp); // a rest heal or max-HP upgrade shows right away
             Run.DealOffer();
             SetState(RunDirectorState.ChoosingDoor);
         }
@@ -244,8 +249,9 @@ namespace DeckArpg.Gameplay
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 int deckSeed = NextSeed();
                 enemy.Deck.SetStartingDeck(deck, deckSeed);
-                // Boss HP is relative to the player's, per floor (BossRules.MaxHp).
-                if (room.Kind == MapCardKind.Boss) enemy.Status.SetMaxHp(BossRules.MaxHp(Run.Floor, playerStatus.MaxHp));
+                // Boss HP is relative to the player's *starting* max HP, per floor (BossRules.MaxHp), so max-HP
+                // upgrades don't make the boss tougher.
+                if (room.Kind == MapCardKind.Boss) enemy.Status.SetMaxHp(BossRules.MaxHp(Run.Floor, Run.StartingMaxHp));
                 // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
                 if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);
@@ -311,6 +317,7 @@ namespace DeckArpg.Gameplay
 
         private void RoomCleared()
         {
+            player.HealChannel.Cancel(); // a heal still channelling when the room ends doesn't land
             Run.SetHp(playerStatus.Hp);
             bool boss = Run.CurrentRoom.Kind == MapCardKind.Boss;
             CurrentReward = Run.CompleteRoom(content.DraftPool);

@@ -22,6 +22,7 @@ namespace DeckArpg.Core
         }
 
         public bool IsZeroBreaker => Data.IsZeroBreaker;
+        public bool IsHeal => Data.IsHeal;
         public bool IsPremium => Data.IsPremium || IsPremiumOverride;
 
         /// <summary>

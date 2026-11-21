@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using UnityEngine;
@@ -66,8 +67,8 @@ namespace DeckArpg.UI
         protected virtual string CardPreview(RuntimeCardInstance card) => "";
         /// <summary>Applies the action to <paramref name="card"/>. Returns the result message, or null if it failed.</summary>
         protected virtual string ApplyCard(RuntimeCardInstance card) => null;
-        /// <summary>The subclass's extra top-level button (the Shop's Purge), placed left of Leave. Null if none.</summary>
-        protected virtual Button ExtraButton => null;
+        /// <summary>The subclass's extra top-level buttons (the Shop's Purge, Heal, Vital Draught), placed left of Leave.</summary>
+        protected virtual IReadOnlyList<Button> ExtraButtons => System.Array.Empty<Button>();
 
         protected override void Build(RectTransform root)
         {
@@ -148,7 +149,8 @@ namespace DeckArpg.UI
             }
             backButton.gameObject.SetActive(InCardList);
             confirmButton.gameObject.SetActive(InCardList);
-            if (ExtraButton != null) ExtraButton.gameObject.SetActive(!InCardList);
+            foreach (var extra in ExtraButtons)
+                if (extra != null) extra.gameObject.SetActive(!InCardList);
             LayoutButtons();
             message.text = messageText;
             message.color = messageIsWarning ? RunWidgets.Warning : RunWidgets.Gold;
@@ -229,15 +231,22 @@ namespace DeckArpg.UI
             Refresh();
         }
 
-        /// <summary>Centres the visible buttons as a row, left to right: Back / extra, Confirm, Leave.</summary>
+        /// <summary>Centres the visible buttons as a row, left to right: Back / extras, Confirm, Leave.</summary>
         private void LayoutButtons()
         {
-            var row = new System.Collections.Generic.List<RectTransform>(3);
-            foreach (var button in new[] { backButton, ExtraButton, confirmButton, leaveButton })
-                if (button != null && button.gameObject.activeSelf) row.Add((RectTransform)button.transform);
+            var row = new List<RectTransform>(4);
+            AddIfShown(row, backButton);
+            foreach (var extra in ExtraButtons) AddIfShown(row, extra);
+            AddIfShown(row, confirmButton);
+            AddIfShown(row, leaveButton);
             float start = -(row.Count - 1) * SlotX / 2f;
             for (int i = 0; i < row.Count; i++)
                 row[i].anchoredPosition = new Vector2(start + i * SlotX, RunWidgets.ButtonY);
+        }
+
+        private static void AddIfShown(List<RectTransform> row, Button button)
+        {
+            if (button != null && button.gameObject.activeSelf) row.Add((RectTransform)button.transform);
         }
 
         protected void SetMessage(string text, bool warning = false)

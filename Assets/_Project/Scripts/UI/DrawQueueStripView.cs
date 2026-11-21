@@ -137,7 +137,7 @@ namespace DeckArpg.UI
                 if (i < cardChips)
                 {
                     var card = cards[i];
-                    chip.color = ElementColors.CardFace(card.Data.Element);
+                    chip.color = ElementColors.CardFace(card.Data);
                     chipTexts[i].text = card.GetEffectiveValue().ToString();
                     chipOutlines[i].enabled = card.IsPremium;
                 }

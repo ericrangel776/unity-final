@@ -32,10 +32,13 @@ namespace DeckArpg.Tests.EditMode
             Assert.IsNotNull(prefab.GetComponent<PlayerCombatInput>());
             Assert.IsNotNull(prefab.GetComponent<CombatActionController>());
             Assert.AreEqual(Team.Player, prefab.GetComponent<CombatantStatus>().Team);
+            Assert.IsNotNull(prefab.GetComponent<HealChannel>(), "heal channel on the prefab");
+            Assert.IsNotNull(prefab.GetComponent<HealChannelFx>(), "heal ring on the prefab");
 
             var deck = StartingDeck(prefab);
-            Assert.AreEqual(10, deck.Length);
+            Assert.AreEqual(11, deck.Length);
             Assert.AreEqual(1, deck.Count(c => c.IsZeroBreaker), "Starter deck has exactly one 0-Parry.");
+            Assert.AreEqual(1, deck.Count(c => c.IsHeal), "Starter deck has exactly one heal (Mend 3).");
             Assert.IsTrue(deck.All(c => c.IsZeroBreaker || (c.BaseValue >= CardValue.Min && c.BaseValue <= CardValue.Max)));
         }
 

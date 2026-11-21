@@ -34,6 +34,7 @@ namespace DeckArpg.Core
         private void OnValidate()
         {
             baseValue = CardValue.Clamp(baseValue);
+            if (isZeroBreaker) isHeal = false; // a 0-card is never a heal
         }
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace DeckArpg.Core
             card.shape = shape;
             card.element = element;
             card.isZeroBreaker = zeroBreaker;
-            card.isHeal = heal;
+            card.isHeal = heal && !zeroBreaker;
             card.isPremium = premium;
             card.rarity = rarity;
             card.name = id;

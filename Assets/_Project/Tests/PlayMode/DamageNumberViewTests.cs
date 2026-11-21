@@ -67,6 +67,31 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Heal_ShowsGreenPlusNumber()
+        {
+            var player = Body(Team.Player, 100);
+            player.SetHp(40);
+
+            player.Heal(9);
+
+            Assert.AreEqual(1, view.ActiveCount);
+            Assert.AreEqual("+9", view.Active[0].Text);
+            Assert.AreEqual(DamageNumberView.HealColor, view.Active[0].Color);
+            Assert.AreEqual(1f, DamageNumberView.HealColor.a);
+            Assert.Greater(DamageNumberView.HealColor.g, DamageNumberView.HealColor.r, "green");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator HealAtFullHp_ShowsNothing()
+        {
+            var player = Body(Team.Player, 100);
+            player.Heal(9);
+            Assert.AreEqual(0, view.ActiveCount);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator PlayerHit_ShowsRedNumber()
         {
             var player = Body(Team.Player);

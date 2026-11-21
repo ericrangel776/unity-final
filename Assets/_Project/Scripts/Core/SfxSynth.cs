@@ -18,7 +18,9 @@ namespace DeckArpg.Core
         BossReload,
         BossExhausted,
         BigDeadlock,
-        Victory
+        Victory,
+        /// <summary>The player healed (hand channel or Sleight): a short rising chime.</summary>
+        Heal
     }
 
     /// <summary>
@@ -83,6 +85,9 @@ namespace DeckArpg.Core
                     for (int i = 0; i < notes.Length; i++)
                         b.Sine(notes[i], notes[i], 0.45f, Window(i * 0.2f, i == notes.Length - 1 ? 1f : i * 0.2f + 0.3f, 6f));
                     break;
+                case SfxId.Heal:
+                    b.Sine(520f, 780f, 0.5f, Window(0f, 0.6f, 8f)); b.Sine(780f, 1170f, 0.4f, Window(0.35f, 1f, 9f));
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(id));
             }
@@ -100,6 +105,7 @@ namespace DeckArpg.Core
                 case SfxId.ClashNeutral: return 0.3f;
                 case SfxId.CardBreak: return 0.35f;
                 case SfxId.ReloadPerfect: return 0.3f;
+                case SfxId.Heal: return 0.3f;
                 case SfxId.ReloadMiss: return 0.35f;
                 case SfxId.BossReload: return 0.35f;
                 case SfxId.ZeroBreak: return 0.5f;

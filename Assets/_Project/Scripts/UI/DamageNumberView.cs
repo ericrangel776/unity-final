@@ -10,7 +10,8 @@ namespace DeckArpg.UI
     /// Floating damage numbers (docs/specs/hit-juice.md). Every damaging body hit pops its final damage over the victim.
     /// On enemies the number takes the attack's element colour; on the player it is red. Bigger hits get bigger numbers.
     /// Each label punches in, rises with a sideways drift and fades out, on unscaled time so it moves during the hit-stop.
-    /// Labels come from a fixed pool; when every label is busy the oldest one is reused.
+    /// Labels come from a fixed pool; when every label is busy the oldest one is reused. Heals pop a green "+N" on the
+    /// same pool (docs/specs/heal-rework.md).
     /// </summary>
     public sealed class DamageNumberView : MonoBehaviour
     {
@@ -19,6 +20,8 @@ namespace DeckArpg.UI
         /// <summary>Effect damage (burn ticks, chain jumps, finisher) shows smaller than a card hit.</summary>
         public const float EffectNumberScale = 0.75f;
         public static readonly Color PlayerHurtColor = new Color(1f, 0.3f, 0.25f, 1f);
+        /// <summary>Heal numbers: the heal green, opaque.</summary>
+        public static readonly Color HealColor = Opaque(ElementColors.Heal);
 
         [SerializeField] private float showSeconds = 0.7f;
         [SerializeField] private float riseScreenPixels = 70f;
@@ -86,11 +89,16 @@ namespace DeckArpg.UI
             for (int i = 0; i < PoolSize; i++) pool.Add(new Label(canvas.transform, i));
         }
 
-        private void OnEnable() => CombatantStatus.AnyHitLanded += HandleHit;
+        private void OnEnable()
+        {
+            CombatantStatus.AnyHitLanded += HandleHit;
+            CombatantStatus.AnyHealed += HandleHealed;
+        }
 
         private void OnDisable()
         {
             CombatantStatus.AnyHitLanded -= HandleHit;
+            CombatantStatus.AnyHealed -= HandleHealed;
             foreach (var l in pool) l.Hide();
         }
 
@@ -99,14 +107,27 @@ namespace DeckArpg.UI
             bool onPlayer = hit.Victim != null && hit.Victim.Team == Team.Player;
             var color = onPlayer ? PlayerHurtColor : Opaque(ElementColors.For(hit.Payload));
             float scale = HitJuiceRules.DamageNumberScale(hit.Damage) * (hit.IsEffect ? EffectNumberScale : 1f);
+            Pop(hit.Damage.ToString(), color, scale, hit.Victim, hit.Position);
+        }
+
+        /// <summary>A heal pops a green "+N" over whoever healed (only raised when more than 0 was restored).</summary>
+        private void HandleHealed(CombatantStatus who, int amount)
+        {
+            if (who == null || amount <= 0) return;
+            Pop($"+{amount}", HealColor, HitJuiceRules.DamageNumberScale(amount), who,
+                who.transform.position + Vector3.up * CombatantStatus.HitFeedbackHeight);
+        }
+
+        private void Pop(string message, Color color, float scale, CombatantStatus victim, Vector3 position)
+        {
             var jitter = new Vector2(Random.Range(-jitterScreenPixels, jitterScreenPixels), 0f);
             float drift = Random.Range(-driftScreenPixels, driftScreenPixels);
 
             var label = TakeLabel();
-            int stack = RecentOn(hit.Victim, label, out float stackPixels);
+            int stack = RecentOn(victim, label, out float stackPixels);
             var offset = jitter + new Vector2(0f, stackPixels);
-            label.Show(hit.Damage.ToString(), color, scale, hit.Position + AnchorOffset, offset, drift, showSeconds,
-                spawnSerial++, hit.Victim, stack);
+            label.Show(message, color, scale, position + AnchorOffset, offset, drift, showSeconds,
+                spawnSerial++, victim, stack);
             label.Tick(0f, Camera.main, CanvasCamera, this);
         }
 

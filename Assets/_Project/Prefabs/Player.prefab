@@ -108,6 +108,8 @@ GameObject:
   - component: {fileID: 6323491808884093423}
   - component: {fileID: 4251412407746489157}
   - component: {fileID: 5517868511566337622}
+  - component: {fileID: 6801821614496346768}
+  - component: {fileID: 8164097426634830123}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -262,6 +264,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: af95e5983747f2f408f34f7c2ed95268, type: 2}
   - {fileID: 11400000, guid: 72213917a75763a45936c4bd528aa62b, type: 2}
   - {fileID: 11400000, guid: d264d234aa215b346aa958fc925ef48c, type: 2}
+  - {fileID: 11400000, guid: 7d1b5c88e9522d84f84a8ecee6c2a8de, type: 2}
   - {fileID: 11400000, guid: 80e267642295e3d489ce40c260c04fd3, type: 2}
   seed: 0
 --- !u!114 &6959820947352314712
@@ -322,6 +325,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f06d94d2d223774d8991fb8d4a41515, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.ElementStatusFx
+--- !u!114 &6801821614496346768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4220050465038504828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a85eba9c401bd8429c29d7054db0ef6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.HealChannel
+--- !u!114 &8164097426634830123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4220050465038504828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fd5c477fbd3c054e9fd6f8d2faea29a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeckArpg.Gameplay::DeckArpg.Gameplay.HealChannelFx
 --- !u!1 &5937457132148451322
 GameObject:
   m_ObjectHideFlags: 0

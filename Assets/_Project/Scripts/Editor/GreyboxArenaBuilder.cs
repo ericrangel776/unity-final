@@ -242,6 +242,8 @@ namespace DeckArpg.Editor
             root.AddComponent<PlayerCombatInput>();
             root.AddComponent<ElementStatusEffects>();
             root.AddComponent<ElementStatusFx>();
+            root.AddComponent<HealChannel>();
+            root.AddComponent<HealChannelFx>();
             return SavePrefab(root, PlayerPrefabPath);
         }
 

@@ -20,7 +20,7 @@ Memories; run structure like Slay the Spire). Original assets/names only - no IP
 - **Safeguards (must hold):** Floor of 3 (deck <= 3 -> Sleights don't burn); always-available
   `Value 1` poke + i-frame dash; Overburn Reload (10% HP restores burned cards);
   `0` is a flag (`isZeroBreaker`), never integer math - clamp all values to `[1, 9]`;
-  heals fire on activation frame; multi-hit Sleights resolve per hit;
+  hand heals channel 0.5 s and can be interrupted; Sleight heals fire on the fire frame; multi-hit Sleights resolve per hit;
   local hitbox clashes for mobs, global HUD clash only for Boss/Elite Sleights;
   boss has a visible 15-card deck - milling it to 0 causes a 4 s stagger.
 - **Macro loop:** choose 1 of 3 Map Cards per door (Red = combat mods, Green = room buffs,
