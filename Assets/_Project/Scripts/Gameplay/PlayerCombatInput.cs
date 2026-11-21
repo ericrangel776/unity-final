@@ -58,6 +58,8 @@ namespace DeckArpg.Gameplay
         /// Only <c>RunScreens</c> writes this (one owner).
         /// </summary>
         public bool InputBlocked { get; set; }
+        /// <summary>Debug menu: blocks gameplay input like <see cref="InputBlocked"/>, without touching RunScreens' flag.</summary>
+        public bool DebugInputBlocked { get; set; }
         /// <summary>The hand-heal channel (added in Awake if the rig lacks one).</summary>
         public HealChannel HealChannel => healChannel;
 
@@ -126,7 +128,7 @@ namespace DeckArpg.Gameplay
                 return;
             }
 
-            if (InputBlocked)
+            if (InputBlocked || DebugInputBlocked)
             {
                 motor.SetMoveInput(Vector2.zero);
                 buffer.Clear();

@@ -28,6 +28,13 @@ namespace DeckArpg.Gameplay
             }
         }
 
+        /// <summary>Debug menu: enemies stand still and don't attack (knockback still moves them).</summary>
+        public static bool DebugFreezeAI { get; set; }
+
+        // Static state survives play sessions when domain reload is disabled.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetDebugStatics() => DebugFreezeAI = false;
+
         [SerializeField] private Transform target;
         [SerializeField] private float moveSpeed = 2.5f;
         [SerializeField] private float attackRange = 2.2f;
@@ -164,7 +171,7 @@ namespace DeckArpg.Gameplay
             if (status.KnockbackVelocity != Vector3.zero &&
                 (body.Move(status.KnockbackVelocity * Time.deltaTime) & CollisionFlags.Sides) != 0 && elementFx != null)
                 elementFx.NotifyKnockbackBlocked();
-            if (status.IsStunned || target == null) return;
+            if (status.IsStunned || target == null || DebugFreezeAI) return;
             // Chill slows movement and the wind-up/recover timers alike.
             float speed = elementFx != null ? elementFx.SpeedMultiplier : 1f;
             if (TurnHook != null && TurnHook.IsBusy) return;
