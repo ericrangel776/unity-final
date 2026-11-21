@@ -76,7 +76,8 @@ its docs stay valid. This is the smallest change.
   - `Utility`: on a Rest, take the heal through the `RestVisit` API that `RestView` key 1 calls. Then call
     `LeaveUtility()`. Log the room as `Utility` with 0 s.
   - `Defeat`: log the room as Loss and finish with `RunResult.Loss`. `Victory`: finish with `RunResult.Victory`.
-- Attach the bot once per run with `Init(player, director)`. The player has no god mode.
+- Attach the bot once per run with `Init(player, director)`. **The player is in god mode** (changed on 2026-11-21, see
+  the addendum). A room's `HP a->b` is the damage the bot took, counted down from the room's starting HP.
 - Write `TestResults/runtiming.txt`. It holds every finished run's `FormatRun()` followed by `FormatSummary(all)`,
   and it is rewritten after each seed, so a crash keeps the partial data. Also `Debug.Log` each run with the
   `[RunTiming]` prefix.
@@ -94,7 +95,7 @@ is deterministic about survival. Wait on real time with a 90 s cap, and assert t
   when first seen.
 - The target dies mid-telegraph: the next frame retargets, and a scheduled parry still fires if a `0` is ready (harmless).
 - No enemies alive but the room hasn't ended (wave delay): the bot idles and reloads, and the clock keeps running.
-- The player dies: the room is logged as Loss, the run ends, and the next seed starts with a fresh scene load.
+- The player dies: the room is logged as Loss, the run ends, and the next seed starts with a fresh scene load. (This can't happen under god mode; the code path stays.)
 - A room hits the cap: logged as TIMEOUT, then debug-cleared, and the run continues. The reward is taken as normal.
 - The boss room uses the existing boss logic. `BossFightMeasurement` still compiles and runs unchanged.
 - Shop or Forge: left without using it (0 s, `Utility`). A Rest takes the heal.
@@ -125,3 +126,15 @@ Close the Editor first. Wrap every run in `timeout 1200`.
 - Measurement: the PlayMode command plus `-testFilter DeckArpg.Tests.PlayMode.RunTimingMeasurement` (use a long
   timeout, about 3600). Then read `TestResults/runtiming.txt`.
 - `grep "error CS" TestResults/*.log` shows nothing.
+
+## Addendum (2026-11-21): god-mode timing
+The first measurement, without god mode, lost all 6 runs, mostly to Elites (I2-I9 kill the bot 1v1: about 25 damage per
+hit, 0 parries, clashes W0 L4-5). Two attempts at a stronger bot failed. Attempt 2 (parry retry, answering the most
+urgent nearby telegraph, an equal-card answer, and chipping only in the swing recovery) made rooms 2-4x longer and still
+won nothing, so it was dropped. The user chose god-mode timing: a pacing baseline doesn't need a bot that wins.
+What was kept:
+- The bot fix for a heal-only hand at full HP (the bot pokes or reloads instead of stalling).
+- Per-room bot diagnostics (`BossFightBot.StatsLine()`: hits, damage by bot decision, clash W/L/N), written to the
+  report's "Bot detail per room" section.
+- The Elite trial in the room label.
+

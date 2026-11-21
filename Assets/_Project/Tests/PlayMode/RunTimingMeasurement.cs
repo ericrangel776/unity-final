@@ -15,6 +15,8 @@ namespace DeckArpg.Tests.PlayMode
     /// Measurement, not a regular test (docs/specs/run-timing.md): plays whole seeded runs with
     /// <see cref="BossFightBot"/> in run mode and logs each room's real time, HP and outcome. Doors are picked by a
     /// seeded RNG; draft card 1 and relic 1 are taken; Rest heals, Shop/Forge are left at once. Menus aren't timed.
+    /// The player is in god mode (the bot isn't strong enough to survive Elites, and pacing needs every run to reach the
+    /// boss), so a room's "HP a->b" is the damage taken in that room, counted down from the HP it started with.
     /// Results go to TestResults/runtiming.txt (rewritten after every seed). Run alone:
     ///   -runTests -testPlatform PlayMode -testFilter DeckArpg.Tests.PlayMode.RunTimingMeasurement
     /// </summary>
@@ -28,6 +30,8 @@ namespace DeckArpg.Tests.PlayMode
         private static readonly List<RunTimingLog> Runs = new List<RunTimingLog>();
         /// <summary>Bot state dumps for TIMEOUT rooms, appended to the report.</summary>
         private static readonly StringBuilder Stalls = new StringBuilder();
+        /// <summary>Per-room bot combat stats (where the damage came from), appended to the report.</summary>
+        private static readonly StringBuilder BotDetail = new StringBuilder();
 
         [UnityTearDown]
         public IEnumerator Unload()
@@ -55,6 +59,7 @@ namespace DeckArpg.Tests.PlayMode
             var bot = director.Player.gameObject.AddComponent<BossFightBot>();
             bot.Seed = seed;
             bot.Init(director.Player, director);
+            playerStatus.GodMode = true;
 
             for (int guard = 0; guard < 40 && log.Result == RunResult.Incomplete; guard++)
             {
@@ -72,6 +77,7 @@ namespace DeckArpg.Tests.PlayMode
                         int waves = 1 + director.WavesPending;
                         int hpBefore = playerStatus.Hp;
                         float cap = room.Kind == MapCardKind.Boss ? BossCapSeconds : RoomCapSeconds;
+                        bot.ResetStats();
                         float start = Time.realtimeSinceStartup;
                         while (director.State == RunDirectorState.Fighting && Time.realtimeSinceStartup - start < cap)
                             yield return null;
@@ -90,8 +96,11 @@ namespace DeckArpg.Tests.PlayMode
                         {
                             outcome = RoomOutcome.Loss;
                         }
-                        log.Add(new RoomTiming(roomNumber, room, mix, waves, seconds, hpBefore, playerStatus.Hp,
+                        // God mode keeps HP at full, so report the damage the bot took (what HP would have dropped by).
+                        int hpAfter = System.Math.Max(0, hpBefore - bot.DamageTaken);
+                        log.Add(new RoomTiming(roomNumber, room, mix, waves, seconds, hpBefore, hpAfter,
                             playerStatus.MaxHp, outcome));
+                        BotDetail.AppendLine($"seed {seed} room {roomNumber} {room.Kind} I{room.Number} {room.Trial}: {bot.StatsLine()}");
                         if (director.State == RunDirectorState.Defeat) log.Finish(RunResult.Loss);
                         else if (director.State == RunDirectorState.Victory) log.Finish(RunResult.Victory);
                         break;
@@ -130,8 +139,10 @@ namespace DeckArpg.Tests.PlayMode
             string run = log.FormatRun();
             Debug.Log("[RunTiming] " + run);
             var report = new StringBuilder();
+            report.Append("God mode: HP a->b = damage taken in the room; HP lost sums it. Real seconds.").Append(System.Environment.NewLine).Append(System.Environment.NewLine);
             foreach (var r in Runs) report.Append(r.FormatRun()).Append('\n');
             report.Append(RunTimingLog.FormatSummary(Runs));
+            report.Append(System.Environment.NewLine).Append("Bot detail per room:").Append(System.Environment.NewLine).Append(BotDetail);
             if (Stalls.Length > 0) report.Append("\nTIMEOUT bot states:\n").Append(Stalls);
             string path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "TestResults", "runtiming.txt"));
             Directory.CreateDirectory(Path.GetDirectoryName(path));
