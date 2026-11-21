@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using UnityEngine;
@@ -5,11 +7,13 @@ using UnityEngine;
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>
-    /// A scripted "decent player" for measuring the boss fight (BossFightMeasurement). It drives the player through
-    /// <see cref="PlayerCombatInput.Execute"/> and <see cref="PlayerMotor"/> (the input component is disabled), with a
-    /// human-ish reaction delay and imperfect timing. Tactics: beat a telegraph with a higher card, otherwise 0-parry the
-    /// swing, otherwise dash; 0-parry or dash boss Sleights; go all-in (Sleights first) during the reload window and
-    /// Exhausted; play the lowest card for chip damage and keep the highest for answers. It's a proxy, not a human.
+    /// A scripted "decent player" for measurements (BossFightMeasurement, RunTimingMeasurement). It drives the player
+    /// through <see cref="PlayerCombatInput.Execute"/> and <see cref="PlayerMotor"/> (the input component is disabled),
+    /// with a human-ish reaction delay and imperfect timing. Tactics: beat a telegraph with a higher card, otherwise
+    /// 0-parry the swing, otherwise dash; 0-parry or dash boss Sleights; go all-in (Sleights first) during the reload
+    /// window and Exhausted; play the lowest card for chip damage and keep the highest for answers. It's a proxy, not a
+    /// human. Boss mode fights one boss; run mode (docs/specs/run-timing.md) fights the nearest live enemy of a
+    /// <see cref="RunDirector"/> room and switches to the boss tactics when the room has a boss.
     /// </summary>
     internal sealed class BossFightBot : MonoBehaviour
     {
@@ -17,12 +21,19 @@ namespace DeckArpg.Tests.PlayMode
         /// <summary>Std-dev of the reload/Deadlock press error, as a fraction of the bar / in seconds.</summary>
         public float TimingError = 0.05f;
         public int Seed = 1;
+        /// <summary>Neutral heals only below this fraction of max HP.</summary>
+        public float HealBelow = 0.6f;
 
         private PlayerCombatInput input;
         private PlayerMotor motor;
         private DeckRuntimeManager deck;
         private CombatantStatus status;
-        private BossEnemy boss;
+        private RunDirector director;           // run mode only
+        private TrainingDummyEnemy body;        // the current target
+        private BossEnemy boss;                 // set when the target is the boss
+        private BossEnemy sleightWatched;       // the boss whose SleightFired we're subscribed to
+        private readonly Dictionary<TrainingDummyEnemy, Action<RuntimeCardInstance>> swingWatch =
+            new Dictionary<TrainingDummyEnemy, Action<RuntimeCardInstance>>();
         private System.Random rng;
         private float recovery;
         private float parryAt = -1f;
@@ -32,32 +43,118 @@ namespace DeckArpg.Tests.PlayMode
 
         // Stats
         public int CardsPlayed, Parries, Dashes, SleightsFired, ReloadsPerfect, ReloadsOther;
+        // Damage diagnostics (run timing): what the bot was doing when it got hit, and how its clashes went.
+        public int HitsTaken, DamageTaken, ClashesWon, ClashesLost, ClashesNeutral;
+        public readonly Dictionary<string, int> DamageByDecision = new Dictionary<string, int>();
+        private string decision = "idle";
 
+        /// <summary>Boss mode: fights <paramref name="target"/> only.</summary>
         public void Init(PlayerCombatInput player, BossEnemy target)
+        {
+            Bind(player);
+            SetBoss(target);
+        }
+
+        /// <summary>Run mode: each frame fights the room's boss if alive, else the nearest live enemy.</summary>
+        public void Init(PlayerCombatInput player, RunDirector runDirector)
+        {
+            Bind(player);
+            director = runDirector;
+        }
+
+        private void Bind(PlayerCombatInput player)
         {
             input = player;
             motor = player.GetComponent<PlayerMotor>();
             deck = player.GetComponent<DeckRuntimeManager>();
             status = player.GetComponent<CombatantStatus>();
-            boss = target;
             rng = new System.Random(Seed);
             input.enabled = false; // the bot is the input now
-            boss.Body.Swung += HandleBossSwung;
-            boss.SleightFired += HandleBossSleight;
+            CombatantStatus.AnyHitLanded += HandleHitLanded;
+            ClashSystem.ClashOccurred += HandleClash;
+        }
+
+        private void HandleHitLanded(HitInfo hit)
+        {
+            if (hit.Victim != status) return;
+            HitsTaken++;
+            DamageTaken += hit.Damage;
+            string key = hit.IsEffect ? "effect" : decision;
+            DamageByDecision.TryGetValue(key, out int sum);
+            DamageByDecision[key] = sum + hit.Damage;
+        }
+
+        private void HandleClash(ClashEvent e)
+        {
+            bool playerIsA = e.A.Team == Team.Player;
+            if (!playerIsA && e.B.Team != Team.Player) return;
+            if (e.Result.Outcome == ClashOutcome.Neutral) ClashesNeutral++;
+            else if (e.Result.Outcome == (playerIsA ? ClashOutcome.AWins : ClashOutcome.BWins)) ClashesWon++;
+            else if (e.Result.Outcome != ClashOutcome.None) ClashesLost++;
+        }
+
+        /// <summary>Zeroes the per-room counters (the measurement reads them per room).</summary>
+        public void ResetStats()
+        {
+            CardsPlayed = Parries = Dashes = SleightsFired = ReloadsPerfect = ReloadsOther = 0;
+            HitsTaken = DamageTaken = ClashesWon = ClashesLost = ClashesNeutral = 0;
+            DamageByDecision.Clear();
+        }
+
+        /// <summary>One line of the counters, e.g. "hits 4 dmg 51 [answer 27 chip 24] clash W3 L1 N0 cards 9 ...".</summary>
+        public string StatsLine()
+        {
+            var parts = new List<string>();
+            foreach (var pair in DamageByDecision) parts.Add(pair.Key + " " + pair.Value);
+            return $"hits {HitsTaken} dmg {DamageTaken} [{string.Join(" ", parts)}] clash W{ClashesWon} L{ClashesLost} " +
+                   $"N{ClashesNeutral} cards {CardsPlayed} parries {Parries} dashes {Dashes} " +
+                   $"reloads {ReloadsPerfect}/{ReloadsPerfect + ReloadsOther}";
         }
 
         private void OnDestroy()
         {
-            if (boss != null)
+            CombatantStatus.AnyHitLanded -= HandleHitLanded;
+            ClashSystem.ClashOccurred -= HandleClash;
+            foreach (var pair in swingWatch)
+                if (pair.Key != null) pair.Key.Swung -= pair.Value;
+            swingWatch.Clear();
+            if (sleightWatched != null) sleightWatched.SleightFired -= HandleBossSleight;
+            sleightWatched = null;
+        }
+
+        private void SetBoss(BossEnemy target)
+        {
+            boss = target;
+            body = target.Body;
+            Watch(body);
+            if (sleightWatched != target)
             {
-                boss.Body.Swung -= HandleBossSwung;
-                boss.SleightFired -= HandleBossSleight;
+                if (sleightWatched != null) sleightWatched.SleightFired -= HandleBossSleight;
+                sleightWatched = target;
+                target.SleightFired += HandleBossSleight;
             }
         }
 
-        private void HandleBossSwung(RuntimeCardInstance card)
+        /// <summary>Subscribes to an enemy's swings the first time it is seen (wave 2 spawns mid-room).</summary>
+        private void Watch(TrainingDummyEnemy enemy)
         {
-            // Couldn't beat the telegraph: answer the live swing with a 0 after reacting.
+            if (enemy == null || swingWatch.ContainsKey(enemy)) return;
+            Action<RuntimeCardInstance> handler = _ => HandleSwung(enemy);
+            swingWatch.Add(enemy, handler);
+            enemy.Swung += handler;
+        }
+
+        private void HandleSwung(TrainingDummyEnemy enemy)
+        {
+            // Couldn't beat the telegraph: answer the live swing with a 0 after reacting. A mob's swing only matters
+            // when it's close enough to land; the boss's always does.
+            bool isBoss = boss != null && enemy == boss.Body;
+            if (!isBoss && enemy != null)
+            {
+                var offset = enemy.transform.position - transform.position;
+                offset.y = 0f;
+                if (offset.magnitude > Reach(enemy) + 1f) return;
+            }
             if (deck.Cycle.ZerosReady > 0 && parryAt < 0f) parryAt = Time.time + ReactionSeconds * 0.6f;
         }
 
@@ -72,22 +169,54 @@ namespace DeckArpg.Tests.PlayMode
             return (float)(System.Math.Sqrt(-2.0 * System.Math.Log(u1)) * System.Math.Cos(2.0 * System.Math.PI * u2));
         }
 
+        /// <summary>Run mode: the live boss if there is one, else the nearest live enemy (null if none).</summary>
+        private void Retarget()
+        {
+            var roomBoss = director.Boss;
+            if (roomBoss != null && !roomBoss.Status.IsDead)
+            {
+                SetBoss(roomBoss);
+                return;
+            }
+            boss = null;
+            body = null;
+            float best = float.MaxValue;
+            foreach (var e in director.Enemies)
+            {
+                if (e == null || e.Status.IsDead) continue;
+                Watch(e);
+                float d = (e.transform.position - transform.position).sqrMagnitude;
+                if (d < best) { best = d; body = e; }
+            }
+        }
+
+        private static float Reach(TrainingDummyEnemy enemy) => 1.6f + 0.5f * enemy.transform.localScale.x; // strike reach plus the body radius
+
         private void Update()
         {
-            if (boss == null || status.IsDead || boss.Status.IsDead) { motor.SetMoveInput(Vector2.zero); return; }
+            if (status == null) return;
+            if (director != null && !status.IsDead) Retarget();
+            if (body == null || status.IsDead || body.Status.IsDead)
+            {
+                motor.SetMoveInput(Vector2.zero);
+                decision = "idle";
+                if (director != null && !status.IsDead) Idle();
+                return;
+            }
             if (HandleDeadlock()) return;
 
-            var toBoss = boss.transform.position - transform.position;
-            toBoss.y = 0f;
-            float dist = toBoss.magnitude;
-            motor.SetAimDirection(toBoss);
+            var toTarget = body.transform.position - transform.position;
+            toTarget.y = 0f;
+            float dist = toTarget.magnitude;
+            motor.SetAimDirection(toTarget);
             if (recovery > 0f) recovery -= Time.deltaTime;
             motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier;
             HandleReloadPress();
 
-            bool canAct = Time.timeScale > 0f && !status.IsStunned && !motor.IsDashing && recovery <= 0f;
+            bool canAct = CanAct();
             var cycle = deck.Cycle;
-            float reach = 1.6f + 0.5f * boss.transform.localScale.x; // strike reach plus the boss's body radius
+            float reach = Reach(body);
+            decision = status.IsStunned ? "stunned" : motor.IsDashing ? "dashing" : "other";
 
             // 1) A scheduled 0-parry (after a swing / Sleight activation).
             if (parryAt >= 0f && Time.time >= parryAt)
@@ -96,59 +225,119 @@ namespace DeckArpg.Tests.PlayMode
                 if (canAct && Act(CombatCommand.Parry)) { Parries++; return; }
             }
 
-            // 2) Boss Sleight wind-up: keep a 0 for after it fires, else dash out at the last moment.
-            if (boss.State == BossState.SleightWindup)
+            if (boss != null)
             {
-                Move(-toBoss, dist < 4f);
-                if (cycle.ZerosReady == 0 && boss.StateRemaining < 0.2f + ReactionSeconds && motor.TryDash()) Dashes++;
-                return;
-            }
-
-            // 3) Punish windows: all in.
-            bool punish = boss.State == BossState.ReloadWindow || boss.State == BossState.Exhausted;
-            if (punish)
-            {
-                Move(toBoss, dist > reach * 0.8f);
-                if (!canAct || dist > reach) return;
-                // A Sleight while Exhausted (2x damage): keep stocking once started, start only with time left.
-                bool stocking = deck.Cycle.StockCount > 0;
-                if (boss.State == BossState.Exhausted && (stocking || (boss.StateRemaining > 1.2f && FullHand())) && StockOne())
+                // 2) Boss Sleight wind-up: keep a 0 for after it fires, else dash out at the last moment.
+                if (boss.State == BossState.SleightWindup)
+                {
+                    decision = "bossSleight";
+                    Move(-toTarget, dist < 4f);
+                    if (cycle.ZerosReady == 0 && boss.StateRemaining < 0.2f + ReactionSeconds && motor.TryDash()) Dashes++;
                     return;
-                if (PlayExtreme(highest: true)) return;
-                if (cycle.CanReload) StartReload();
-                else Act(CombatCommand.Poke);
-                return;
+                }
+
+                // 3) Punish windows: all in.
+                bool punish = boss.State == BossState.ReloadWindow || boss.State == BossState.Exhausted;
+                if (punish)
+                {
+                    decision = "punish";
+                    Move(toTarget, dist > reach * 0.8f);
+                    if (!canAct || dist > reach) return;
+                    // A Sleight while Exhausted (2x damage): keep stocking once started, start only with time left.
+                    bool stocking = deck.Cycle.StockCount > 0;
+                    if (boss.State == BossState.Exhausted && (stocking || (boss.StateRemaining > 1.2f && FullHand())) && StockOne())
+                        return;
+                    if (PlayExtreme(highest: true)) return;
+                    if (cycle.CanReload) StartReload();
+                    else Act(CombatCommand.Poke);
+                    return;
+                }
             }
 
             // 4) Normal swing telegraph.
-            var telegraph = boss.Body.CurrentTelegraph;
+            var telegraph = body.CurrentTelegraph;
             if (telegraph != null)
             {
                 int v = telegraph.GetEffectiveValue();
                 int slot = BestAbove(v);
                 if (slot >= 0)
                 {
-                    Move(toBoss, dist > reach * 0.8f);
+                    decision = "answer";
+                    Move(toTarget, dist > reach * 0.8f);
                     if (canAct && dist <= reach && Act(CombatCommand.PlaySlot1 + slot)) CardsPlayed++;
                     return;
                 }
-                if (cycle.ZerosReady > 0) { Move(toBoss, dist > reach); return; } // stay close, parry the swing
-                Move(-toBoss, true);
-                if (boss.Body.TelegraphProgress > 0.75f && motor.TryDash()) Dashes++;
+                if (cycle.ZerosReady > 0) { decision = "holdParry"; Move(toTarget, dist > reach); return; } // stay close, parry the swing
+                decision = "evade";
+                Move(-toTarget, true);
+                if (body.TelegraphProgress > 0.75f && motor.TryDash()) Dashes++;
                 return;
             }
 
-            // 5) Neutral: reload when empty, else chip with the lowest card (keep the best for answers).
+            // 5) Neutral: heal when hurt, reload when out of attacks, else chip with the lowest card (keep the best
+            //    for answers).
+            if (canAct && status.Hp <= status.MaxHp * HealBelow && PlayHeal()) return;
             if (OutOfCards())
             {
-                Move(-toBoss, dist < 3f);
-                if (canAct && cycle.CanReload) StartReload();
+                decision = "reload";
+                Move(-toTarget, dist < 3f);
+                if (!canAct) return;
+                if (cycle.CanReload) StartReload();
+                else if (dist <= reach) Act(CombatCommand.Poke); // e.g. only a heal left at full HP: poke, never idle
                 return;
             }
-            Move(toBoss, dist > reach * 0.8f);
+            decision = "chip";
+            Move(toTarget, dist > reach * 0.8f);
             if (!canAct || dist > reach) return;
             if (HandCount() >= 2 ? PlayExtreme(highest: false) : PlayExtreme(highest: true)) return;
         }
+
+        /// <summary>Plays a heal card from the hand (the game refuses one at full HP).</summary>
+        private bool PlayHeal()
+        {
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                if (c != null && c.IsHeal && Act(CombatCommand.PlaySlot1 + i)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A one-line state dump for stalled rooms (measurement TIMEOUTs, the smoke test's failure message).</summary>
+        public string Describe()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"bot hp {status.Hp}/{status.MaxHp} pos {transform.position} recovery {recovery:0.00} stunned {status.IsStunned} ");
+            sb.Append($"reload {deck.Reload.State} canReload {deck.Cycle.CanReload} zeros {deck.Cycle.ZerosReady} hand [");
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                sb.Append(c == null ? "-" : (c.IsHeal ? "H" : "") + c.GetEffectiveValue()).Append(i < DeckCycle.HandSize - 1 ? " " : "");
+            }
+            sb.Append($"] cards {CardsPlayed} parries {Parries} dashes {Dashes}");
+            if (body != null)
+            {
+                var d = body.transform.position - transform.position;
+                d.y = 0f;
+                sb.Append($" | target {body.name} pos {body.transform.position} dist {d.magnitude:0.0} hp {body.Status.Hp} " +
+                          $"telegraph {(body.CurrentTelegraph != null ? body.CurrentTelegraph.GetEffectiveValue().ToString() : "-")}");
+            }
+            else sb.Append(" | no target");
+            if (director != null)
+                foreach (var e in director.Enemies)
+                    if (e != null && !e.Status.IsDead) sb.Append($" | {e.name} at {e.transform.position} hp {e.Status.Hp}");
+            return sb.ToString();
+        }
+
+        /// <summary>Run mode with no live target (wave delay, cleared room): stand still, finish/start a reload.</summary>
+        private void Idle()
+        {
+            if (recovery > 0f) recovery -= Time.deltaTime;
+            HandleReloadPress();
+            if (OutOfCards() && CanAct() && deck.Cycle.CanReload) StartReload();
+        }
+
+        private bool CanAct() => Time.timeScale > 0f && !status.IsStunned && !motor.IsDashing && recovery <= 0f;
 
         private bool HandleDeadlock()
         {
@@ -209,7 +398,7 @@ namespace DeckArpg.Tests.PlayMode
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var c = deck.Cycle.Hand[i];
-                if (c == null) continue;
+                if (c == null || c.IsHeal) continue;
                 if (pick < 0) { pick = i; continue; }
                 int a = c.GetEffectiveValue(), b = deck.Cycle.Hand[pick].GetEffectiveValue();
                 if (highest ? a > b : a < b) pick = i;
@@ -225,7 +414,7 @@ namespace DeckArpg.Tests.PlayMode
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var c = deck.Cycle.Hand[i];
-                if (c == null || c.GetEffectiveValue() <= value) continue;
+                if (c == null || c.IsHeal || c.GetEffectiveValue() <= value) continue;
                 // The smallest card that still wins, so the big ones stay for later.
                 if (pick < 0 || c.GetEffectiveValue() < deck.Cycle.Hand[pick].GetEffectiveValue()) pick = i;
             }
@@ -238,10 +427,15 @@ namespace DeckArpg.Tests.PlayMode
             return -1;
         }
 
+        /// <summary>Attack cards in hand (heals excluded: they can't answer a telegraph or chip).</summary>
         private int HandCount()
         {
             int n = 0;
-            for (int i = 0; i < DeckCycle.HandSize; i++) if (deck.Cycle.Hand[i] != null) n++;
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                if (c != null && !c.IsHeal) n++;
+            }
             return n;
         }
 
