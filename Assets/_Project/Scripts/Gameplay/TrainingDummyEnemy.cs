@@ -232,6 +232,15 @@ namespace DeckArpg.Gameplay
         /// <summary>Tests: start winding up the first hand card now.</summary>
         internal void ForceTelegraph() => BeginTelegraph();
 
+        /// <summary>Debug menu: wind up now, unless dead, stunned, already winding up or the boss is busy.</summary>
+        public bool DebugForceTelegraph()
+        {
+            if (status.IsDead || status.IsStunned || state == State.Telegraph || (TurnHook != null && TurnHook.IsBusy))
+                return false;
+            BeginTelegraph();
+            return state == State.Telegraph;
+        }
+
         private void BeginTelegraph()
         {
             var cycle = deck.Cycle;
