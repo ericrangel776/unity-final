@@ -25,6 +25,7 @@ namespace DeckArpg.Gameplay
         private Color[] baseColors;
         private MaterialPropertyBlock block;
         private bool applied;
+        private bool hasBaseOverride;
 
         /// <summary>The body's tint owner, added on first use. Captures the renderers that exist at that moment.</summary>
         public static BodyTint For(GameObject body)
@@ -58,6 +59,17 @@ namespace DeckArpg.Gameplay
             fromWhite[i] = lerpFromWhite;
         }
 
+        /// <summary>
+        /// Replaces every renderer's own colour with <paramref name="color"/> (an enemy variant's look). With no layer
+        /// active the body shows it; layers still win over it, and a lerp from the own colour starts from it.
+        /// </summary>
+        public void SetBaseColor(Color color)
+        {
+            for (int i = 0; i < baseColors.Length; i++) baseColors[i] = color;
+            hasBaseOverride = true;
+            if (!applied) Release(); // no layer showing: put the base colour on now
+        }
+
         public void Clear(Layer layer) => active[(int)layer] = false;
 
         public bool IsActive(Layer layer) => active[(int)layer];
@@ -89,11 +101,20 @@ namespace DeckArpg.Gameplay
             if (applied) Release();
         }
 
+        /// <summary>Back to the base: the override colour if one was set, otherwise no property block at all.</summary>
         private void Release()
         {
             applied = false;
-            foreach (var r in renderers)
-                if (r != null) r.SetPropertyBlock(null);
+            for (int r = 0; r < renderers.Length; r++)
+            {
+                if (renderers[r] == null) continue;
+                if (hasBaseOverride)
+                {
+                    block.SetColor(BaseColorId, baseColors[r]);
+                    renderers[r].SetPropertyBlock(block);
+                }
+                else renderers[r].SetPropertyBlock(null);
+            }
         }
     }
 }
