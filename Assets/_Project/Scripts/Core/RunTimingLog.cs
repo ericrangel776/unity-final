@@ -110,15 +110,19 @@ namespace DeckArpg.Core
             return sb.ToString();
         }
 
-        /// <summary>e.g. "room 2  Vanguard I4  mix B2 R1  waves 1  31.4s  HP 88->71/100  Cleared".</summary>
+        /// <summary>
+        /// e.g. "room 2  Vanguard I4  mix B2 R1  waves 1  31.4s  HP 88->71/100  Cleared". An Elite names its trial
+        /// ("EliteTrial I5 Hexer").
+        /// </summary>
         public static string FormatRoom(in RoomTiming r)
         {
             string label = r.Card.Family == MapFamily.Blue ? "Q" : "I";
+            string trial = r.Card.Trial != EliteTrial.None ? " " + r.Card.Trial : "";
             if (!r.IsTimed)
                 return string.Format(Inv, "room {0}  {1} {2}{3}  HP {4}->{5}/{6}  Utility",
                     r.RoomNumber, r.Card.Kind, label, r.Card.Number, r.HpBefore, r.HpAfter, r.MaxHp);
-            return string.Format(Inv, "room {0}  {1} {2}{3}  mix {4}  waves {5}  {6:0.0}s  HP {7}->{8}/{9}  {10}",
-                r.RoomNumber, r.Card.Kind, label, r.Card.Number, r.Mix, r.Waves, r.Seconds,
+            return string.Format(Inv, "room {0}  {1} {2}{3}{4}  mix {5}  waves {6}  {7:0.0}s  HP {8}->{9}/{10}  {11}",
+                r.RoomNumber, r.Card.Kind, label, r.Card.Number, trial, r.Mix, r.Waves, r.Seconds,
                 r.HpBefore, r.HpAfter, r.MaxHp, r.Outcome);
         }
 

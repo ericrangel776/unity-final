@@ -81,6 +81,14 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void FormatRoom_Elite_NamesItsTrial()
+        {
+            var elite = new RoomTiming(4, new MapCard(MapCardKind.EliteTrial, 5, EliteTrial.Hexer), "B1", 1, 8f,
+                82, 0, 100, RoomOutcome.Loss);
+            StringAssert.StartsWith("room 4  EliteTrial I5 Hexer  mix B1", RunTimingLog.FormatRoom(elite));
+        }
+
+        [Test]
         public void FormatRoom_BlueRoom_HasNoTime()
         {
             var line = RunTimingLog.FormatRoom(Blue(3));
