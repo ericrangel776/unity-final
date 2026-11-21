@@ -46,6 +46,9 @@ namespace DeckArpg.Gameplay
         private float timer;
         private int telegraphSlot = -1;
         private Vector3 spawnPosition;
+        private bool variantApplied;
+        /// <summary>Caster: seconds spent closer than its retreat range (cornered once it reaches the limit).</summary>
+        private float closeTimer;
 
         /// <summary>Card currently being telegraphed, or null.</summary>
         public RuntimeCardInstance CurrentTelegraph { get; private set; }
@@ -74,6 +77,26 @@ namespace DeckArpg.Gameplay
         public bool RespawnOnDeath { get => respawnOnDeath; set => respawnOnDeath = value; }
         public float MoveSpeed => moveSpeed;
         public float TelegraphSeconds => telegraphSeconds;
+        public float RecoverSeconds => recoverSeconds;
+        /// <summary>Mob archetype (docs/specs/enemy-variants.md). Brute unless <see cref="ApplyVariant"/> changed it.</summary>
+        public EnemyVariant Variant { get; private set; } = EnemyVariant.Brute;
+
+        /// <summary>
+        /// Scales move speed and wind-up/recover time by the variant's stats; a Caster also keeps its distance. Call
+        /// once, right after spawning. Multiplicative, so the order with <see cref="ApplyTempo"/> doesn't matter.
+        /// HP, posture, deck and look are the spawner's job. The boss (<see cref="TurnHook"/>) is always a Brute.
+        /// </summary>
+        public void ApplyVariant(EnemyVariant v)
+        {
+            if (variantApplied) throw new InvalidOperationException("ApplyVariant was already called on this enemy.");
+            if (TurnHook != null) throw new InvalidOperationException("An enemy with a TurnHook (the boss) stays a Brute.");
+            var stats = EnemyVariantRules.Stats(v);
+            moveSpeed *= stats.MovePercent / 100f;
+            telegraphSeconds *= stats.TelegraphPercent / 100f;
+            recoverSeconds *= stats.RecoverPercent / 100f;
+            Variant = v;
+            variantApplied = true;
+        }
 
         /// <summary>
         /// Room tempo: moves faster and winds up/recovers quicker by <paramref name="multiplier"/> (1 = unchanged).
@@ -154,6 +177,11 @@ namespace DeckArpg.Gameplay
             switch (state)
             {
                 case State.Approach:
+                    if (Variant == EnemyVariant.Caster)
+                    {
+                        CasterApproach(toTarget, speed);
+                        break;
+                    }
                     if (toTarget.magnitude > attackRange * 0.8f)
                         body.SimpleMove(toTarget.normalized * (moveSpeed * speed));
                     else if (timer <= 0f)
@@ -166,6 +194,32 @@ namespace DeckArpg.Gameplay
                     if (timer <= 0f) state = State.Approach;
                     break;
             }
+        }
+
+        /// <summary>
+        /// Keeps 4-7 u from the target: advances from beyond 7, backs off inside 4, holds between. Casts from 4-9 u, or
+        /// point-blank once it has been stuck too close for <see cref="EnemyVariantRules.CasterCorneredSeconds"/>.
+        /// </summary>
+        private void CasterApproach(Vector3 toTarget, float speed)
+        {
+            float distance = toTarget.magnitude;
+            var dir = distance > 0.001f ? toTarget / distance : transform.forward;
+            switch (EnemyVariantRules.CasterMovement(distance))
+            {
+                case CasterMove.Advance:
+                    closeTimer = 0f;
+                    body.SimpleMove(dir * (moveSpeed * speed));
+                    break;
+                case CasterMove.Retreat:
+                    closeTimer += Time.deltaTime;
+                    body.SimpleMove(-dir * (moveSpeed * EnemyVariantRules.CasterRetreatSpeedFactor * speed));
+                    break;
+                default:
+                    closeTimer = 0f;
+                    break;
+            }
+            if (timer <= 0f && EnemyVariantRules.CasterMayCast(distance, closeTimer))
+                BeginTelegraph();
         }
 
         /// <summary>Tests: start winding up the first hand card now.</summary>
@@ -264,6 +318,7 @@ namespace DeckArpg.Gameplay
             status.FlinchArmor = false;
             CancelTelegraph();
             combat.CancelActiveAction();
+            closeTimer = 0f;
             timer = respawnDelay;
         }
 
@@ -274,6 +329,7 @@ namespace DeckArpg.Gameplay
             body.enabled = true;
             status.Revive();
             deck.Reinitialize();
+            closeTimer = 0f;
             state = State.Recover;
             timer = recoverSeconds;
         }

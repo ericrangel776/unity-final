@@ -80,17 +80,30 @@ namespace DeckArpg.Tests.EditMode
             }
         }
 
-        [TestCase(MapCardKind.Vanguard, 5, 0, 15)]
+        // Mid/High mob rooms have a second wave: x125% after BountyWind, before Momentum.
+        [TestCase(MapCardKind.Vanguard, 5, 0, 19)]       // 15 -> 18.75 -> 19 (wave 2)
         [TestCase(MapCardKind.Hexfire, 2, 0, 9)]
-        [TestCase(MapCardKind.KindledGround, 7, 0, 23)]  // 22.5 -> 23
-        [TestCase(MapCardKind.Vanguard, 9, 0, 30)]
+        [TestCase(MapCardKind.KindledGround, 7, 0, 29)]  // 22.5 -> 23 -> 28.75 -> 29 (wave 2)
+        [TestCase(MapCardKind.Vanguard, 9, 0, 38)]       // 30 -> 37.5 -> 38 (wave 2)
         [TestCase(MapCardKind.EliteTrial, 7, 0, 45)]
         [TestCase(MapCardKind.Boss, 7, 0, 75)]
-        [TestCase(MapCardKind.BountyWind, 5, 0, 23)]     // 15 -> 22.5 -> 23
-        [TestCase(MapCardKind.BountyWind, 8, 0, 40)]     // 15 -> 23 -> 40.25 -> 40
-        [TestCase(MapCardKind.BountyWind, 8, 3, 52)]     // 40 x 1.3
-        public void Currency_TierThenBountyThenMomentum(MapCardKind kind, int n, int stacks, int expected) =>
+        [TestCase(MapCardKind.BountyWind, 5, 0, 29)]     // 15 -> 22.5 -> 23 -> 28.75 -> 29
+        [TestCase(MapCardKind.BountyWind, 8, 0, 50)]     // 15 -> 23 -> 40.25 -> 40 -> 50
+        [TestCase(MapCardKind.BountyWind, 8, 3, 65)]     // 50 x 1.3
+        public void Currency_TierThenBountyThenWaveThenMomentum(MapCardKind kind, int n, int stacks, int expected) =>
             Assert.AreEqual(expected, RewardRules.Currency(Room(kind, n), WithStacks(stacks)));
+
+        [Test]
+        public void Currency_LowVanguardHasNoWaveBonus() =>
+            Assert.AreEqual(9, RewardRules.Currency(Room(MapCardKind.Vanguard, 3), new Momentum())); // 15 x 60%
+
+        [Test]
+        public void Currency_MidVanguardPaysWaveBonus() =>
+            Assert.AreEqual(19, RewardRules.Currency(Room(MapCardKind.Vanguard, 4), new Momentum())); // 15 x 125% = 18.75
+
+        [Test]
+        public void Currency_EliteHasNoWaveBonus() =>
+            Assert.AreEqual(45, RewardRules.Currency(Room(MapCardKind.EliteTrial, 7), new Momentum()));
 
         [Test]
         public void Currency_RejectsBlueRoom() =>

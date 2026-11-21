@@ -85,13 +85,16 @@ namespace DeckArpg.UI
             switch (card.Kind)
             {
                 case MapCardKind.Vanguard:
-                    return $"{Enemies(card)}, Strike-heavy.\nDraft one rarity higher.";
+                    return $"{Enemies(card)}, Rushers among them.\nDraft one rarity higher." + WaveLine(card);
                 case MapCardKind.Hexfire:
-                    return $"{Enemies(card)} with stronger elemental cards.\nDraft one rarity higher.";
+                    return $"{Enemies(card)}, Casters among them, stronger elemental cards.\nDraft one rarity higher." +
+                           WaveLine(card);
                 case MapCardKind.KindledGround:
-                    return $"{Enemies(card)}.\nYour {card.BuffElement} cards +{RoomIntensity.PlayerElementBuff(card)}. Enemies faster.";
+                    return $"{Enemies(card)}.\nYour {card.BuffElement} cards +{RoomIntensity.PlayerElementBuff(card)}. Enemies faster." +
+                           WaveLine(card);
                 case MapCardKind.BountyWind:
-                    return $"{Enemies(card)}.\nCurrency +{RoomIntensity.BountyCurrencyPercent(card) - 100}%. Enemies tankier.";
+                    return $"{Enemies(card)}.\nCurrency +{RoomIntensity.BountyCurrencyPercent(card) - 100}%. Enemies tankier." +
+                           WaveLine(card);
                 case MapCardKind.Shop:
                     return $"Buy from {ShopRules.StockCount(card.Number)} cards,\nor pay to purge one.";
                 case MapCardKind.Forge:
@@ -117,6 +120,13 @@ namespace DeckArpg.UI
                 case EliteTrial.Hexer: return "Your broken cards burn.";
                 default: return "";
             }
+        }
+
+        /// <summary>Third blurb line for a room with a second wave (Intensity 4+ mob rooms), else empty.</summary>
+        private static string WaveLine(in MapCard card)
+        {
+            int k = EnemyVariantRules.WaveTwoCount(card);
+            return k > 0 ? $"\n+{k} wave 2, currency +{EnemyVariantRules.WaveCurrencyPercent - 100}%." : "";
         }
 
         /// <summary>Regular fights always have 2+ enemies (Elite/Boss blurbs don't use this).</summary>

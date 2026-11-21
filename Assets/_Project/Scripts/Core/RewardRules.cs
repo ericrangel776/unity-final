@@ -60,7 +60,8 @@ namespace DeckArpg.Core
         }
 
         /// <summary>
-        /// base x tier% x BountyWind%, each step rounded half up, then the Momentum bonus.
+        /// base x tier% x BountyWind% x second-wave% (<see cref="EnemyVariantRules.WaveCurrencyPercent"/>, only
+        /// when the room has a wave 2), each step rounded half up, then the Momentum bonus.
         /// <paramref name="momentum"/> is the streak held before this clear.
         /// </summary>
         public static int Currency(in MapCard room, Momentum momentum)
@@ -68,6 +69,8 @@ namespace DeckArpg.Core
             if (momentum == null) throw new ArgumentNullException(nameof(momentum));
             int amount = PercentHalfUp(BaseCurrency(room), CurrencyPercent(Tier(room.Number)));
             amount = PercentHalfUp(amount, RoomIntensity.BountyCurrencyPercent(room));
+            if (EnemyVariantRules.WaveTwoCount(room) > 0)
+                amount = PercentHalfUp(amount, EnemyVariantRules.WaveCurrencyPercent);
             return momentum.ApplyCurrencyBonus(amount);
         }
 

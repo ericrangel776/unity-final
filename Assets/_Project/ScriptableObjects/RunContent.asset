@@ -83,4 +83,16 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 01095b72237348b4aa35e92405f8bf53, type: 2}
   - {fileID: 11400000, guid: ca1b28923cfb0db408f59bac1301f7c9, type: 2}
   - {fileID: 11400000, guid: deb31144f688c3549aa6dd7fcf28a7d4, type: 2}
+  casterDeck:
+  - {fileID: 11400000, guid: a9db071e8703f6f4b8e1436f404e9a4f, type: 2}
+  - {fileID: 11400000, guid: fcce07e207af95c4d92cb8d22b2ea1c8, type: 2}
+  - {fileID: 11400000, guid: 31159446d235c5046a2aeaa2b6ef79a0, type: 2}
+  - {fileID: 11400000, guid: 0baf696212808944a839cf1a1cd2fe7a, type: 2}
+  rusherDeck:
+  - {fileID: 11400000, guid: b4f2f56079e8dad4b9e803f899abda6a, type: 2}
+  - {fileID: 11400000, guid: 8571cbb127811c442ad2e7b2b47db525, type: 2}
+  - {fileID: 11400000, guid: 4702c477b78966e42b8751d5c1685f4e, type: 2}
+  - {fileID: 11400000, guid: 8cb7ae796331f614a86cc3b3c2eb5c58, type: 2}
+  - {fileID: 11400000, guid: ddf9c07b914a84e4fa96bad666989608, type: 2}
+  - {fileID: 11400000, guid: 984c2185360047f468803beefea25ede, type: 2}
   enemyZero: {fileID: 11400000, guid: 05ff79c317a38d642aa0fae2ee96b4b4, type: 2}

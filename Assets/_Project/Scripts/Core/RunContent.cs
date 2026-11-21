@@ -22,6 +22,10 @@ namespace DeckArpg.Core
         [SerializeField] private List<CardData> hexfireDeck = new List<CardData>();
         [SerializeField] private List<CardData> eliteDeck = new List<CardData>();
         [SerializeField] private List<CardData> bossDeck = new List<CardData>();
+        [Tooltip("Caster variant (any mob room): projectile cards only.")]
+        [SerializeField] private List<CardData> casterDeck = new List<CardData>();
+        [Tooltip("Rusher variant (any mob room): low Strike cards.")]
+        [SerializeField] private List<CardData> rusherDeck = new List<CardData>();
         [Tooltip("0-card copies the Counterpuncher trial adds to the elite deck.")]
         [SerializeField] private CardData enemyZero;
 
@@ -31,11 +35,22 @@ namespace DeckArpg.Core
         public IReadOnlyList<CardData> HexfireDeck => hexfireDeck;
         public IReadOnlyList<CardData> EliteDeck => eliteDeck;
         public IReadOnlyList<CardData> BossDeck => bossDeck;
+        public IReadOnlyList<CardData> CasterDeck => casterDeck;
+        public IReadOnlyList<CardData> RusherDeck => rusherDeck;
         public CardData EnemyZero => enemyZero;
 
-        /// <summary>Enemy deck for a combat room kind.</summary>
-        public IReadOnlyList<CardData> EnemyDeckFor(MapCardKind kind)
+        /// <summary>Enemy deck for a Brute in a combat room kind.</summary>
+        public IReadOnlyList<CardData> EnemyDeckFor(MapCardKind kind) => EnemyDeckFor(kind, EnemyVariant.Brute);
+
+        /// <summary>
+        /// Enemy deck for a variant in a combat room kind: Casters and Rushers bring their own deck in any room, Brutes
+        /// use the room kind's deck.
+        /// </summary>
+        public IReadOnlyList<CardData> EnemyDeckFor(MapCardKind kind, EnemyVariant variant)
         {
+            if (!MapCard.IsCombatKind(kind)) throw new ArgumentException($"{kind} has no enemies.", nameof(kind));
+            if (variant == EnemyVariant.Caster) return casterDeck;
+            if (variant == EnemyVariant.Rusher) return rusherDeck;
             switch (kind)
             {
                 case MapCardKind.Hexfire: return hexfireDeck;
@@ -54,7 +69,7 @@ namespace DeckArpg.Core
         /// </summary>
         public static RunContent Create(IEnumerable<CardData> starter, IEnumerable<CardData> pool,
             IEnumerable<CardData> mob, IEnumerable<CardData> hexfire, IEnumerable<CardData> elite,
-            IEnumerable<CardData> boss, CardData zero)
+            IEnumerable<CardData> boss, IEnumerable<CardData> caster, IEnumerable<CardData> rusher, CardData zero)
         {
             var content = CreateInstance<RunContent>();
             content.starterDeck = new List<CardData>(starter ?? Array.Empty<CardData>());
@@ -63,6 +78,8 @@ namespace DeckArpg.Core
             content.hexfireDeck = new List<CardData>(hexfire ?? Array.Empty<CardData>());
             content.eliteDeck = new List<CardData>(elite ?? Array.Empty<CardData>());
             content.bossDeck = new List<CardData>(boss ?? Array.Empty<CardData>());
+            content.casterDeck = new List<CardData>(caster ?? Array.Empty<CardData>());
+            content.rusherDeck = new List<CardData>(rusher ?? Array.Empty<CardData>());
             content.enemyZero = zero;
             content.name = "RunContent";
             return content;
@@ -79,6 +96,8 @@ namespace DeckArpg.Core
             CheckNoNulls(problems, "HexfireDeck", hexfireDeck);
             CheckNoNulls(problems, "EliteDeck", eliteDeck);
             CheckNoNulls(problems, "BossDeck", bossDeck);
+            CheckNoNulls(problems, "CasterDeck", casterDeck);
+            CheckNoNulls(problems, "RusherDeck", rusherDeck);
 
             if (starterDeck.Count < ShopRules.MinDeckSize)
                 problems.Add($"StarterDeck has {starterDeck.Count} cards; needs at least {ShopRules.MinDeckSize}.");
@@ -88,6 +107,8 @@ namespace DeckArpg.Core
             CheckEnemyDeck(problems, "MobDeck", mobDeck, MinEnemyDeckSize);
             CheckEnemyDeck(problems, "HexfireDeck", hexfireDeck, MinEnemyDeckSize);
             CheckEnemyDeck(problems, "EliteDeck", eliteDeck, MinEnemyDeckSize);
+            CheckEnemyDeck(problems, "CasterDeck", casterDeck, MinEnemyDeckSize);
+            CheckEnemyDeck(problems, "RusherDeck", rusherDeck, MinEnemyDeckSize);
             CheckEnemyDeck(problems, "BossDeck", bossDeck, 0); // size checked exactly below
             if (bossDeck.Count != BossDeckSize)
                 problems.Add($"BossDeck has {bossDeck.Count} cards; needs exactly {BossDeckSize}.");
@@ -146,6 +167,8 @@ namespace DeckArpg.Core
             all.AddRange(hexfireDeck);
             all.AddRange(eliteDeck);
             all.AddRange(bossDeck);
+            all.AddRange(casterDeck);
+            all.AddRange(rusherDeck);
             all.Add(enemyZero);
 
             foreach (var c in all)
@@ -162,6 +185,8 @@ namespace DeckArpg.Core
             enemy.UnionWith(hexfireDeck);
             enemy.UnionWith(eliteDeck);
             enemy.UnionWith(bossDeck);
+            enemy.UnionWith(casterDeck);
+            enemy.UnionWith(rusherDeck);
             if (enemyZero != null) enemy.Add(enemyZero);
             foreach (var c in draftPool)
                 if (c != null && enemy.Contains(c)) problems.Add($"DraftPool card '{c.CardId}' is an enemy card.");
