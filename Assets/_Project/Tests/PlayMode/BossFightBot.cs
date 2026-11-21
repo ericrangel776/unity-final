@@ -21,6 +21,8 @@ namespace DeckArpg.Tests.PlayMode
         /// <summary>Std-dev of the reload/Deadlock press error, as a fraction of the bar / in seconds.</summary>
         public float TimingError = 0.05f;
         public int Seed = 1;
+        /// <summary>Neutral heals only below this fraction of max HP.</summary>
+        public float HealBelow = 0.6f;
 
         private PlayerCombatInput input;
         private PlayerMotor motor;
@@ -221,16 +223,57 @@ namespace DeckArpg.Tests.PlayMode
                 return;
             }
 
-            // 5) Neutral: reload when empty, else chip with the lowest card (keep the best for answers).
+            // 5) Neutral: heal when hurt, reload when out of attacks, else chip with the lowest card (keep the best
+            //    for answers).
+            if (canAct && status.Hp <= status.MaxHp * HealBelow && PlayHeal()) return;
             if (OutOfCards())
             {
                 Move(-toTarget, dist < 3f);
-                if (canAct && cycle.CanReload) StartReload();
+                if (!canAct) return;
+                if (cycle.CanReload) StartReload();
+                else if (dist <= reach) Act(CombatCommand.Poke); // e.g. only a heal left at full HP: poke, never idle
                 return;
             }
             Move(toTarget, dist > reach * 0.8f);
             if (!canAct || dist > reach) return;
             if (HandCount() >= 2 ? PlayExtreme(highest: false) : PlayExtreme(highest: true)) return;
+        }
+
+        /// <summary>Plays a heal card from the hand (the game refuses one at full HP).</summary>
+        private bool PlayHeal()
+        {
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                if (c != null && c.IsHeal && Act(CombatCommand.PlaySlot1 + i)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A one-line state dump for stalled rooms (measurement TIMEOUTs, the smoke test's failure message).</summary>
+        public string Describe()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"bot hp {status.Hp}/{status.MaxHp} pos {transform.position} recovery {recovery:0.00} stunned {status.IsStunned} ");
+            sb.Append($"reload {deck.Reload.State} canReload {deck.Cycle.CanReload} zeros {deck.Cycle.ZerosReady} hand [");
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                sb.Append(c == null ? "-" : (c.IsHeal ? "H" : "") + c.GetEffectiveValue()).Append(i < DeckCycle.HandSize - 1 ? " " : "");
+            }
+            sb.Append($"] cards {CardsPlayed} parries {Parries} dashes {Dashes}");
+            if (body != null)
+            {
+                var d = body.transform.position - transform.position;
+                d.y = 0f;
+                sb.Append($" | target {body.name} pos {body.transform.position} dist {d.magnitude:0.0} hp {body.Status.Hp} " +
+                          $"telegraph {(body.CurrentTelegraph != null ? body.CurrentTelegraph.GetEffectiveValue().ToString() : "-")}");
+            }
+            else sb.Append(" | no target");
+            if (director != null)
+                foreach (var e in director.Enemies)
+                    if (e != null && !e.Status.IsDead) sb.Append($" | {e.name} at {e.transform.position} hp {e.Status.Hp}");
+            return sb.ToString();
         }
 
         /// <summary>Run mode with no live target (wave delay, cleared room): stand still, finish/start a reload.</summary>
@@ -302,7 +345,7 @@ namespace DeckArpg.Tests.PlayMode
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var c = deck.Cycle.Hand[i];
-                if (c == null) continue;
+                if (c == null || c.IsHeal) continue;
                 if (pick < 0) { pick = i; continue; }
                 int a = c.GetEffectiveValue(), b = deck.Cycle.Hand[pick].GetEffectiveValue();
                 if (highest ? a > b : a < b) pick = i;
@@ -318,7 +361,7 @@ namespace DeckArpg.Tests.PlayMode
             for (int i = 0; i < DeckCycle.HandSize; i++)
             {
                 var c = deck.Cycle.Hand[i];
-                if (c == null || c.GetEffectiveValue() <= value) continue;
+                if (c == null || c.IsHeal || c.GetEffectiveValue() <= value) continue;
                 // The smallest card that still wins, so the big ones stay for later.
                 if (pick < 0 || c.GetEffectiveValue() < deck.Cycle.Hand[pick].GetEffectiveValue()) pick = i;
             }
@@ -331,10 +374,15 @@ namespace DeckArpg.Tests.PlayMode
             return -1;
         }
 
+        /// <summary>Attack cards in hand (heals excluded: they can't answer a telegraph or chip).</summary>
         private int HandCount()
         {
             int n = 0;
-            for (int i = 0; i < DeckCycle.HandSize; i++) if (deck.Cycle.Hand[i] != null) n++;
+            for (int i = 0; i < DeckCycle.HandSize; i++)
+            {
+                var c = deck.Cycle.Hand[i];
+                if (c != null && !c.IsHeal) n++;
+            }
             return n;
         }
 

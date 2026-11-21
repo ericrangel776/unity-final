@@ -51,7 +51,7 @@ namespace DeckArpg.Tests.PlayMode
                 yield return null;
 
             Assert.AreEqual(RunDirectorState.Reward, director.State,
-                $"The bot didn't clear a Vanguard I1 room in {CapSeconds} s (cards {bot.CardsPlayed}, parries {bot.Parries}).");
+                $"The bot didn't clear a Vanguard I1 room in {CapSeconds} s. {bot.Describe()}");
             Assert.Greater(bot.CardsPlayed, 0, "The room cleared without the bot playing a card.");
             Object.Destroy(bot);
         }
