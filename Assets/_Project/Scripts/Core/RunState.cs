@@ -107,6 +107,21 @@ namespace DeckArpg.Core
             return currentOffer;
         }
 
+        /// <summary>
+        /// Debug/tests: replaces this door's offer with <paramref name="cards"/> (1-3 cards). Only at a door; the boss
+        /// room accepts any card too. Doesn't draw from <see cref="Rng"/>.
+        /// </summary>
+        public void DebugSetOffer(IReadOnlyList<MapCard> cards)
+        {
+            RequirePhase(RunPhase.ChoosingDoor);
+            if (cards == null) throw new ArgumentNullException(nameof(cards));
+            if (cards.Count < 1 || cards.Count > 3)
+                throw new ArgumentOutOfRangeException(nameof(cards), cards.Count, "An offer has 1-3 cards.");
+            currentOffer = new List<MapCard>(cards);
+            foreach (var card in currentOffer)
+                if (card.Kind == MapCardKind.EliteTrial) PurpleOffered = true;
+        }
+
         public MapCard EnterRoom(int offerIndex)
         {
             RequirePhase(RunPhase.ChoosingDoor);
