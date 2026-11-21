@@ -136,6 +136,41 @@ namespace DeckArpg.Tests.EditMode
         }
 
         [Test]
+        public void Blurb_Vanguard_MentionsRushers() =>
+            StringAssert.Contains("3 enemies, Rushers among them.",
+                RunUiText.MapCardBlurb(new MapCard(MapCardKind.Vanguard, 2)));
+
+        [Test]
+        public void Blurb_Hexfire_MentionsCasters() =>
+            StringAssert.Contains("2 enemies, Casters among them, stronger elemental cards.",
+                RunUiText.MapCardBlurb(new MapCard(MapCardKind.Hexfire, 2)));
+
+        [TestCase(MapCardKind.Vanguard, 3)]
+        [TestCase(MapCardKind.Hexfire, 1)]
+        [TestCase(MapCardKind.BountyWind, 2)]
+        public void Blurb_LowRoom_HasNoWaveLine(MapCardKind kind, int n) =>
+            StringAssert.DoesNotContain("wave 2", RunUiText.MapCardBlurb(new MapCard(kind, n)));
+
+        [TestCase(MapCardKind.Vanguard, 4, 1)]
+        [TestCase(MapCardKind.Hexfire, 6, 1)]
+        [TestCase(MapCardKind.KindledGround, 7, 2)]
+        [TestCase(MapCardKind.BountyWind, 9, 2)]
+        public void Blurb_WaveRoom_AddsTheWaveLine(MapCardKind kind, int n, int k) =>
+            StringAssert.EndsWith($"\n+{k} wave 2, currency +25%.", RunUiText.MapCardBlurb(new MapCard(kind, n)));
+
+        [Test]
+        public void Blurb_IsAtMostThreeLines()
+        {
+            foreach (MapCardKind kind in System.Enum.GetValues(typeof(MapCardKind)))
+                for (int n = 1; n <= 9; n++)
+                {
+                    var trial = kind == MapCardKind.EliteTrial ? EliteTrial.Veiled : EliteTrial.None;
+                    var blurb = RunUiText.MapCardBlurb(new MapCard(kind, n, trial));
+                    Assert.LessOrEqual(blurb.Split('\n').Length, 3, $"{kind} {n}: {blurb}");
+                }
+        }
+
+        [Test]
         public void Blurb_IsDefinedForEveryKind()
         {
             foreach (MapCardKind kind in System.Enum.GetValues(typeof(MapCardKind)))

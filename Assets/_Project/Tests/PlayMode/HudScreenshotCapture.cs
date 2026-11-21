@@ -431,6 +431,81 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"Heal screenshots written to {dir}");
         }
 
+        /// <summary>
+        /// Enemy variants (docs/specs/enemy-variants.md): door blurbs with a wave line, a High Hexfire room with Casters
+        /// and Brutes winding up (telegraph above the tall Caster), Rushers in a Mid Vanguard room and the wave-2 rings,
+        /// as variants_*.png.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CaptureVariants()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            var screens = Object.FindAnyObjectByType<RunScreens>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+
+            // 1) A door offer that includes a wave room (3-line blurb).
+            bool found = false;
+            for (int seed = 1; seed < 200 && !found; seed++)
+            {
+                director.RestartRun(seed);
+                for (int room = 1; room <= 5 && !found; room++)
+                {
+                    foreach (var card in director.Run.CurrentOffer)
+                        if (card.IsCombat && EnemyVariantRules.WaveTwoCount(card) > 0) found = true;
+                    if (found) break;
+                    director.ChooseDoor(0);
+                    if (director.State == RunDirectorState.Fighting) { director.DebugDefeatAllEnemies(); director.FinishReward(); }
+                    else director.LeaveUtility();
+                }
+            }
+            Assert.IsTrue(found, "No offer with a wave room.");
+            screens.Show(Object.FindAnyObjectByType<DoorChoiceView>());
+            yield return Capture(dir, "variants_1_door_blurbs");
+            screens.Hide();
+
+            // 2) High Hexfire: Casters and Brutes, all winding up so the overhead telegraph shows.
+            RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.Hexfire && RoomIntensity.Band(c.Number) == IntensityBand.High);
+            yield return null; // Start() runs first, then the forced wind-up sticks
+            foreach (var e in director.Enemies) { e.Target = null; e.ForceTelegraph(); }
+            RunTestHelpers.Place(director.Player, FrontOf(director.Enemies));
+            float settle = Time.realtimeSinceStartup + 1.5f;
+            while (Time.realtimeSinceStartup < settle) yield return null;
+            yield return Capture(dir, "variants_2_hexfire_casters");
+
+            // 3) Mid Vanguard: Rushers next to Brutes.
+            RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.Vanguard && RoomIntensity.Band(c.Number) != IntensityBand.Low);
+            yield return null;
+            foreach (var e in director.Enemies) e.Target = null;
+            RunTestHelpers.Place(director.Player, FrontOf(director.Enemies));
+            settle = Time.realtimeSinceStartup + 1.5f;
+            while (Time.realtimeSinceStartup < settle) yield return null;
+            yield return Capture(dir, "variants_3_vanguard_rushers");
+
+            // 4) Wave 1 down: the wave-2 rings mid-delay.
+            var lethal = new AttackPayload(director.Player.GetComponent<CombatantStatus>().OwnerId, Team.Player, 999,
+                false, true, Time.frameCount, CardShape.Strike, Element.Physical);
+            foreach (var e in director.Enemies)
+                for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++) e.Status.TakeHit(lethal);
+            Assert.IsTrue(director.IsWaveIncoming);
+            Time.timeScale = 1f;
+            float ringWait = Time.realtimeSinceStartup + 0.5f;
+            while (Time.realtimeSinceStartup < ringWait && director.IsWaveIncoming) yield return null;
+            yield return Capture(dir, "variants_4_wave_rings");
+            Debug.Log($"Variant screenshots written to {dir}");
+        }
+
+        /// <summary>A spot just in front of the enemies' centre, so the follow camera frames the whole group.</summary>
+        private static Vector3 FrontOf(System.Collections.Generic.IReadOnlyList<TrainingDummyEnemy> enemies)
+        {
+            var c = Vector3.zero;
+            foreach (var e in enemies) c += e.transform.position;
+            c /= Mathf.Max(1, enemies.Count);
+            return new Vector3(c.x, 0f, c.z - 1.5f);
+        }
+
         private IEnumerator Capture(string dir, string name)
         {
             Time.timeScale = 0f;
