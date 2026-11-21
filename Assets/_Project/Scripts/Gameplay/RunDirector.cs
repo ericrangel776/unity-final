@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using DeckArpg.Core;
 using UnityEngine;
@@ -34,6 +35,10 @@ namespace DeckArpg.Gameplay
         [SerializeField] private Vector3 playerSpawn = new Vector3(0f, 0f, -6f);
         [SerializeField] private Vector3 enemyCenter = new Vector3(0f, 0f, 4f);
         [SerializeField] private float enemySpread = 3.5f;
+        [Tooltip("Casters spawn this much further from the player than their arc point.")]
+        [SerializeField] private float casterSpawnBack = 2f;
+        [Tooltip("Spawn points are clamped to +-this on X and Z (inside the arena walls).")]
+        [SerializeField] private float arenaHalfExtent = 10f;
         [Tooltip("Where the exit door stands (built at runtime).")]
         [SerializeField] private Vector3 doorPosition = new Vector3(0f, 0f, 8f);
 
@@ -50,6 +55,10 @@ namespace DeckArpg.Gameplay
         private ExitDoor door;
         /// <summary>The player's authored max HP, so a new run starts from it and not from last run's upgrades.</summary>
         private int playerBaseMaxHp;
+        /// <summary>Wave 2's mix, rolled with wave 1 so the composition RNG is drawn once per room.</summary>
+        private IReadOnlyList<EnemyVariant> waveTwoMix;
+        private Coroutine waveRoutine;
+        private readonly List<SpawnRingFx> rings = new List<SpawnRingFx>();
 
         public RunState Run { get; private set; }
         public RunDirectorState State { get; private set; }
@@ -66,6 +75,16 @@ namespace DeckArpg.Gameplay
         public BossEnemy Boss { get; private set; }
         /// <summary>Raised once the boss is spawned and dealt (boss HUD/FX bind to it).</summary>
         public event Action<BossEnemy> BossSpawned;
+        /// <summary>Waves still to come in this room (0 or 1). Cleared the moment wave 1 dies and the wave-2 delay starts.</summary>
+        public int WavesPending { get; private set; }
+        /// <summary>True during the delay between wave 1's last death and wave 2's spawn.</summary>
+        public bool IsWaveIncoming => waveRoutine != null;
+        /// <summary>Variants of the wave currently spawned (empty outside combat).</summary>
+        public IReadOnlyList<EnemyVariant> CurrentMix { get; private set; } = Array.Empty<EnemyVariant>();
+        /// <summary>Spawn-point markers of the incoming wave (empty otherwise).</summary>
+        public IReadOnlyList<SpawnRingFx> SpawnRings => rings;
+        /// <summary>A wave spawned: 1 when the room starts, 2 for the second wave.</summary>
+        public event Action<int> WaveStarted;
         public CombatReward CurrentReward { get; private set; }
         public ShopVisit CurrentShop { get; private set; }
         public ForgeVisit CurrentForge { get; private set; }
@@ -208,25 +227,44 @@ namespace DeckArpg.Gameplay
             playerRelics.BeginRoom();
         }
 
+        /// <summary>
+        /// Rolls the room's composition (wave 1 and, at Intensity 4+, wave 2) and spawns wave 1. See
+        /// docs/specs/enemy-variants.md.
+        /// </summary>
         private void SpawnEnemies(in MapCard room)
         {
-            int count = RoomIntensity.EnemyCount(room);
-            var deck = new List<CardData>(content.EnemyDeckFor(room.Kind));
-            if (room.Trial == EliteTrial.Counterpuncher)
-                for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
+            var rng = new System.Random(NextSeed());
+            var mix = EnemyVariantRules.Composition(room, RoomIntensity.EnemyCount(room), rng);
+            int waveTwoCount = EnemyVariantRules.WaveTwoCount(room);
+            waveTwoMix = waveTwoCount > 0 ? EnemyVariantRules.Composition(room, waveTwoCount, rng) : null;
+            WavesPending = waveTwoCount > 0 ? 1 : 0;
+            SpawnWave(room, mix);
+            WaveStarted?.Invoke(1);
+        }
+
+        /// <summary>Spawns one enemy per entry of <paramref name="mix"/>, each with its variant's deck, stats and look.</summary>
+        private void SpawnWave(in MapCard room, IReadOnlyList<EnemyVariant> mix)
+        {
+            int count = mix.Count;
             float tempo = RoomIntensity.EnemyTempoPercent(room) / 100f;
-            int maxHp = RoomIntensity.EnemyMaxHp(enemyBaseHp, room);
-            float postureScale = RoomIntensity.EnemyPosturePercent(room) / 100f;
+            int roomMaxHp = RoomIntensity.EnemyMaxHp(enemyBaseHp, room);
+            float roomPostureScale = RoomIntensity.EnemyPosturePercent(room) / 100f;
             int valueBonus = RoomIntensity.EnemyCardValueBonus(room);
             float scale = room.Kind == MapCardKind.EliteTrial ? eliteScale : room.Kind == MapCardKind.Boss ? bossScale : 1f;
 
             for (int i = 0; i < count; i++)
             {
-                var position = SpawnPoint(i, count);
+                var variant = mix[i];
+                var stats = EnemyVariantRules.Stats(variant);
+                var deck = new List<CardData>(content.EnemyDeckFor(room.Kind, variant));
+                if (room.Trial == EliteTrial.Counterpuncher)
+                    for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
+
+                var position = WaveSpawnPoint(i, mix);
                 var facing = playerSpawn - position;
                 facing.y = 0f;
                 var enemy = Instantiate(enemyPrefab, position, Quaternion.LookRotation(facing));
-                enemy.name = $"{room.Kind} Enemy {i + 1}";
+                enemy.name = $"{room.Kind} {variant} Enemy {i + 1}";
                 enemy.transform.localScale *= scale;
                 var pop = enemy.GetComponent<DeathPop>();
                 if (pop != null)
@@ -235,9 +273,12 @@ namespace DeckArpg.Gameplay
                 enemy.RespawnOnDeath = false;
                 enemy.Target = player.transform;
                 enemy.ApplyTempo(tempo);
+                // Before the boss components: the boss's TurnHook forbids a variant (it is always a Brute).
+                enemy.ApplyVariant(variant);
+                EnemyVariantLook.Apply(enemy, variant);
 
-                enemy.Status.SetMaxHp(maxHp);
-                enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * postureScale);
+                enemy.Status.SetMaxHp(Math.Max(1, RewardRules.PercentHalfUp(roomMaxHp, stats.HpPercent)));
+                enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * roomPostureScale * (stats.PosturePercent / 100f));
                 // Before the deal: the boss sets its 9-spacing rule on the deck cycle.
                 if (room.Kind == MapCardKind.Boss)
                 {
@@ -261,7 +302,47 @@ namespace DeckArpg.Gameplay
                 enemy.Status.Died += () => HandleEnemyDied(captured);
                 enemies.Add(enemy);
             }
+            CurrentMix = mix;
             if (Boss != null) BossSpawned?.Invoke(Boss);
+        }
+
+        /// <summary>Arc point <paramref name="index"/>; Casters stand further back. Clamped inside the arena.</summary>
+        private Vector3 WaveSpawnPoint(int index, IReadOnlyList<EnemyVariant> mix)
+        {
+            var p = SpawnPoint(index, mix.Count);
+            if (mix[index] == EnemyVariant.Caster) p.z += casterSpawnBack;
+            p.x = Mathf.Clamp(p.x, -arenaHalfExtent, arenaHalfExtent);
+            p.z = Mathf.Clamp(p.z, -arenaHalfExtent, arenaHalfExtent);
+            return p;
+        }
+
+        /// <summary>Rings at wave 2's spawn points for the delay, then wave 2 (unless the fight ended meanwhile).</summary>
+        private IEnumerator WaveTwoRoutine(MapCard room)
+        {
+            for (int i = 0; i < waveTwoMix.Count; i++)
+                rings.Add(SpawnRingFx.Create(WaveSpawnPoint(i, waveTwoMix), EnemyVariantRules.WaveSpawnDelaySeconds));
+            yield return new WaitForSeconds(EnemyVariantRules.WaveSpawnDelaySeconds);
+            waveRoutine = null; // finished: don't stop ourselves below
+            SpawnPendingWaveNow(room);
+        }
+
+        /// <summary>Ends the wave-2 delay now: removes the rings and spawns wave 2 if the fight is still on.</summary>
+        private void SpawnPendingWaveNow(in MapCard room)
+        {
+            if (waveRoutine != null) StopCoroutine(waveRoutine);
+            waveRoutine = null;
+            ClearRings();
+            if (State != RunDirectorState.Fighting || waveTwoMix == null) return;
+            var mix = waveTwoMix;
+            waveTwoMix = null;
+            SpawnWave(room, mix);
+            WaveStarted?.Invoke(2);
+        }
+
+        private void ClearRings()
+        {
+            foreach (var r in rings) if (r != null) Destroy(r.gameObject);
+            rings.Clear();
         }
 
         /// <summary>
@@ -312,6 +393,14 @@ namespace DeckArpg.Gameplay
             if (State != RunDirectorState.Fighting) return;
             foreach (var e in enemies)
                 if (e != null && !e.Status.IsDead) return;
+            if (WavesPending > 0)
+            {
+                // Cleared first, so two enemies dying on the same frame start only one wave.
+                WavesPending = 0;
+                waveRoutine = StartCoroutine(WaveTwoRoutine(Run.CurrentRoom));
+                return;
+            }
+            if (waveRoutine != null) return;
             RoomCleared();
         }
 
@@ -361,6 +450,12 @@ namespace DeckArpg.Gameplay
             foreach (var e in enemies) if (e != null) Destroy(e.gameObject);
             enemies.Clear();
             Boss = null;
+            if (waveRoutine != null) StopCoroutine(waveRoutine);
+            waveRoutine = null;
+            ClearRings();
+            WavesPending = 0;
+            waveTwoMix = null;
+            CurrentMix = Array.Empty<EnemyVariant>();
         }
 
         private void ClearVisits()
@@ -436,9 +531,15 @@ namespace DeckArpg.Gameplay
             // Overwhelming Sleight hits (values aren't clamped to 9), repeated so a guarded boss still goes down.
             var payload = new AttackPayload(playerStatus.OwnerId, Team.Player, 999, false, true, Time.frameCount,
                 CardShape.Strike, Element.Physical);
-            foreach (var e in enemies.ToArray())
-                for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
-                    e.Status.TakeHit(payload);
+            // A pending second wave is spawned at once and defeated too, so a debug clear still ends the room.
+            for (int wave = 0; wave < 2; wave++)
+            {
+                foreach (var e in enemies.ToArray())
+                    for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
+                        e.Status.TakeHit(payload);
+                if (waveRoutine == null) break;
+                SpawnPendingWaveNow(Run.CurrentRoom);
+            }
         }
     }
 }

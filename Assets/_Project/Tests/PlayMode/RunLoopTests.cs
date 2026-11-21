@@ -126,14 +126,18 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.AreEqual(RunDirectorState.Fighting, director.State);
             Assert.AreEqual(RoomIntensity.EnemyCount(room), director.Enemies.Count);
+            CollectionAssert.AreEqual(director.CurrentMix, director.Enemies.Select(e => e.Variant));
             foreach (var enemy in director.Enemies)
             {
-                Assert.AreEqual(RoomIntensity.EnemyMaxHp(director.EnemyBaseHp, room), enemy.Status.MaxHp);
+                // Room scaling, then the variant's percentages on top (docs/specs/enemy-variants.md).
+                var stats = EnemyVariantRules.Stats(enemy.Variant);
+                int roomHp = RoomIntensity.EnemyMaxHp(director.EnemyBaseHp, room);
+                Assert.AreEqual(RewardRules.PercentHalfUp(roomHp, stats.HpPercent), enemy.Status.MaxHp);
                 Assert.AreEqual(enemy.Status.MaxHp, enemy.Status.Hp);
                 Assert.IsFalse(enemy.RespawnOnDeath);
                 Assert.AreSame(director.Player.transform, enemy.Target);
-                Assert.AreEqual(prefab.MoveSpeed * tempo, enemy.MoveSpeed, 1e-4f);
-                Assert.AreEqual(prefab.TelegraphSeconds / tempo, enemy.TelegraphSeconds, 1e-4f);
+                Assert.AreEqual(prefab.MoveSpeed * tempo * stats.MovePercent / 100f, enemy.MoveSpeed, 1e-4f);
+                Assert.AreEqual(prefab.TelegraphSeconds / tempo * stats.TelegraphPercent / 100f, enemy.TelegraphSeconds, 1e-4f);
                 foreach (var card in enemy.Deck.Cycle.Hand.Where(c => c != null))
                     Assert.AreEqual(bonus, card.TemporaryRoomMod);
             }
@@ -399,6 +403,182 @@ namespace DeckArpg.Tests.PlayMode
             Assert.Throws<InvalidOperationException>(() => director.LeaveUtility());
             director.ChooseDoor(0);
             Assert.Throws<InvalidOperationException>(() => director.ChooseDoor(0));
+        }
+
+        // ---- enemy variants and the second wave (docs/specs/enemy-variants.md) ----
+
+        private int waveTwoStarts;
+
+        private MapCard EnterRoom(MapCardKind kind, IntensityBand band)
+        {
+            var room = RunTestHelpers.EnterRoom(director, c => c.Kind == kind && RoomIntensity.Band(c.Number) == band);
+            waveTwoStarts = 0;
+            director.WaveStarted += wave => { if (wave == 2) waveTwoStarts++; };
+            return room;
+        }
+
+        private void KillLivingEnemies()
+        {
+            var lethal = new AttackPayload(player.OwnerId, Team.Player, 999, false, true, Time.frameCount,
+                CardShape.Strike, Element.Physical);
+            foreach (var e in director.Enemies.ToArray())
+                for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
+                    e.Status.TakeHit(lethal);
+        }
+
+        private int Living => director.Enemies.Count(e => e != null && !e.Status.IsDead);
+
+        private static int RingsInScene => Object.FindObjectsByType<SpawnRingFx>(FindObjectsSortMode.None).Length;
+
+        /// <summary>Waits (real time, so hit-stop can't stall it) until wave 2 has spawned or the timeout passes.</summary>
+        private IEnumerator WaitForWaveTwo(float timeout = 3f)
+        {
+            float end = Time.realtimeSinceStartup + timeout;
+            while (waveTwoStarts == 0 && Time.realtimeSinceStartup < end) yield return null;
+        }
+
+        [Test]
+        public void LowHexfire_SpawnsOneCasterAndOneBrute_AndNoWave()
+        {
+            var room = EnterRoom(MapCardKind.Hexfire, IntensityBand.Low);
+
+            Assert.AreEqual(2, director.Enemies.Count);
+            CollectionAssert.AreEqual(new[] { EnemyVariant.Brute, EnemyVariant.Caster },
+                director.Enemies.Select(e => e.Variant));
+            Assert.AreEqual(0, director.WavesPending);
+            Assert.AreEqual("Hexfire Caster Enemy 2", director.Enemies[1].name);
+
+            var brute = director.Enemies[0];
+            var caster = director.Enemies[1];
+            var casterIds = director.Content.CasterDeck.Select(c => c.CardId).ToList();
+            foreach (var card in caster.Deck.Cycle.Hand.Where(c => c != null))
+                CollectionAssert.Contains(casterIds, card.Data.CardId, "The Caster plays its own deck.");
+            var hexIds = director.Content.HexfireDeck.Select(c => c.CardId).ToList();
+            foreach (var card in brute.Deck.Cycle.Hand.Where(c => c != null))
+                CollectionAssert.Contains(hexIds, card.Data.CardId, "Hexfire Brutes keep the Hexfire deck.");
+
+            float prefabPosture = director.EnemyPrefab.GetComponent<CombatantStatus>().MaxPosture;
+            Assert.AreEqual(prefabPosture * 0.8f, caster.Status.MaxPosture, 1e-3f);
+            Assert.AreEqual(prefabPosture, brute.Status.MaxPosture, 1e-3f);
+            Assert.Greater(caster.transform.position.z - brute.transform.position.z, 0.5f,
+                "Casters stand further from the player.");
+            Assert.AreEqual(EnemyVariantLook.CasterScale, caster.transform.localScale);
+            Assert.AreEqual(RoomIntensity.EnemyCardValueBonus(room),
+                caster.Deck.Cycle.Hand.First(c => c != null).TemporaryRoomMod, "Room value bonus applies to variants.");
+        }
+
+        [UnityTest]
+        public IEnumerator MidVanguard_WaveOneDeath_SpawnsWaveTwoAfterTheDelay()
+        {
+            EnterRoom(MapCardKind.Vanguard, IntensityBand.Mid);
+            Assert.AreEqual(4, director.Enemies.Count);
+            Assert.AreEqual(2, director.CurrentMix.Count(v => v == EnemyVariant.Rusher));
+            Assert.AreEqual(2, director.CurrentMix.Count(v => v == EnemyVariant.Brute));
+            Assert.AreEqual(1, director.WavesPending);
+
+            KillLivingEnemies();
+
+            Assert.AreEqual(RunDirectorState.Fighting, director.State, "Wave 1 dying doesn't clear the room.");
+            Assert.AreEqual(0, director.WavesPending);
+            Assert.IsTrue(director.IsWaveIncoming);
+            Assert.AreEqual(1, director.SpawnRings.Count, "A ring marks the wave-2 spawn point.");
+            Assert.AreEqual(0, waveTwoStarts, "Not before the delay.");
+
+            float t0 = Time.time;
+            yield return WaitForWaveTwo();
+
+            Assert.AreEqual(1, waveTwoStarts);
+            Assert.GreaterOrEqual(Time.time - t0, EnemyVariantRules.WaveSpawnDelaySeconds - 0.05f);
+            Assert.AreEqual(1, Living, "Mid band: one more enemy (a Vanguard wave of 1 is a Brute).");
+            CollectionAssert.AreEqual(new[] { EnemyVariant.Brute }, director.CurrentMix);
+            Assert.IsFalse(director.IsWaveIncoming);
+            Assert.AreEqual(0, director.SpawnRings.Count);
+            yield return null; // Destroy is deferred to the end of the frame
+            Assert.AreEqual(0, RingsInScene);
+        }
+
+        [UnityTest]
+        public IEnumerator KillingWaveTwo_ClearsTheRoom_AndPaysTheWaveBonus()
+        {
+            var room = EnterRoom(MapCardKind.Vanguard, IntensityBand.Mid);
+            var before = new Momentum();
+            for (int i = 0; i < director.Run.Momentum.Stacks; i++) before.AddStack();
+            int currencyBefore = director.Run.Currency;
+
+            KillLivingEnemies();
+            yield return WaitForWaveTwo();
+            Assert.AreEqual(1, waveTwoStarts);
+            KillLivingEnemies();
+
+            Assert.AreEqual(RunDirectorState.Reward, director.State);
+            int expected = RewardRules.Currency(room, before);
+            Assert.AreEqual(expected, director.CurrentReward.Currency);
+            Assert.AreEqual(currencyBefore + expected, director.Run.Currency);
+            int withoutWave = before.ApplyCurrencyBonus(RewardRules.PercentHalfUp(
+                RewardRules.PercentHalfUp(RewardRules.BaseCurrency(room), RewardRules.CurrencyPercent(RewardRules.Tier(room.Number))),
+                RoomIntensity.BountyCurrencyPercent(room)));
+            Assert.Greater(expected, withoutWave, "A room with a second wave pays more.");
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerDeathDuringTheWaveDelay_SpawnsNothing()
+        {
+            EnterRoom(MapCardKind.Vanguard, IntensityBand.Mid);
+            int spawned = director.Enemies.Count;
+            KillLivingEnemies();
+            Assert.IsTrue(director.IsWaveIncoming);
+
+            player.TakeHit(new AttackPayload(12345, Team.Enemy, 999, false, true, Time.frameCount, CardShape.Strike,
+                Element.Physical));
+            Assert.AreEqual(RunDirectorState.Defeat, director.State);
+
+            yield return WaitRealtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
+            Assert.AreEqual(0, waveTwoStarts);
+            Assert.AreEqual(0, Living);
+            Assert.LessOrEqual(director.Enemies.Count, spawned, "No wave-2 enemies were added.");
+            Assert.AreEqual(0, RingsInScene, "The rings are gone.");
+        }
+
+        [UnityTest]
+        public IEnumerator RestartDuringTheWaveDelay_LeavesNoRingsOrExtraEnemies()
+        {
+            EnterRoom(MapCardKind.Vanguard, IntensityBand.Mid);
+            KillLivingEnemies();
+            Assert.IsTrue(director.IsWaveIncoming);
+
+            director.RestartRun(7);
+            Assert.IsFalse(director.IsWaveIncoming);
+            Assert.AreEqual(0, director.WavesPending);
+            Assert.AreEqual(0, director.SpawnRings.Count);
+            yield return null;
+            Assert.AreEqual(0, RingsInScene);
+
+            director.ChooseDoor(0);
+            int roomOne = director.Enemies.Count;
+            yield return WaitRealtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
+            Assert.AreEqual(0, waveTwoStarts, "The old room's wave never arrives.");
+            Assert.AreEqual(roomOne, director.Enemies.Count);
+        }
+
+        [Test]
+        public void DebugDefeatAllEnemies_AlsoClearsAPendingWave()
+        {
+            EnterRoom(MapCardKind.Vanguard, IntensityBand.Mid);
+            director.DebugDefeatAllEnemies();
+
+            Assert.AreEqual(RunDirectorState.Reward, director.State);
+            Assert.AreEqual(1, waveTwoStarts);
+            Assert.AreEqual(0, director.SpawnRings.Count);
+        }
+
+        [Test]
+        public void EliteRoom_IsOneBrute_WithNoWave()
+        {
+            RunTestHelpers.EnterRoom(director, c => c.Kind == MapCardKind.EliteTrial);
+            Assert.AreEqual(1, director.Enemies.Count);
+            Assert.AreEqual(EnemyVariant.Brute, director.Enemies[0].Variant);
+            Assert.AreEqual(0, director.WavesPending);
+            StringAssert.StartsWith("EliteTrial Brute Enemy", director.Enemies[0].name);
         }
     }
 }

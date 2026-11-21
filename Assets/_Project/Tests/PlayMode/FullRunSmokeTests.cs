@@ -19,7 +19,7 @@ namespace DeckArpg.Tests.PlayMode
     {
         private const string SceneName = "M3_Run";
         /// <summary>A seed whose run visits both an Elite and a Blue room under <see cref="PickDoor"/>.</summary>
-        private const int VictorySeed = 3;
+        private const int VictorySeed = 2; // was 3; re-picked when enemy variants added a composition seed draw per combat room
         private const int MaxFrames = 600;
 
         private RunDirector director;
