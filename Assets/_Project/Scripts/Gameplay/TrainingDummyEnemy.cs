@@ -52,6 +52,10 @@ namespace DeckArpg.Gameplay
         private State state;
         private float timer;
         private int telegraphSlot = -1;
+        /// <summary>Length of the current wind-up (telegraphSeconds plus any <see cref="ExtendTelegraph"/>).</summary>
+        private float telegraphDuration;
+        /// <summary>Added once to the next recover (<see cref="ExtendNextRecover"/>).</summary>
+        private float pendingRecoverBonus;
         private Vector3 spawnPosition;
         private bool variantApplied;
         /// <summary>Caster: seconds spent closer than its retreat range (cornered once it reaches the limit).</summary>
@@ -60,7 +64,7 @@ namespace DeckArpg.Gameplay
         /// <summary>Card currently being telegraphed, or null.</summary>
         public RuntimeCardInstance CurrentTelegraph { get; private set; }
         /// <summary>0..1 progress through the telegraph wind-up.</summary>
-        public float TelegraphProgress => state == State.Telegraph ? 1f - Mathf.Clamp01(timer / telegraphSeconds) : 0f;
+        public float TelegraphProgress => state == State.Telegraph ? 1f - Mathf.Clamp01(timer / telegraphDuration) : 0f;
         /// <summary>
         /// Veiled trial: the telegraphed value stays hidden until this many seconds before the swing (0 = off).
         /// Absolute time, so room tempo doesn't shrink it.
@@ -115,6 +119,23 @@ namespace DeckArpg.Gameplay
             moveSpeed *= multiplier;
             telegraphSeconds /= multiplier;
             recoverSeconds /= multiplier;
+        }
+
+        /// <summary>Lengthens the current wind-up by <paramref name="seconds"/> (absolute, not tempo-scaled). No-op outside one.</summary>
+        public void ExtendTelegraph(float seconds)
+        {
+            if (state != State.Telegraph || seconds <= 0f) return;
+            timer += seconds;
+            telegraphDuration += seconds;
+        }
+
+        /// <summary>
+        /// The next recover lasts <paramref name="seconds"/> longer (absolute). Call it from <see cref="Swung"/>: the
+        /// recover starts right after the event.
+        /// </summary>
+        public void ExtendNextRecover(float seconds)
+        {
+            if (seconds > 0f) pendingRecoverBonus += seconds;
         }
 
         private void Awake()
@@ -269,6 +290,7 @@ namespace DeckArpg.Gameplay
             state = State.Telegraph;
             status.FlinchArmor = true; // only a card clash can stop the wind-up
             timer = telegraphSeconds;
+            telegraphDuration = telegraphSeconds;
             TelegraphStarted?.Invoke(CurrentTelegraph);
         }
 
@@ -317,7 +339,8 @@ namespace DeckArpg.Gameplay
         private void EnterRecover()
         {
             state = State.Recover;
-            timer = recoverSeconds;
+            timer = recoverSeconds + pendingRecoverBonus;
+            pendingRecoverBonus = 0f;
         }
 
         private void EndTelegraph()

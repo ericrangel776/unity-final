@@ -170,6 +170,14 @@ namespace DeckArpg.UI
             {
                 foreach (var e in m.LivingEnemies()) e.DebugForceTelegraph();
             }, any));
+            list.Add(new DebugCommand(T, () => "Elite: force Overextended", () =>
+            {
+                foreach (var e in m.LivingEnemies())
+                {
+                    var opening = e.GetComponent<EliteOpening>();
+                    if (opening != null) opening.Open(e.RecoverSeconds + EliteRules.OverextendSeconds);
+                }
+            }, () => m.LivingEnemies().Any(e => e.GetComponent<EliteOpening>() != null)));
             list.Add(new DebugCommand(T, () => "Stun all 2 s", () =>
             {
                 foreach (var e in m.LivingEnemies()) e.Status.ApplyStun(2f);

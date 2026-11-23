@@ -222,10 +222,22 @@ namespace DeckArpg.Gameplay
             int buff = room.HasValue ? RoomIntensity.PlayerElementBuff(room.Value) : 0;
             Element? element = buff != 0 ? room.Value.BuffElement : (Element?)null;
             playerDeck.SetRoomValueMod(buff, element);
+            ApplyPlayerRoomScales(room);
             playerDeck.UseRunDeck(Run.Deck, NextSeed());
             // After the rebuild: Reinitialize resets the Overburn price, and relics set this room's freebies.
             playerRelics.SetRelics(Run.Relics);
             playerRelics.BeginRoom();
+        }
+
+        /// <summary>
+        /// Elite rooms soften the player's break stun and posture damage taken (docs/specs/elite-rework.md); every other
+        /// room, and between rooms, they're back to 1.
+        /// </summary>
+        private void ApplyPlayerRoomScales(MapCard? room)
+        {
+            bool elite = room.HasValue && room.Value.Kind == MapCardKind.EliteTrial;
+            playerCombat.BreakStunScale = elite ? EliteRules.PlayerBreakStunScale : 1f;
+            playerStatus.PostureTakenMultiplier = elite ? EliteRules.PlayerPostureTakenScale : 1f;
         }
 
         /// <summary>
@@ -273,6 +285,7 @@ namespace DeckArpg.Gameplay
                 // The natural boss AI, seeded from the deck seed (no extra draw from the run's stream).
                 if (room.Kind == MapCardKind.Boss) Boss.Policy = new NaturalBossPolicy(new System.Random(unchecked(deckSeed * 31 + 7)));
                 ApplyTrial(enemy, room);
+                if (room.Kind == MapCardKind.EliteTrial) ApplyEliteRules(enemy);
                 ApplyElementResistance(enemy, room.Kind);
 
                 var captured = enemy;
@@ -385,6 +398,13 @@ namespace DeckArpg.Gameplay
                     enemy.gameObject.AddComponent<CounterpuncherTrial>().Watch(playerCombat);
                     break;
             }
+        }
+
+        /// <summary>Every Elite, whatever its trial: lighter hits and the Overextended punish window (docs/specs/elite-rework.md).</summary>
+        private static void ApplyEliteRules(TrainingDummyEnemy enemy)
+        {
+            enemy.GetComponent<CombatActionController>().OutgoingDamageScale = EliteRules.DamageDealtMultiplier;
+            enemy.gameObject.AddComponent<EliteOpening>();
         }
 
         /// <summary>Hexer: each Card Break the player suffers burns that card (Floor of 3 permitting) and costs HP.</summary>

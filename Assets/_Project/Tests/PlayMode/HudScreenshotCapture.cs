@@ -539,6 +539,29 @@ namespace DeckArpg.Tests.PlayMode
             Debug.Log($"Debug menu screenshots written to {dir}");
         }
 
+        /// <summary>Elite rework (docs/specs/elite-rework.md): the Elite as usual, then Overextended (gold tint).</summary>
+        [UnityTest]
+        public IEnumerator CaptureEliteOpening()
+        {
+            yield return SceneManager.LoadSceneAsync(RunSceneName);
+            yield return null;
+            var director = Object.FindAnyObjectByType<RunDirector>();
+            RenderOverlaysToTexture();
+            string dir = ScreensDir();
+
+            director.DebugEnterRoom(new MapCard(MapCardKind.EliteTrial, 5, EliteTrial.Hexer));
+            var elite = director.Enemies[0];
+            elite.Target = null; // stands still for the photo
+            RunTestHelpers.Place(director.Player, elite.transform.position + new Vector3(0f, 0f, -3.5f));
+            yield return null;
+            yield return null;
+            yield return Capture(dir, "elite_1_normal");
+
+            elite.GetComponent<EliteOpening>().Open(30f);
+            yield return Capture(dir, "elite_2_overextended");
+            Debug.Log($"Elite screenshots written to {dir}");
+        }
+
         /// <summary>A spot just in front of the enemies' centre, so the follow camera frames the whole group.</summary>
         private static Vector3 FrontOf(System.Collections.Generic.IReadOnlyList<TrainingDummyEnemy> enemies)
         {
