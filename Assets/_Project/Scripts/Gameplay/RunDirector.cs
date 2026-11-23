@@ -257,37 +257,13 @@ namespace DeckArpg.Gameplay
             {
                 var variant = mix[i];
                 var stats = EnemyVariantRules.Stats(variant);
-                var deck = new List<CardData>(content.EnemyDeckFor(room.Kind, variant));
-                if (room.Trial == EliteTrial.Counterpuncher)
-                    for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
-
-                var position = positionOverride ?? WaveSpawnPoint(i, mix);
-                var facing = playerSpawn - position;
-                facing.y = 0f;
-                var enemy = Instantiate(enemyPrefab, position, Quaternion.LookRotation(facing));
-                enemy.name = $"{room.Kind} {variant} Enemy {i + 1}";
-                enemy.transform.localScale *= scale;
-                var pop = enemy.GetComponent<DeathPop>();
-                if (pop != null)
-                    pop.Scale = room.Kind == MapCardKind.EliteTrial ? DeathPop.EliteScale
-                        : room.Kind == MapCardKind.Boss ? DeathPop.BossScale : 1f;
-                enemy.RespawnOnDeath = false;
-                enemy.Target = player.transform;
-                enemy.ApplyTempo(tempo);
-                // Before the boss components: the boss's TurnHook forbids a variant (it is always a Brute).
-                enemy.ApplyVariant(variant);
-                EnemyVariantLook.Apply(enemy, variant);
+                var deck = BuildEnemyDeck(room, variant);
+                var enemy = CreateEnemy(room, variant, i, positionOverride ?? WaveSpawnPoint(i, mix), scale, tempo);
 
                 enemy.Status.SetMaxHp(Math.Max(1, RewardRules.PercentHalfUp(roomMaxHp, stats.HpPercent)));
                 enemy.Status.SetMaxPosture(enemy.Status.MaxPosture * roomPostureScale * (stats.PosturePercent / 100f));
                 // Before the deal: the boss sets its 9-spacing rule on the deck cycle.
-                if (room.Kind == MapCardKind.Boss)
-                {
-                    Boss = enemy.gameObject.AddComponent<BossEnemy>();
-                    enemy.gameObject.AddComponent<BossSleightClash>().Watch(playerCombat);
-                    enemy.gameObject.AddComponent<BossTelegraphFx>();
-                    enemy.gameObject.AddComponent<BossStateFx>();
-                }
+                if (room.Kind == MapCardKind.Boss) AttachBossComponents(enemy);
                 enemy.Deck.SetRoomValueMod(valueBonus);
                 int deckSeed = NextSeed();
                 enemy.Deck.SetStartingDeck(deck, deckSeed);
@@ -305,6 +281,45 @@ namespace DeckArpg.Gameplay
             }
             CurrentMix = mix;
             if (Boss != null) BossSpawned?.Invoke(Boss);
+        }
+
+        private List<CardData> BuildEnemyDeck(in MapCard room, EnemyVariant variant)
+        {
+            var deck = new List<CardData>(content.EnemyDeckFor(room.Kind, variant));
+            if (room.Trial == EliteTrial.Counterpuncher)
+                for (int z = 0; z < RoomIntensity.CounterpuncherZeros(room.Number); z++) deck.Add(content.EnemyZero);
+            return deck;
+        }
+
+        /// <summary>Instantiates enemy <paramref name="index"/> facing the player spawn, with its size, tempo, variant and look.</summary>
+        private TrainingDummyEnemy CreateEnemy(in MapCard room, EnemyVariant variant, int index, Vector3 position,
+            float scale, float tempo)
+        {
+            var facing = playerSpawn - position;
+            facing.y = 0f;
+            var enemy = Instantiate(enemyPrefab, position, Quaternion.LookRotation(facing));
+            enemy.name = $"{room.Kind} {variant} Enemy {index + 1}";
+            enemy.transform.localScale *= scale;
+            var pop = enemy.GetComponent<DeathPop>();
+            if (pop != null)
+                pop.Scale = room.Kind == MapCardKind.EliteTrial ? DeathPop.EliteScale
+                    : room.Kind == MapCardKind.Boss ? DeathPop.BossScale : 1f;
+            enemy.RespawnOnDeath = false;
+            enemy.Target = player.transform;
+            enemy.ApplyTempo(tempo);
+            // Before the boss components: the boss's TurnHook forbids a variant (it is always a Brute).
+            enemy.ApplyVariant(variant);
+            EnemyVariantLook.Apply(enemy, variant);
+            return enemy;
+        }
+
+        /// <summary>The boss AI and its clash, telegraph and state FX. Before the deal: the boss sets its 9-spacing rule.</summary>
+        private void AttachBossComponents(TrainingDummyEnemy enemy)
+        {
+            Boss = enemy.gameObject.AddComponent<BossEnemy>();
+            enemy.gameObject.AddComponent<BossSleightClash>().Watch(playerCombat);
+            enemy.gameObject.AddComponent<BossTelegraphFx>();
+            enemy.gameObject.AddComponent<BossStateFx>();
         }
 
         /// <summary>Arc point <paramref name="index"/>; Casters stand further back. Clamped inside the arena.</summary>
@@ -478,69 +493,6 @@ namespace DeckArpg.Gameplay
         private void RequireState(RunDirectorState state)
         {
             if (State != state) throw new InvalidOperationException($"RunDirector is in {State}, expected {state}.");
-        }
-
-        // ---- debug: drive the run by hand from the Inspector ⋮ menu ----
-
-        [ContextMenu("Run/Choose Door 1")] private void DebugDoor1() => ChooseDoor(0);
-        [ContextMenu("Run/Choose Door 2")] private void DebugDoor2() => ChooseDoor(Math.Min(1, Run.CurrentOffer.Count - 1));
-        [ContextMenu("Run/Choose Door 3")] private void DebugDoor3() => ChooseDoor(Math.Min(2, Run.CurrentOffer.Count - 1));
-        [ContextMenu("Run/Choose Relic 1")] private void DebugRelic1() => ChooseRelic(0);
-        [ContextMenu("Run/Finish Reward")] private void DebugFinishReward() => FinishReward();
-        [ContextMenu("Run/Leave Utility Room")] private void DebugLeaveUtility() => LeaveUtility();
-        [ContextMenu("Run/Restart")] private void DebugRestart() => RestartRun();
-
-        /// <summary>
-        /// Playtesting: plays the run forward into the boss fight. Earlier fights are debug-cleared, the first draft card
-        /// and relic are taken (so the deck looks like a real run's) and Blue rooms are left. Starts a run if needed; a
-        /// finished run is restarted. Returns false if the boss wasn't reached.
-        /// </summary>
-        [ContextMenu("Run/Skip To Boss")]
-        public bool DebugSkipToBoss()
-        {
-            if (Run == null || State == RunDirectorState.Victory || State == RunDirectorState.Defeat) StartRun();
-            for (int step = 0; step < 50; step++)
-            {
-                switch (State)
-                {
-                    case RunDirectorState.ChoosingDoor:
-                        ChooseDoor(0);
-                        break;
-                    case RunDirectorState.Fighting:
-                        if (Boss != null) return true;
-                        DebugDefeatAllEnemies();
-                        break;
-                    case RunDirectorState.Reward:
-                        if (CurrentReward.RelicOptions != null && CurrentReward.RelicOptions.Count > 0) ChooseRelic(0);
-                        while (CurrentReward.PicksMade < CurrentReward.PicksAllowed && CurrentReward.TryPick(0, Run)) { }
-                        FinishReward();
-                        break;
-                    case RunDirectorState.Utility:
-                        LeaveUtility();
-                        break;
-                    default:
-                        StartRun();
-                        break;
-                }
-            }
-            return State == RunDirectorState.Fighting && Boss != null;
-        }
-
-        [ContextMenu("Run/Defeat All Enemies")]
-        public void DebugDefeatAllEnemies()
-        {
-            // Overwhelming Sleight hits (values aren't clamped to 9), repeated so a guarded boss still goes down.
-            var payload = new AttackPayload(playerStatus.OwnerId, Team.Player, 999, false, true, Time.frameCount,
-                CardShape.Strike, Element.Physical);
-            // A pending second wave is spawned at once and defeated too, so a debug clear still ends the room.
-            for (int wave = 0; wave < 2; wave++)
-            {
-                foreach (var e in enemies.ToArray())
-                    for (int hit = 0; hit < 10 && e != null && !e.Status.IsDead; hit++)
-                        e.Status.TakeHit(payload);
-                if (waveRoutine == null) break;
-                SpawnPendingWaveNow(Run.CurrentRoom);
-            }
         }
     }
 }
