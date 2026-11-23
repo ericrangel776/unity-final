@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DeckArpg.Core;
 using UnityEngine;
 
@@ -91,10 +92,9 @@ namespace DeckArpg.Gameplay
         /// <summary>A non-poke body hit pushed us (Wind slam detection listens for Wind payloads).</summary>
         public event Action<AttackPayload> KnockedBackBy;
 
-        private static readonly System.Collections.Generic.List<CombatantStatus> all =
-            new System.Collections.Generic.List<CombatantStatus>();
+        private static readonly List<CombatantStatus> all = new List<CombatantStatus>();
         /// <summary>Every enabled combatant (chain targeting). Dead ones stay listed; filter on <see cref="IsDead"/>.</summary>
-        public static System.Collections.Generic.IReadOnlyList<CombatantStatus> All => all;
+        public static IReadOnlyList<CombatantStatus> All => all;
 
         public event Action<int> Damaged;
         /// <summary>A damaging body hit landed: damage and the flat direction it pushed us.</summary>
@@ -171,8 +171,7 @@ namespace DeckArpg.Gameplay
         {
             if (IsInvulnerable || IsDead || payload.Team == team) return false;
 
-            int damage = CombatMath.Damage(payload);
-            if (DamageTakenMultiplier != 1f) damage = Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier));
+            int damage = ScaledByTakenMultiplier(CombatMath.Damage(payload));
             // 0-damage hits (0-cards) and the breaking swing itself don't spend the counter window.
             bool counter = canCounter && damage > 0 && IsCounterWindowOpen;
             if (counter)
@@ -181,16 +180,7 @@ namespace DeckArpg.Gameplay
                 counterWindowRemaining = 0f;
             }
             if (nonLethal) damage = BossRules.NonLethalDamage(damage, Hp);
-            if (!GodMode) Hp = Mathf.Max(0, Hp - damage);
-            Damaged?.Invoke(damage);
-            if (counter) CounterHit?.Invoke(this, damage);
-            if (damage > 0)
-            {
-                AnyHitTaken?.Invoke(this, damage);
-                LastHitElement = payload.Element;
-                AnyHitLanded?.Invoke(new HitInfo(this, payload, damage, counter, Hp == 0,
-                    transform.position + Vector3.up * HitFeedbackHeight));
-            }
+            LoseHp(damage, payload, payload.Element, counter, isEffect: false);
             if (Hp == 0)
             {
                 Died?.Invoke();
@@ -209,17 +199,31 @@ namespace DeckArpg.Gameplay
         public bool TakeEffectDamage(int amount, Element element, in AttackPayload source)
         {
             if (IsInvulnerable || IsDead || source.Team == team || amount <= 0) return false;
-            int damage = amount;
-            if (DamageTakenMultiplier != 1f) damage = Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier));
+            int damage = ScaledByTakenMultiplier(amount);
             if (damage <= 0) return false;
-            if (!GodMode) Hp = Mathf.Max(0, Hp - damage);
-            Damaged?.Invoke(damage);
-            AnyHitTaken?.Invoke(this, damage);
-            LastHitElement = element;
-            AnyHitLanded?.Invoke(new HitInfo(this, source, damage, false, Hp == 0,
-                transform.position + Vector3.up * HitFeedbackHeight, isEffect: true));
+            LoseHp(damage, source, element, counter: false, isEffect: true);
             if (Hp == 0) Died?.Invoke();
             return true;
+        }
+
+        private int ScaledByTakenMultiplier(int damage) =>
+            DamageTakenMultiplier != 1f ? Mathf.RoundToInt(damage * Mathf.Max(0f, DamageTakenMultiplier)) : damage;
+
+        /// <summary>
+        /// The HP loss shared by body hits and effect damage, and its events in this order: Damaged, CounterHit (counters
+        /// only), then for damage above 0 AnyHitTaken and AnyHitLanded. The caller raises <see cref="Died"/> afterwards,
+        /// so feedback for the killing blow plays before the death.
+        /// </summary>
+        private void LoseHp(int damage, in AttackPayload payload, Element element, bool counter, bool isEffect)
+        {
+            if (!GodMode) Hp = Mathf.Max(0, Hp - damage);
+            Damaged?.Invoke(damage);
+            if (counter) CounterHit?.Invoke(this, damage);
+            if (damage <= 0) return;
+            AnyHitTaken?.Invoke(this, damage);
+            LastHitElement = element;
+            AnyHitLanded?.Invoke(new HitInfo(this, payload, damage, counter, Hp == 0,
+                transform.position + Vector3.up * HitFeedbackHeight, isEffect));
         }
 
         /// <summary>
@@ -316,9 +320,7 @@ namespace DeckArpg.Gameplay
         public void AddPostureDamage(float amount)
         {
             if (IsDead || amount <= 0f) return;
-            Posture += amount * PostureTakenMultiplier;
-            if (Posture < maxPosture) return;
-            Posture = 0f;
+            if (!AddPostureAndCheckBreak(amount * PostureTakenMultiplier)) return;
             stunRemaining = Mathf.Max(stunRemaining, postureBreakStunSeconds);
             Broken?.Invoke();
         }
@@ -332,18 +334,22 @@ namespace DeckArpg.Gameplay
         public void ApplyBreak(int margin, Vector3 awayFromWinner, float stunScale = 1f, float postureScale = 1f)
         {
             if (IsDead) return;
-            Posture += breakPostureDamage * CombatMath.BreakPostureScale(margin) * PostureTakenMultiplier *
-                       Mathf.Max(0f, postureScale);
-            float stun = breakStunSeconds * CombatMath.BreakStunScale(margin);
+            bool postureBroken = AddPostureAndCheckBreak(breakPostureDamage * CombatMath.BreakPostureScale(margin) *
+                                                         PostureTakenMultiplier * Mathf.Max(0f, postureScale));
+            float stun = postureBroken ? postureBreakStunSeconds : breakStunSeconds * CombatMath.BreakStunScale(margin);
             if (awayFromWinner != Vector3.zero) Push(awayFromWinner, CombatMath.BreakShoveSpeed(margin));
-            if (Posture >= maxPosture)
-            {
-                Posture = 0f;
-                stun = postureBreakStunSeconds;
-            }
             stunRemaining = Mathf.Max(stunRemaining, stun * Mathf.Max(0f, stunScale));
             counterWindowRemaining = counterWindowSeconds;
             Broken?.Invoke();
+        }
+
+        /// <summary>Adds posture; a full bar posture-breaks: it resets to 0 and this returns true.</summary>
+        private bool AddPostureAndCheckBreak(float amount)
+        {
+            Posture += amount;
+            if (Posture < maxPosture) return false;
+            Posture = 0f;
+            return true;
         }
 
         /// <summary>Sets max HP (at least 1) and refills to it. Used when a run scales enemies or syncs the player.</summary>
