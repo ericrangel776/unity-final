@@ -16,7 +16,7 @@ namespace DeckArpg.Gameplay
         public Transform Target { get; set; }
         public float Radius => radius;
         public bool IsOpen { get; private set; }
-        public bool TargetInside { get; private set; }
+        private bool TargetInside { get; set; }
 
         public event Action PlayerEntered;
 

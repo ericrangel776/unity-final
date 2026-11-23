@@ -27,8 +27,8 @@ namespace DeckArpg.UI
 
         public void StepKind(int dir) => kind = Wrap(kind + dir, Kinds.Length);
         public void StepNumber(int dir) => Number = Math.Max(CardValue.Min, Math.Min(CardValue.Max, Number + dir));
-        public void StepTrial(int dir) => trial = Wrap(trial + dir, Trials.Length);
-        public void StepElement(int dir) => element = Wrap(element + dir, Elements.Length);
+        private void StepTrial(int dir) => trial = Wrap(trial + dir, Trials.Length);
+        private void StepElement(int dir) => element = Wrap(element + dir, Elements.Length);
 
         public string KindLabel => $"Room: {Kind}";
         public string NumberLabel => $"{(MapCard.IsCombatKind(Kind) ? "Intensity" : "Quality")}: {Number}";

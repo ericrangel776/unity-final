@@ -19,7 +19,6 @@ namespace DeckArpg.UI
         /// <summary>Most recent last.</summary>
         public IReadOnlyList<(string room, float seconds)> History => history;
         public bool InRoom => roomStart >= 0f;
-        public string RoomLabel => roomLabel;
 
         public void StartRun(float now)
         {
