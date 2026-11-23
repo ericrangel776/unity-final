@@ -7,6 +7,9 @@ paths:
 
 - In PlayMode tests, `WaitForFixedUpdate` / `Time.time` loops never advance while `timeScale == 0`;
   wait on frames + `Time.realtimeSinceStartup` with a timeout, and reset `Time.timeScale = 1` in TearDown.
+  Use `TestWait.Realtime(s)` / `TestWait.UntilRealtime(cond, timeout)` instead of writing another helper.
+- A fixture that drives the run scene should derive from `RunSceneTest` (loads and unloads `M3_Run`, finds
+  `director`). Put extra lookups in `protected override void OnRunLoaded()`.
 - A scene a test loads stays loaded for later fixtures, and its live objects (dummy, player, `HitStop`)
   react to their hitboxes/clashes and cause flaky failures. `ArenaSmokeTests` unloads `M1_Arena` in a
   `[UnityTearDown]`; any new test that loads a scene must do the same.
