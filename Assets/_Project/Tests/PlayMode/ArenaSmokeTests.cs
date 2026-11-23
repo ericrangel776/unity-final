@@ -110,7 +110,16 @@ namespace DeckArpg.Tests.PlayMode
             var deck = player.GetComponent<DeckRuntimeManager>();
             int drawBefore = deck.Cycle.DrawCount;
 
-            Assert.IsTrue(player.Execute(CombatCommand.PlaySlot1));
+            // The starting hand is shuffled and the starter deck holds one Mend (heal), which is refused at full HP
+            // and spawns no hitbox. Play the first attack card so the test doesn't depend on the shuffle.
+            int slot = -1;
+            for (int i = 0; i < deck.Cycle.Hand.Count; i++)
+            {
+                if (deck.Cycle.Hand[i] != null && !deck.Cycle.Hand[i].IsHeal) { slot = i; break; }
+            }
+            Assert.GreaterOrEqual(slot, 0, "The starting hand should hold at least one attack card.");
+
+            Assert.IsTrue(player.Execute(CombatCommand.PlaySlot1 + slot));
             Assert.AreEqual(1, combat.ActiveHitboxCount);
             Assert.AreEqual(1, deck.Cycle.DiscardCount);
             Assert.AreEqual(drawBefore - 1, deck.Cycle.DrawCount);
