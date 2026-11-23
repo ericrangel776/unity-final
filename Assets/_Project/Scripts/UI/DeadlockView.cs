@@ -31,6 +31,10 @@ namespace DeckArpg.UI
         private Text result;
         private Vector3 worldPosition;
         private float resultRemaining;
+        private Sprite ringSprite;
+        // Last hand values / grade shown (-2 = empty slot); text is rebuilt only when these change.
+        private (int a, int b, int c) shownHand = (int.MinValue, 0, 0);
+        private (DeadlockGrade grade, int committed) shownGrade = ((DeadlockGrade)(-1), -1);
 
         public bool IsRingVisible => ring != null && ring.enabled;
         public string GradeText => grade != null && grade.enabled ? grade.text : null;
@@ -42,7 +46,7 @@ namespace DeckArpg.UI
             var canvas = UiFactory.CreateOverlayCanvas(transform, "DeadlockCanvas", sortingOrder: 11);
             root = UiFactory.CreateRect(canvas.transform, "Deadlock", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 Vector2.zero, new Vector2(TargetSize, TargetSize));
-            var sprite = CreateRingSprite();
+            var sprite = ringSprite = CreateRingSprite();
             target = UiFactory.CreateImage(root, "Target", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 Vector2.zero, Vector2.one * TargetSize, TargetColor);
             target.sprite = sprite;
@@ -71,6 +75,14 @@ namespace DeckArpg.UI
         private void OnEnable() => DeadlockController.Resolved += ShowResult;
         private void OnDisable() => DeadlockController.Resolved -= ShowResult;
 
+        private void OnDestroy()
+        {
+            // Generated at runtime, so nothing else owns them.
+            if (ringSprite == null) return;
+            Destroy(ringSprite.texture);
+            Destroy(ringSprite);
+        }
+
         private void LateUpdate()
         {
             var deadlock = DeadlockController.Current;
@@ -85,11 +97,18 @@ namespace DeckArpg.UI
                 float target = deadlock.TargetTime;
                 float scale = 1f + (target - elapsed) / target * 2f;
                 ring.rectTransform.sizeDelta = Vector2.one * (TargetSize * Mathf.Max(0.2f, scale));
-                hand.text = HandLine(deadlock.PlayerCycle);
+                var handNow = HandValues(deadlock.PlayerCycle);
+                if (handNow != shownHand)
+                {
+                    shownHand = handNow;
+                    hand.text = HandLine(deadlock.PlayerCycle);
+                }
 
                 grade.enabled = deadlock.HasPlayerSubmitted;
-                if (deadlock.HasPlayerSubmitted)
+                var gradeNow = (deadlock.PlayerGrade, deadlock.PlayerCommittedValue);
+                if (deadlock.HasPlayerSubmitted && gradeNow != shownGrade)
                 {
+                    shownGrade = gradeNow;
                     grade.text = GradeLine(deadlock.PlayerGrade, deadlock.PlayerCommittedValue);
                     grade.color = GradeColor(deadlock.PlayerGrade);
                 }
@@ -126,6 +145,19 @@ namespace DeckArpg.UI
             if (cam == null) return;
             var screen = cam.WorldToScreenPoint(worldPosition);
             root.anchoredPosition = UiFactory.ScreenToCanvasLocal((RectTransform)root.parent, screen);
+        }
+
+        /// <summary>The values <see cref="HandLine"/> shows: -1 = no cycle, -2 = empty slot.</summary>
+        private static (int, int, int) HandValues(DeckCycle cycle)
+        {
+            if (cycle == null) return (-1, -1, -1);
+            return (SlotValue(cycle, 0), SlotValue(cycle, 1), SlotValue(cycle, 2));
+        }
+
+        private static int SlotValue(DeckCycle cycle, int i)
+        {
+            var card = cycle.Hand[i];
+            return card == null ? -2 : card.IsZeroBreaker ? 0 : card.GetEffectiveValue();
         }
 
         private static string HandLine(DeckCycle cycle)

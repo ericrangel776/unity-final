@@ -27,6 +27,7 @@ namespace DeckArpg.UI
         private Text reloadText;
         private Text statusText;
         private (int hp, int maxHp, int posture, bool dead, bool stunned, bool dashReady) shownStatus = (-1, -1, -1, false, false, false);
+        private (bool idle, bool canReload, bool overburn, int burned, int cost, bool affordable) shownPrompt = (true, true, true, -1, -1, true);
 
         public void Bind(DeckRuntimeManager deckManager, CombatantStatus playerStatus, PlayerMotor playerMotor)
         {
@@ -118,7 +119,7 @@ namespace DeckArpg.UI
 
             var reload = UiFactory.CreateRect(root, "Reload", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
                 new Vector2(0f, 235f), new Vector2(760f, 30f));
-            reloadText = UiFactory.CreateText(reload, "ReloadPrompt", 26, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.3f));
+            reloadText = UiFactory.CreateText(reload, "ReloadPrompt", 26, TextAnchor.MiddleCenter, ReloadPromptColor);
 
             var statusRect = UiFactory.CreateRect(canvas.transform, "Status", new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(30f, -30f), new Vector2(900f, 40f));
@@ -167,7 +168,16 @@ namespace DeckArpg.UI
         {
             var cycle = deck.Cycle;
             var reload = deck.Reload;
-            if (reload == null || reload.State != ReloadState.Idle)
+            bool idle = reload != null && reload.State == ReloadState.Idle;
+            bool overburnShown = idle && cycle.DrawCount == 0 && cycle.BurnedCount > 0 && status != null;
+            int cost = overburnShown ? reload.NextOverburnCost(status.MaxHp) : 0;
+            bool affordable = overburnShown && OverburnRules.CanAfford(status.Hp, cost);
+            // Runs every frame; rebuild the string only when something it shows changes.
+            var now = (idle, cycle.CanReload, overburnShown, cycle.BurnedCount, cost, affordable);
+            if (now == shownPrompt) return;
+            shownPrompt = now;
+
+            if (!idle)
             {
                 reloadText.text = "";
                 return;
@@ -175,10 +185,8 @@ namespace DeckArpg.UI
 
             string line = cycle.CanReload ? "[R] RELOAD" : "";
             reloadText.color = ReloadPromptColor;
-            if (cycle.DrawCount == 0 && cycle.BurnedCount > 0 && status != null)
+            if (overburnShown)
             {
-                int cost = reload.NextOverburnCost(status.MaxHp);
-                bool affordable = OverburnRules.CanAfford(status.Hp, cost);
                 string overburn = affordable
                     ? $"[Shift+R] OVERBURN  -{cost} HP  (restores {cycle.BurnedCount})"
                     : $"OVERBURN needs {cost + 1}+ HP";
