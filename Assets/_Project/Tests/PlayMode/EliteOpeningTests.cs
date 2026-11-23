@@ -123,8 +123,17 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(EliteRules.OverextendDamageMultiplier, elite.Status.DamageTakenMultiplier, Eps);
             Assert.AreEqual(EliteRules.OverextendDamageMultiplier, elite.Status.PostureTakenMultiplier, Eps);
 
-            yield return TestWait.UntilRealtime(() => !opening.IsOverextended, elite.RecoverSeconds + EliteRules.OverextendSeconds + 1f);
-            Assert.IsFalse(opening.IsOverextended, "The window closes.");
+            // Freeze the AI so no new wind-up closes the window early: only its own timer may close it.
+            TrainingDummyEnemy.DebugFreezeAI = true;
+            try
+            {
+                yield return TestWait.UntilRealtime(() => !opening.IsOverextended, elite.RecoverSeconds + EliteRules.OverextendSeconds + 1f);
+            }
+            finally
+            {
+                TrainingDummyEnemy.DebugFreezeAI = false;
+            }
+            Assert.IsFalse(opening.IsOverextended, "The window closes on its timer.");
             Assert.AreEqual(1f, elite.Status.DamageTakenMultiplier, Eps);
             Assert.AreEqual(1f, elite.Status.PostureTakenMultiplier, Eps);
         }
@@ -167,6 +176,22 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.Greater(normal, 0);
             Assert.AreEqual(Mathf.RoundToInt(normal * EliteRules.OverextendDamageMultiplier), opened);
+        }
+
+        [UnityTest]
+        public IEnumerator Window_PausesWhileTheEliteIsStunned()
+        {
+            var elite = EnterElite();
+            yield return null;
+            var opening = elite.GetComponent<EliteOpening>();
+            opening.Open(0.3f);
+            elite.Status.ApplyStun(2f);
+
+            yield return TestWait.Realtime(0.6f);
+
+            Assert.IsTrue(elite.Status.IsStunned, "setup: still stunned");
+            Assert.IsTrue(opening.IsOverextended, "A posture-broken Elite keeps its opening.");
+            Assert.AreEqual(0.3f, opening.RemainingSeconds, Eps);
         }
 
         [Test]

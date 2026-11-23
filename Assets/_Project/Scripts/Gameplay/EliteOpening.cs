@@ -6,7 +6,8 @@ namespace DeckArpg.Gameplay
     /// <summary>
     /// Elite punish window (docs/specs/elite-rework.md). A heavy card winds up a little longer (the tell); after the
     /// swing the Elite recovers longer and is Overextended: it takes extra HP and posture damage and is tinted gold.
-    /// The window ends on its timer, at the next wind-up, or on death.
+    /// The window ends on its timer, at the next wind-up, or on death. Its timer runs on the Elite's own recover clock:
+    /// paused while it is stunned (a posture break mid-window keeps the opening) and slowed by Chill.
     /// </summary>
     [RequireComponent(typeof(TrainingDummyEnemy))]
     public sealed class EliteOpening : MonoBehaviour
@@ -16,6 +17,7 @@ namespace DeckArpg.Gameplay
 
         private TrainingDummyEnemy enemy;
         private BodyTint tint;
+        private ElementStatusEffects elementFx;
         private float remaining;
 
         public bool IsOverextended => remaining > 0f;
@@ -27,6 +29,7 @@ namespace DeckArpg.Gameplay
         {
             enemy = GetComponent<TrainingDummyEnemy>();
             tint = BodyTint.For(gameObject);
+            elementFx = GetComponent<ElementStatusEffects>();
         }
 
         private void OnEnable()
@@ -70,8 +73,8 @@ namespace DeckArpg.Gameplay
 
         private void Update()
         {
-            if (remaining <= 0f) return;
-            remaining -= Time.deltaTime;
+            if (remaining <= 0f || enemy.Status.IsStunned) return;
+            remaining -= Time.deltaTime * (elementFx != null ? elementFx.SpeedMultiplier : 1f);
             if (remaining <= 0f) Close();
         }
 

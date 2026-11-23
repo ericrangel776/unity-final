@@ -48,7 +48,8 @@ Unchanged: HP 250%, posture 150%, size, the trials, rewards.
   Elite room, 1 everywhere else.
 - `EliteOpening` listens to `TelegraphStarted` and `Swung`. It extends the telegraph or the next recover through hooks
   on `TrainingDummyEnemy`, and owns the Overextended window: the multipliers and the tint. The window ends on its
-  timer, at the next telegraph, or on death.
+  timer, at the next telegraph, or on death. The timer runs on the Elite's recover clock: it pauses while the Elite is
+  stunned, so a posture break mid-window keeps the opening, and Chill slows it.
 - Debug: Enemies tab -> "Elite: force Overextended".
 
 ## Verification
