@@ -25,6 +25,9 @@ namespace DeckArpg.Core
         public bool IsHeal => Data.IsHeal;
         public bool IsPremium => Data.IsPremium || IsPremiumOverride;
 
+        /// <summary>Base + permanent run upgrades + Premium, unclamped (no room buffs). The Forge caps upgrades on this.</summary>
+        public int PermanentValue => Data.BaseValue + PermanentRunUpgradeMod + (IsPremium ? PremiumBonus : 0);
+
         /// <summary>
         /// 0 for zero-breakers (mods never touch them); otherwise base + mods (+2 if Premium) clamped to [1, 9].
         /// Callers must check <see cref="IsZeroBreaker"/> rather than comparing against 0.
@@ -32,8 +35,7 @@ namespace DeckArpg.Core
         public int GetEffectiveValue()
         {
             if (Data.IsZeroBreaker) return 0;
-            int premium = IsPremium ? PremiumBonus : 0;
-            return CardValue.Clamp(Data.BaseValue + PermanentRunUpgradeMod + TemporaryRoomMod + premium);
+            return CardValue.Clamp(PermanentValue + TemporaryRoomMod);
         }
 
         public override string ToString() => $"{Data.DisplayName} [{GetEffectiveValue()}]";

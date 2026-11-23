@@ -43,11 +43,7 @@ namespace DeckArpg.Core
         public static int HealPercent(int quality) => RoomIntensity.BandStep(quality, 25, 25, 35);
 
         /// <summary>Percent of max HP, rounded up.</summary>
-        public static int HealAmount(int maxHp, int quality)
-        {
-            if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
-            return RewardRules.PercentCeil(maxHp, HealPercent(quality));
-        }
+        public static int HealAmount(int maxHp, int quality) => RewardRules.PercentOfMaxHp(maxHp, HealPercent(quality));
     }
 
     /// <summary>Ember Forge numbers, by Quality band.</summary>
@@ -61,9 +57,7 @@ namespace DeckArpg.Core
         /// <summary>No upgrades on 0-cards or on cards whose base + permanent mods (+Premium) already reach 9.</summary>
         public static bool CanUpgrade(RuntimeCardInstance card)
         {
-            if (card == null || card.IsZeroBreaker) return false;
-            int premium = card.IsPremium ? RuntimeCardInstance.PremiumBonus : 0;
-            return card.Data.BaseValue + card.PermanentRunUpgradeMod + premium < CardValue.Max;
+            return card != null && !card.IsZeroBreaker && card.PermanentValue < CardValue.Max;
         }
 
         public static bool CanMakePremium(RuntimeCardInstance card) =>
@@ -79,11 +73,7 @@ namespace DeckArpg.Core
         public static int FortifyMaxHp(int quality) => RoomIntensity.BandStep(quality, 8, 10, 12);
 
         /// <summary>Percent of max HP, rounded up.</summary>
-        public static int HealAmount(int maxHp, int quality)
-        {
-            if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
-            return RewardRules.PercentCeil(maxHp, HealPercent(quality));
-        }
+        public static int HealAmount(int maxHp, int quality) => RewardRules.PercentOfMaxHp(maxHp, HealPercent(quality));
     }
 
     /// <summary>One visit to a shop: fixed stock, each card sold once, purges priced by the run's purge count.</summary>
