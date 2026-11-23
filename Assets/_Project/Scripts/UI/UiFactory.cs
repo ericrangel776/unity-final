@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace DeckArpg.UI
@@ -26,6 +28,16 @@ namespace DeckArpg.UI
             scaler.matchWidthOrHeight = 0.5f;
             return canvas;
         }
+
+        /// <summary>Clickable screens need one EventSystem (with the Input System module); creates it if the scene has none.</summary>
+        public static void EnsureEventSystem()
+        {
+            if (Object.FindAnyObjectByType<EventSystem>() != null) return;
+            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+        }
+
+        /// <summary>Ease-out cubic on [0, 1]: fast start, soft landing (pop-up punch-in).</summary>
+        public static float EaseOutCubic(float p) => 1f - (1f - p) * (1f - p) * (1f - p);
 
         /// <summary>Overlay canvases convert screen points with a null camera; camera-space canvases need theirs.</summary>
         public static Camera CanvasCamera(Canvas canvas) =>

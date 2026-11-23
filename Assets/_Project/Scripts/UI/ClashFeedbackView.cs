@@ -179,7 +179,7 @@ namespace DeckArpg.UI
                 float t = 1f - remaining / duration;
                 // Ease-out punch: starts big and snaps down to normal size.
                 float p = Mathf.Clamp01((duration - remaining) / punchSeconds);
-                float ease = 1f - (1f - p) * (1f - p) * (1f - p);
+                float ease = UiFactory.EaseOutCubic(p);
                 rect.localScale = Vector3.one * Mathf.Lerp(punchFrom, 1f, ease);
 
                 Place(cam, t, risePixels);
