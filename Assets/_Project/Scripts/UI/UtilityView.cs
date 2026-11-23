@@ -104,7 +104,8 @@ namespace DeckArpg.UI
         /// <summary>Extra buttons for a subclass (the Shop's Purge button, in the left slot).</summary>
         protected virtual void BuildExtras(RectTransform root) { }
 
-        private void OnDestroy()
+        // Protected virtual so a subclass that needs its own OnDestroy overrides it (and calls base) instead of hiding it.
+        protected virtual void OnDestroy()
         {
             if (Director != null) Director.StateChanged -= HandleStateChanged;
         }

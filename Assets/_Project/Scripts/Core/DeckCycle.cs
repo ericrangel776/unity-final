@@ -66,15 +66,34 @@ namespace DeckArpg.Core
         /// The non-empty hand slot whose card was drawn earliest, or -1. Playing this slot each time makes the play
         /// order follow the draw order (the boss does this so its spaced shuffle holds).
         /// </summary>
-        public int OldestSlot
+        public int OldestSlot => SlotByStamp(oldest: true);
+
+        /// <summary>How many hand slots hold a card (the parry slot not included).</summary>
+        public int HandCount
         {
             get
             {
-                int best = -1;
-                for (int i = 0; i < HandSize; i++)
-                    if (hand[i] != null && (best < 0 || drawStamp[i] < drawStamp[best])) best = i;
-                return best;
+                int n = 0;
+                foreach (var c in hand) if (c != null) n++;
+                return n;
             }
+        }
+
+        /// <summary>The lowest non-empty hand slot, or -1.</summary>
+        public int FirstFilledSlot()
+        {
+            for (int i = 0; i < HandSize; i++)
+                if (hand[i] != null) return i;
+            return -1;
+        }
+
+        /// <summary>The hand slot holding <paramref name="card"/>, or -1 (also for null).</summary>
+        public int IndexOf(RuntimeCardInstance card)
+        {
+            if (card == null) return -1;
+            for (int i = 0; i < HandSize; i++)
+                if (hand[i] == card) return i;
+            return -1;
         }
         public RuntimeCardInstance ParrySlot { get; private set; }
         public int DrawCount => drawQueue.Count;
@@ -97,8 +116,7 @@ namespace DeckArpg.Core
         {
             get
             {
-                int inHand = ParrySlot != null ? 1 : 0;
-                foreach (var c in hand) if (c != null) inHand++;
+                int inHand = HandCount + (ParrySlot != null ? 1 : 0);
                 return drawQueue.Count + zeroReserve.Count + discard.Count + stock.Count + inHand;
             }
         }
@@ -154,7 +172,7 @@ namespace DeckArpg.Core
             if (card == null) return false;
 
             DiscardOrBurnPremium(card);
-            ParrySlot = zeroReserve.Count > 0 ? zeroReserve.Dequeue() : null;
+            RefillParrySlot();
             Changed?.Invoke();
             return true;
         }
@@ -182,7 +200,7 @@ namespace DeckArpg.Core
             var card = ParrySlot;
             if (card == null) return StockResult.Rejected;
 
-            ParrySlot = zeroReserve.Count > 0 ? zeroReserve.Dequeue() : null;
+            RefillParrySlot();
             return AddToStock(card, out sleight);
         }
 
@@ -309,9 +327,7 @@ namespace DeckArpg.Core
             card.IsBurnedThisFight = false;
             if (card.IsZeroBreaker)
             {
-                // 0-cards never sit in the draw queue.
-                if (ParrySlot == null) ParrySlot = card;
-                else zeroReserve.Enqueue(card);
+                StoreZero(card); // 0-cards never sit in the draw queue
             }
             else drawQueue.Enqueue(card);
             FillEmptySlots();
@@ -429,10 +445,19 @@ namespace DeckArpg.Core
             foreach (var c in cards)
             {
                 if (!c.IsZeroBreaker) drawQueue.Enqueue(c);
-                else if (ParrySlot == null) ParrySlot = c;
-                else zeroReserve.Enqueue(c);
+                else StoreZero(c);
             }
         }
+
+        /// <summary>A 0-card goes to the empty Parry slot, else to the back of the reserve.</summary>
+        private void StoreZero(RuntimeCardInstance zero)
+        {
+            if (ParrySlot == null) ParrySlot = zero;
+            else zeroReserve.Enqueue(zero);
+        }
+
+        /// <summary>The Parry slot was emptied: the next reserved 0-card (if any) takes it.</summary>
+        private void RefillParrySlot() => ParrySlot = zeroReserve.Count > 0 ? zeroReserve.Dequeue() : null;
 
         private void FillEmptySlots()
         {
@@ -449,10 +474,20 @@ namespace DeckArpg.Core
         /// <summary>The hand card drawn last (it's played just before the queue continues), or null.</summary>
         private RuntimeCardInstance NewestInHand()
         {
+            int slot = SlotByStamp(oldest: false);
+            return slot < 0 ? null : hand[slot];
+        }
+
+        /// <summary>The non-empty hand slot drawn earliest (or latest), or -1.</summary>
+        private int SlotByStamp(bool oldest)
+        {
             int best = -1;
             for (int i = 0; i < HandSize; i++)
-                if (hand[i] != null && (best < 0 || drawStamp[i] > drawStamp[best])) best = i;
-            return best < 0 ? null : hand[best];
+            {
+                if (hand[i] == null) continue;
+                if (best < 0 || (oldest ? drawStamp[i] < drawStamp[best] : drawStamp[i] > drawStamp[best])) best = i;
+            }
+            return best;
         }
 
         private RuntimeCardInstance DrawNext() => drawQueue.Count > 0 ? drawQueue.Dequeue() : null;

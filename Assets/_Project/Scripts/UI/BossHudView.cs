@@ -176,7 +176,7 @@ namespace DeckArpg.UI
         }
 
 
-        public static Color PipColor(BossPip pip)
+        private static Color PipColor(BossPip pip)
         {
             switch (pip)
             {

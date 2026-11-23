@@ -5,41 +5,22 @@ using DeckArpg.Gameplay;
 using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>The run summary and restart (docs/specs/m3-ui.md, sub-step 6).</summary>
-    public class RunEndViewTests
+    public class RunEndViewTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private RunScreens screens;
         private RunEndView end;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
             screens = Object.FindAnyObjectByType<RunScreens>();
             end = Object.FindAnyObjectByType<RunEndView>();
             Assert.IsNotNull(end, "RunEndView missing from M3_Run (rebuild the scene).");
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         private void KillPlayer()

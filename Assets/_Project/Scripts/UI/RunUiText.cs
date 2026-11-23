@@ -11,7 +11,6 @@ namespace DeckArpg.UI
         public const string PipOn = "●";
         public const string PipOff = "○";
 
-        /// <summary>"Room 3/6", or "Room 6/6 · Boss" on the boss room.</summary>
         private static readonly string[] SmallNumbers = BuildSmallNumbers(100);
 
         private static string[] BuildSmallNumbers(int count)
@@ -25,6 +24,7 @@ namespace DeckArpg.UI
         public static string Number(int n) =>
             n >= 0 && n < SmallNumbers.Length ? SmallNumbers[n] : n.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+        /// <summary>"Room 3/6", or "Room 6/6 · Boss" on the boss room.</summary>
         public static string Room(int roomNumber) =>
             $"Room {roomNumber}/{RunState.BossRoom}" + (roomNumber == RunState.BossRoom ? " · Boss" : "");
 
@@ -63,7 +63,7 @@ namespace DeckArpg.UI
         /// <summary>What the corner number means: Intensity on fights, Quality on Blue rooms.</summary>
         public static string NumberLabel(in MapCard card) => card.IsCombat ? "INTENSITY" : "QUALITY";
 
-        public static string TierName(RewardTier tier) => tier.ToString();
+        private static string TierName(RewardTier tier) => tier.ToString();
 
         /// <summary>
         /// The reward line: "Fierce ●●●○" (tier name + 1-4 pips) for fights, "Final fight" for the boss, empty for Blue
@@ -111,7 +111,7 @@ namespace DeckArpg.UI
             }
         }
 
-        public static string TrialHint(EliteTrial trial)
+        private static string TrialHint(EliteTrial trial)
         {
             switch (trial)
             {
@@ -195,7 +195,7 @@ namespace DeckArpg.UI
         }
 
         /// <summary>"Heal · restores 9 HP (0.5 s channel)": the heal at the card's value (base + upgrade, + Premium).</summary>
-        public static string HealDetails(CardData card, int upgrade = 0)
+        private static string HealDetails(CardData card, int upgrade = 0)
         {
             int premium = card.IsPremium ? RuntimeCardInstance.PremiumBonus : 0;
             int amount = HealRules.Amount(Core.CardValue.Clamp(card.BaseValue + upgrade + premium));
@@ -259,7 +259,6 @@ namespace DeckArpg.UI
         public static string PurgePreview(RuntimeCardInstance card, int cost, int deckCount) =>
             $"Remove {card.Data.DisplayName}: -{cost} currency, deck {deckCount} -> {deckCount - 1}";
 
-        /// <summary>"Need 30 more currency" (empty when affordable).</summary>
         /// <summary>The Shop's Heal button: what it does, or why it's disabled ("bought", "full HP", "need N more").</summary>
         public static string ShopHealLabel(int healAmount, bool used, bool fullHp, int currency)
         {
@@ -278,6 +277,7 @@ namespace DeckArpg.UI
             return $"Max HP +{ShopRules.VitalDraughtMaxHp} ({ShopRules.VitalDraughtCost})";
         }
 
+        /// <summary>"Need 30 more currency" (empty when affordable).</summary>
         public static string Shortfall(int price, int currency) =>
             currency >= price ? "" : $"Need {price - currency} more currency";
 

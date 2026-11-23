@@ -69,6 +69,7 @@ namespace DeckArpg.Gameplay
 
         private readonly List<AttackHitbox> active = new List<AttackHitbox>();
         private readonly Dictionary<AttackHitbox, RuntimeCardInstance> sources = new Dictionary<AttackHitbox, RuntimeCardInstance>();
+        private readonly List<AttackHitbox> cancelScratch = new List<AttackHitbox>();
         private Coroutine pendingCombo;
 
         public CombatantStatus Status { get; private set; }
@@ -162,10 +163,14 @@ namespace DeckArpg.Gameplay
 
             var stamped = OutgoingDamageScale != 1f && OutgoingDamageScale > 0f
                 ? payload.WithDamageScale(OutgoingDamageScale) : payload;
-            var go = new GameObject($"Hitbox_{payload.Delivery}_{payload.Value}");
+#if UNITY_EDITOR
+            var go = new GameObject($"Hitbox_{payload.Delivery}_{payload.Value}"); // readable in the Hierarchy
+#else
+            var go = new GameObject("Hitbox"); // no per-attack string in builds
+#endif
             go.layer = gameObject.layer;
             var hb = go.AddComponent<AttackHitbox>();
-            var origin = transform.position + Vector3.up * 0.5f;
+            var origin = transform.position + Vector3.up * CombatantStatus.BodyCenterHeight;
 
             switch (payload.Delivery)
             {
@@ -215,10 +220,12 @@ namespace DeckArpg.Gameplay
                 StopCoroutine(pendingCombo);
                 pendingCombo = null;
             }
-            // Copy first: Cancel() calls back into Unregister.
-            var snapshot = active.ToArray();
-            foreach (var hb in snapshot)
+            // Copy first: Cancel() calls back into Unregister. Reuses one scratch list (runs on every Card Break).
+            cancelScratch.Clear();
+            cancelScratch.AddRange(active);
+            foreach (var hb in cancelScratch)
                 if (hb != null) hb.Cancel();
+            cancelScratch.Clear();
             active.Clear();
             sources.Clear();
         }

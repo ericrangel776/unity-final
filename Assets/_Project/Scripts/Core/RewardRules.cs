@@ -92,6 +92,13 @@ namespace DeckArpg.Core
             return (int)(((long)value * percent + 50) / 100);
         }
 
+        /// <summary><paramref name="percent"/>% of <paramref name="maxHp"/> (must be positive), rounded up: the Shop and Rest heals.</summary>
+        public static int PercentOfMaxHp(int maxHp, int percent)
+        {
+            if (maxHp < 1) throw new ArgumentOutOfRangeException(nameof(maxHp));
+            return PercentCeil(maxHp, percent);
+        }
+
         /// <summary><paramref name="percent"/>% of <paramref name="value"/>, rounded up. Integer math.</summary>
         public static int PercentCeil(int value, int percent)
         {

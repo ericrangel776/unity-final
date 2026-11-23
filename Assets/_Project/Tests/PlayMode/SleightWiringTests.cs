@@ -77,11 +77,6 @@ namespace DeckArpg.Tests.PlayMode
         }
 
         /// <summary>Waits until <paramref name="done"/> or a real-time timeout (never hangs).</summary>
-        private static IEnumerator WaitUntil(System.Func<bool> done, float seconds = 3f)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
         // ---- stocking & Sleights ----
 
@@ -112,7 +107,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(1, hitboxes.Count, "First hit spawns immediately.");
             Assert.IsTrue(motor.IsLunging);
 
-            yield return WaitUntil(() => hitboxes.Count >= 3);
+            yield return TestWait.UntilRealtime(() => hitboxes.Count >= 3, 3f);
 
             Assert.AreEqual(3, hitboxes.Count);
             foreach (var hb in hitboxes)
@@ -120,7 +115,7 @@ namespace DeckArpg.Tests.PlayMode
                 Assert.IsTrue(hb.Payload.IsSleight);
                 Assert.AreEqual(3, hb.Payload.HitCount);
             }
-            yield return WaitUntil(() => !motor.IsLunging);
+            yield return TestWait.UntilRealtime(() => !motor.IsLunging, 3f);
             Assert.Greater(player.transform.position.z - startZ, 1.5f, "The lunge carried the player forward.");
         }
 
@@ -182,7 +177,7 @@ namespace DeckArpg.Tests.PlayMode
                 Element.Physical), Vector3.back);
             Assert.IsTrue(input.Execute(CombatCommand.Poke));
 
-            yield return WaitUntil(() => deck.Cycle.StockCount == 0, 1f);
+            yield return TestWait.UntilRealtime(() => deck.Cycle.StockCount == 0, 1f);
 
             Assert.AreEqual(0, deck.Cycle.StockCount);
             CollectionAssert.Contains(deck.Cycle.BurnedPile, stocked, "Crack the catalyst: slot 1 burns.");
@@ -227,7 +222,7 @@ namespace DeckArpg.Tests.PlayMode
             EmptyDrawQueue();
             Assert.IsTrue(input.Execute(CombatCommand.Reload));
 
-            yield return WaitUntil(() => deck.Reload.State == ReloadState.Idle, 3f);
+            yield return TestWait.UntilRealtime(() => deck.Reload.State == ReloadState.Idle, 3f);
 
             Assert.AreEqual(ReloadState.Idle, deck.Reload.State);
             Assert.Greater(deck.Cycle.DrawCount, 0);
@@ -276,7 +271,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(status.MaxHp - OverburnRules.Cost(status.MaxHp, 0), status.Hp);
             Assert.IsTrue(deck.Reload.IsOverburn);
 
-            yield return WaitUntil(() => deck.Reload.State == ReloadState.Idle, 3f);
+            yield return TestWait.UntilRealtime(() => deck.Reload.State == ReloadState.Idle, 3f);
 
             Assert.AreEqual(0, deck.Cycle.BurnedCount);
             Assert.AreEqual(7, deck.Cycle.CyclingCardCount);

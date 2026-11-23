@@ -94,17 +94,7 @@ namespace DeckArpg.Tests.PlayMode
             return card;
         }
 
-        private static IEnumerator WaitUntil(System.Func<bool> done, float seconds = 3f)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
-        private static IEnumerator WaitRealtime(float seconds)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (Time.realtimeSinceStartup < end) yield return null;
-        }
 
         private static AttackPayload EnemyHit(int value, bool poke = false) =>
             new AttackPayload(999, Team.Enemy, value, false, false, 0, CardShape.Strike, Element.Physical, isPoke: poke);
@@ -130,7 +120,7 @@ namespace DeckArpg.Tests.PlayMode
             CollectionAssert.IsEmpty(hitboxes, "a heal has no hitbox");
 
             float start = Time.time;
-            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return TestWait.UntilRealtime(() => !channel.IsChannelling, 3f);
 
             Assert.GreaterOrEqual(Time.time - start, HealRules.ChannelSeconds - 0.02f);
             Assert.AreEqual(59, status.Hp);
@@ -145,7 +135,7 @@ namespace DeckArpg.Tests.PlayMode
             MakePlayer(-3, -3, -3, -3);
             StartChannel();
             Assert.AreEqual(0f, channel.Progress01, 1e-4f);
-            yield return WaitRealtime(0.2f);
+            yield return TestWait.Realtime(0.2f);
             Assert.Greater(channel.Progress01, 0f);
             Assert.Less(channel.Progress01, 1f);
         }
@@ -156,11 +146,11 @@ namespace DeckArpg.Tests.PlayMode
             MakePlayer(-3, -3, -3, -3);
             StartChannel();
             Time.timeScale = 0f; // hit-stop
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             Assert.IsTrue(channel.IsChannelling, "scaled time: hit-stop pauses the channel");
             Assert.AreEqual(50, status.Hp);
             Time.timeScale = 1f;
-            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return TestWait.UntilRealtime(() => !channel.IsChannelling, 3f);
             Assert.AreEqual(59, status.Hp);
         }
 
@@ -174,7 +164,7 @@ namespace DeckArpg.Tests.PlayMode
             status.TakeHit(EnemyHit(2), Vector3.forward);
             int hp = status.Hp;
             Assert.Less(hp, 50);
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, hp);
         }
 
@@ -185,7 +175,7 @@ namespace DeckArpg.Tests.PlayMode
             var card = StartChannel();
             status.TakeHit(EnemyHit(1, poke: true), Vector3.forward);
             int hp = status.Hp;
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, hp);
         }
 
@@ -195,7 +185,7 @@ namespace DeckArpg.Tests.PlayMode
             MakePlayer(-3, -3, -3, -3);
             var card = StartChannel();
             status.ApplyBreak();
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, 50);
         }
 
@@ -205,7 +195,7 @@ namespace DeckArpg.Tests.PlayMode
             MakePlayer(-3, -3, -3, -3);
             var card = StartChannel();
             status.ApplyStun(0.1f); // Lightning jolt: no event, caught by the channel's own check
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, 50);
         }
 
@@ -216,7 +206,7 @@ namespace DeckArpg.Tests.PlayMode
             var card = StartChannel();
             Assert.IsTrue(motor.TryDash());
             Assert.IsTrue(motor.IsDashing);
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, 50);
         }
 
@@ -229,7 +219,7 @@ namespace DeckArpg.Tests.PlayMode
             while (!status.IsDead) status.TakeHit(EnemyHit(9), Vector3.forward);
             Assert.IsFalse(channel.IsChannelling);
             Assert.AreEqual(1, interrupted);
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             CollectionAssert.IsEmpty(completed);
             Assert.AreEqual(0, status.Hp);
         }
@@ -240,7 +230,7 @@ namespace DeckArpg.Tests.PlayMode
             MakePlayer(-3, -3, -3, -3);
             var card = StartChannel();
             input.ResetForNewRoom();
-            yield return WaitRealtime(HealRules.ChannelSeconds + 0.2f);
+            yield return TestWait.Realtime(HealRules.ChannelSeconds + 0.2f);
             AssertCancelledWithNoHeal(card, 50);
         }
 
@@ -252,7 +242,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsTrue(status.TakeEffectDamage(3, Element.Fire, EnemyHit(1)));
             Assert.AreEqual(47, status.Hp);
             Assert.IsTrue(channel.IsChannelling, "effect damage doesn't interrupt");
-            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return TestWait.UntilRealtime(() => !channel.IsChannelling, 3f);
             Assert.AreEqual(0, interrupted);
             Assert.AreEqual(56, status.Hp);
         }
@@ -281,7 +271,7 @@ namespace DeckArpg.Tests.PlayMode
             for (int i = 0; i < DeckCycle.HandSize; i++) if (deck.Cycle.Hand[i] != null) after++;
             Assert.AreEqual(handCards, after, "nothing else left the hand");
             Assert.IsTrue(channel.IsChannelling);
-            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return TestWait.UntilRealtime(() => !channel.IsChannelling, 3f);
             Assert.IsTrue(input.Execute(CombatCommand.Poke), "commands work again after the channel");
         }
 
@@ -375,7 +365,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.IsFalse(fx.RingVisible, "hidden when idle");
 
             StartChannel();
-            yield return WaitRealtime(0.2f);
+            yield return TestWait.Realtime(0.2f);
             Time.timeScale = 0f; // freeze the channel so the drawn fill and the progress agree
             yield return null;
             yield return null;
@@ -396,7 +386,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(player.transform.position.y - 1f + HealChannelFx.Height, first.y, 1e-3f, "at the feet");
 
             Time.timeScale = 1f;
-            yield return WaitUntil(() => !channel.IsChannelling);
+            yield return TestWait.UntilRealtime(() => !channel.IsChannelling, 3f);
             yield return null;
             yield return null;
             Assert.IsFalse(fx.RingVisible, "hidden after completing");

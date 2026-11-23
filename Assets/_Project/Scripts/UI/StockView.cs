@@ -24,11 +24,15 @@ namespace DeckArpg.UI
         private RectTransform row;
         private Text preview;
         private Image timeoutFill;
+        // What the slots/preview currently show; text is rebuilt only when a card or a shown value changes.
+        private readonly RuntimeCardInstance[] shownCards = new RuntimeCardInstance[SleightRules.StockSize];
+        private readonly int[] shownValues = new int[SleightRules.StockSize];
+        private int shownCount = -1;
 
         public bool IsVisible => row != null && row.gameObject.activeSelf;
         public string SlotText(int i) => slotTexts[i].text;
         public string PreviewText => preview.text;
-        public float TimeoutFill01 => timeoutFill.rectTransform.sizeDelta.x / TimeoutWidth;
+        public float TimeoutFill01 => timeoutFill.rectTransform.localScale.x;
 
         public void Bind(DeckRuntimeManager deckManager)
         {
@@ -84,23 +88,43 @@ namespace DeckArpg.UI
             if (row.gameObject.activeSelf != visible) row.gameObject.SetActive(visible);
             if (!visible) return;
 
-            for (int i = 0; i < SleightRules.StockSize; i++)
+            if (StockChanged(stock))
             {
-                if (i >= stock.Count)
+                for (int i = 0; i < SleightRules.StockSize; i++)
                 {
-                    slots[i].color = EmptySlot;
-                    slotTexts[i].text = "";
-                    continue;
+                    if (i >= stock.Count)
+                    {
+                        slots[i].color = EmptySlot;
+                        slotTexts[i].text = "";
+                        continue;
+                    }
+                    var card = stock[i];
+                    int shown = shownValues[i];
+                    slots[i].color = card.IsZeroBreaker ? ElementColors.Zero : Opaque(ElementColors.For(card.Data.Element));
+                    slotTexts[i].text = card.IsZeroBreaker ? $"0→{shown}" : RunUiText.Number(shown);
                 }
-                var card = stock[i];
-                int shown = SleightRules.PreviewSlotValue(stock, i);
-                slots[i].color = card.IsZeroBreaker ? ElementColors.Zero : Opaque(ElementColors.For(card.Data.Element));
-                slotTexts[i].text = card.IsZeroBreaker ? $"0→{shown}" : shown.ToString();
+                preview.text = PreviewLine(stock);
             }
 
-            preview.text = PreviewLine(stock);
+            // Only the timeout bar changes every frame. Scaling (not resizing) avoids a layout rebuild.
             float remaining = 1f - Mathf.Clamp01(deck.Cycle.StockIdleSeconds / SleightRules.StockTimeoutSeconds);
-            timeoutFill.rectTransform.sizeDelta = new Vector2(TimeoutWidth * remaining, 6f);
+            timeoutFill.rectTransform.localScale = new Vector3(remaining, 1f, 1f);
+        }
+
+        /// <summary>Records the stocked cards and their shown values; true if anything differs from last frame.</summary>
+        private bool StockChanged(IReadOnlyList<RuntimeCardInstance> stock)
+        {
+            bool changed = stock.Count != shownCount;
+            shownCount = stock.Count;
+            for (int i = 0; i < SleightRules.StockSize; i++)
+            {
+                var card = i < stock.Count ? stock[i] : null;
+                int value = card != null ? SleightRules.PreviewSlotValue(stock, i) : 0;
+                if (card != shownCards[i] || value != shownValues[i]) changed = true;
+                shownCards[i] = card;
+                shownValues[i] = value;
+            }
+            return changed;
         }
 
         /// <summary>"SLEIGHT 12+ · Throw · Fire" (+ = partial; the 3rd card fires it and sets the finisher multiplier).</summary>

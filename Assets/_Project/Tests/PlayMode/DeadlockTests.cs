@@ -68,18 +68,13 @@ namespace DeckArpg.Tests.PlayMode
         private static AttackPayload Payload(CombatActionController c, int value, int tick, bool zero = false) =>
             new AttackPayload(c.Status.OwnerId, c.Status.Team, value, zero, false, tick, CardShape.Strike, Element.Physical);
 
-        private static IEnumerator WaitUntilRealtime(System.Func<bool> done, float timeout = 1f)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
         /// <summary>Spawns an equal-value clash and waits for the Deadlock to start.</summary>
         private IEnumerator StartTie(CombatActionController player, CombatActionController enemy, int value = 5)
         {
             enemy.Spawn(Payload(enemy, value, tick: 1), Vector3.back);
             player.Spawn(Payload(player, value, tick: 2), Vector3.forward);
-            yield return WaitUntilRealtime(() => controller.IsActive);
+            yield return TestWait.UntilRealtime(() => controller.IsActive, 1f);
             Assert.IsTrue(controller.IsActive, "An equal-value clash should start a Deadlock.");
         }
 
@@ -87,7 +82,7 @@ namespace DeckArpg.Tests.PlayMode
         private IEnumerator FinishWindow()
         {
             fakeNow = Start + DeadlockRules.WindowSeconds + 0.01f;
-            yield return WaitUntilRealtime(() => !controller.IsActive);
+            yield return TestWait.UntilRealtime(() => !controller.IsActive, 1f);
             Assert.IsFalse(controller.IsActive);
             Assert.AreEqual(1, results.Count, "Exactly one result.");
         }
@@ -211,7 +206,7 @@ namespace DeckArpg.Tests.PlayMode
             enemy.Spawn(Payload(enemy, 0, tick: 3, zero: true), Vector3.back);
             player.Spawn(Payload(player, 0, tick: 3, zero: true), Vector3.forward);
 
-            yield return WaitUntilRealtime(() => player.ActiveHitboxCount == 0);
+            yield return TestWait.UntilRealtime(() => player.ActiveHitboxCount == 0, 1f);
 
             Assert.IsFalse(controller.IsActive, "0-cards keep their own rules.");
             Assert.AreEqual(0, enemy.ActiveHitboxCount, "Plain tie cancel.");
@@ -224,7 +219,7 @@ namespace DeckArpg.Tests.PlayMode
             enemy.Spawn(Payload(enemy, 3, tick: 1), Vector3.back);
             player.Spawn(Payload(player, 8, tick: 2), Vector3.forward);
 
-            yield return WaitUntilRealtime(() => enemy.Status.IsStunned);
+            yield return TestWait.UntilRealtime(() => enemy.Status.IsStunned, 1f);
 
             Assert.IsFalse(controller.IsActive);
             Assert.IsTrue(enemy.Status.IsStunned, "Higher value still breaks lower directly.");

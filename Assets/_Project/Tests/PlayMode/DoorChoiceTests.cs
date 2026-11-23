@@ -4,41 +4,22 @@ using DeckArpg.Gameplay;
 using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>The Map Card door choice screen (docs/specs/m3-ui.md, sub-step 3).</summary>
-    public class DoorChoiceTests
+    public class DoorChoiceTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private RunScreens screens;
         private DoorChoiceView doors;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
             screens = Object.FindAnyObjectByType<RunScreens>();
             doors = Object.FindAnyObjectByType<DoorChoiceView>();
             Assert.IsNotNull(doors, "DoorChoiceView missing from M3_Run (rebuild the scene).");
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         private IEnumerator WalkIntoDoor()

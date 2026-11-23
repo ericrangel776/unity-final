@@ -244,7 +244,7 @@ namespace DeckArpg.UI
                 float t = elapsed / duration;
                 // Ease-out punch from big down to normal size.
                 float p = view.punchSeconds > 0f ? Mathf.Clamp01(elapsed / view.punchSeconds) : 1f;
-                float ease = 1f - (1f - p) * (1f - p) * (1f - p);
+                float ease = UiFactory.EaseOutCubic(p);
                 rect.localScale = Vector3.one * Mathf.Lerp(view.punchFrom, 1f, ease);
 
                 var c = baseColor;

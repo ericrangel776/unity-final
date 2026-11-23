@@ -90,9 +90,7 @@ namespace DeckArpg.Gameplay
                 }
                 // On the ring's near edge (toward the camera): above the boss it would leave the top of the screen.
                 var cam = Camera.main;
-                var toward = cam != null ? -cam.transform.forward : Vector3.back;
-                toward.y = 0f;
-                toward = toward.sqrMagnitude > 0.0001f ? toward.normalized : Vector3.back;
+                var toward = FlatDirection.Of(cam != null ? -cam.transform.forward : Vector3.back, Vector3.back);
                 label.transform.position = transform.position + toward * Radius + Vector3.up * LabelHeight;
                 if (cam != null) label.transform.rotation = cam.transform.rotation;
                 float pop = 1f + 0.15f * Mathf.Sin(Time.unscaledTime * 14f);

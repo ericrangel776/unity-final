@@ -73,11 +73,6 @@ namespace DeckArpg.Tests.PlayMode
             result(fov.Value);
         }
 
-        private static IEnumerator WaitUntilRealtime(System.Func<bool> done, float timeout = 1.5f)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
         [UnityTest]
         public IEnumerator CardBreak_ZoomsIn_ThenEasesBackToBase()
@@ -87,7 +82,7 @@ namespace DeckArpg.Tests.PlayMode
             yield return ClashAndReadFov(punch, enemyValue: 3, playerValue: 8, playerZero: false, f => fov = f);
 
             Assert.Less(fov, BaseFov, "A Card Break should zoom in.");
-            yield return WaitUntilRealtime(() => Mathf.Approximately(punch.CurrentFov, BaseFov));
+            yield return TestWait.UntilRealtime(() => Mathf.Approximately(punch.CurrentFov, BaseFov), 1.5f);
             Assert.AreEqual(BaseFov, punch.CurrentFov, 0.001f, "Zoom must return to the base FOV.");
         }
 
@@ -129,7 +124,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(BaseFov - 3f, punch.CurrentFov, 0.001f, "Zoom should hold through the freeze.");
 
             Time.timeScale = 1f;
-            yield return WaitUntilRealtime(() => Mathf.Approximately(punch.CurrentFov, BaseFov));
+            yield return TestWait.UntilRealtime(() => Mathf.Approximately(punch.CurrentFov, BaseFov), 1.5f);
             Assert.AreEqual(BaseFov, punch.CurrentFov, 0.001f);
         }
 

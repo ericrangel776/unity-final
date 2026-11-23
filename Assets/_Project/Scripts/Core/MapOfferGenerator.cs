@@ -19,7 +19,8 @@ namespace DeckArpg.Core
         private static readonly MapCardKind[] RedKinds = { MapCardKind.Vanguard, MapCardKind.Hexfire };
         private static readonly MapCardKind[] GreenKinds = { MapCardKind.KindledGround, MapCardKind.BountyWind };
         private static readonly MapCardKind[] BlueKinds = { MapCardKind.Shop, MapCardKind.Forge, MapCardKind.Rest };
-        private static readonly EliteTrial[] Trials = { EliteTrial.Veiled, EliteTrial.Counterpuncher, EliteTrial.Hexer };
+        /// <summary>Every Elite trial, in offer order (also the debug room picker's list).</summary>
+        public static readonly IReadOnlyList<EliteTrial> Trials = new[] { EliteTrial.Veiled, EliteTrial.Counterpuncher, EliteTrial.Hexer };
         private static readonly Element[] Elements = { Element.Physical, Element.Fire, Element.Ice, Element.Lightning, Element.Wind };
 
         /// <summary>Center of the number band: rooms 1-5 give 2, 3, 4, 6, 7.</summary>
@@ -45,7 +46,7 @@ namespace DeckArpg.Core
                 int number = numbers[i];
                 if (MapCard.FamilyOf(kind) == MapFamily.Blue) number = momentum.ApplyQualityBonus(number);
 
-                var trial = kind == MapCardKind.EliteTrial ? Trials[rng.Next(Trials.Length)] : EliteTrial.None;
+                var trial = kind == MapCardKind.EliteTrial ? Trials[rng.Next(Trials.Count)] : EliteTrial.None;
                 var element = kind == MapCardKind.KindledGround ? Elements[rng.Next(Elements.Length)] : Element.Physical;
                 offer.Add(new MapCard(kind, number, trial, element));
             }

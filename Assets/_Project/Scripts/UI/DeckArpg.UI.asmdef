@@ -5,7 +5,6 @@
         "DeckArpg.Core",
         "DeckArpg.Gameplay",
         "UnityEngine.UI",
-        "Unity.TextMeshPro",
         "Unity.InputSystem"
     ],
     "includePlatforms": [],

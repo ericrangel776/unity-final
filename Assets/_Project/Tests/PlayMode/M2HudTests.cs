@@ -93,6 +93,23 @@ namespace DeckArpg.Tests.PlayMode
             StringAssert.StartsWith($"SLEIGHT {value}+ · Fireball", stockView.PreviewText);
         }
 
+        /// <summary>The stock text is dirty-checked; a value change on the same stocked card (a room buff) must redraw it.</summary>
+        [UnityTest]
+        public IEnumerator Stock_RedrawsWhenAStockedCardsValueChanges()
+        {
+            deck.Cycle.TryStock(0, out _);
+            yield return null;
+            var card = deck.Cycle.Stock[0];
+            int before = card.GetEffectiveValue();
+            card.TemporaryRoomMod += before > 1 ? -1 : 1;
+            int after = card.GetEffectiveValue();
+            Assert.AreNotEqual(before, after, "Setup: the mod changes the value.");
+            yield return null;
+
+            Assert.AreEqual(after.ToString(), stockView.SlotText(0));
+            StringAssert.StartsWith($"SLEIGHT {after}+", stockView.PreviewText);
+        }
+
         [UnityTest]
         public IEnumerator Stock_ZeroShowsMirroredValue()
         {

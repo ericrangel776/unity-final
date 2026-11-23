@@ -153,8 +153,7 @@ namespace DeckArpg.Gameplay
                 var player = FindAnyObjectByType<PlayerMotor>();
                 if (player != null) target = player.transform;
             }
-            state = State.Recover;
-            timer = recoverSeconds;
+            EnterRecover();
         }
 
         private void Update()
@@ -246,21 +245,16 @@ namespace DeckArpg.Gameplay
             var cycle = deck.Cycle;
             if (TurnHook != null && TurnHook.TryTakeTurn())
             {
-                state = State.Recover;
-                timer = recoverSeconds;
+                EnterRecover();
                 return;
             }
 
-            telegraphSlot = -1;
-            if (TurnHook != null) telegraphSlot = cycle.OldestSlot; // the boss plays in draw order (spaced 9s)
-            else
-                for (int i = 0; i < DeckCycle.HandSize; i++)
-                    if (cycle.Hand[i] != null) { telegraphSlot = i; break; }
+            // The boss plays in draw order (spaced 9s); mobs play their first card.
+            telegraphSlot = TurnHook != null ? cycle.OldestSlot : cycle.FirstFilledSlot();
 
             if (telegraphSlot < 0)
             {
-                state = State.Recover;
-                timer = recoverSeconds;
+                EnterRecover();
                 // Out of cards: mobs reload at once; the boss opens its punishable reload window instead.
                 if (TurnHook != null)
                 {
@@ -287,8 +281,7 @@ namespace DeckArpg.Gameplay
                 combat.Spawn(payload, toTarget, card);
                 Swung?.Invoke(card);
             }
-            state = State.Recover;
-            timer = recoverSeconds;
+            EnterRecover();
         }
 
         /// <summary>
@@ -318,6 +311,11 @@ namespace DeckArpg.Gameplay
         {
             if (state != State.Telegraph) return;
             EndTelegraph();
+            EnterRecover();
+        }
+
+        private void EnterRecover()
+        {
             state = State.Recover;
             timer = recoverSeconds;
         }
@@ -346,8 +344,7 @@ namespace DeckArpg.Gameplay
             status.Revive();
             deck.Reinitialize();
             closeTimer = 0f;
-            state = State.Recover;
-            timer = recoverSeconds;
+            EnterRecover();
         }
     }
 }

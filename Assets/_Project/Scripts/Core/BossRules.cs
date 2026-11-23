@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DeckArpg.Core
 {
@@ -43,14 +44,14 @@ namespace DeckArpg.Core
         /// (user playtest, 2026-11-18: "a similar amount as the player but a bit more"); later floors add rows to ramp up.
         /// Floors past the table use the last row.
         /// </summary>
-        public static readonly float[] HpRatioByFloor = { 1.5f };
+        public static readonly IReadOnlyList<float> HpRatioByFloor = new[] { 1.5f };
 
         /// <summary>The boss's max HP on <paramref name="floor"/> (1-based) against a player with <paramref name="playerMaxHp"/>.</summary>
         public static int MaxHp(int floor, int playerMaxHp)
         {
             if (floor < 1) throw new ArgumentOutOfRangeException(nameof(floor));
             if (playerMaxHp < 1) throw new ArgumentOutOfRangeException(nameof(playerMaxHp));
-            float ratio = HpRatioByFloor[Math.Min(floor, HpRatioByFloor.Length) - 1];
+            float ratio = HpRatioByFloor[Math.Min(floor, HpRatioByFloor.Count) - 1];
             return Math.Max(1, (int)Math.Ceiling(playerMaxHp * ratio));
         }
 

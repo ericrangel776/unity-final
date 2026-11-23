@@ -28,7 +28,7 @@ namespace DeckArpg.Tests.EditMode
 
         [Test]
         public void MaxHp_FloorsPastTheTable_UseTheLastRow() =>
-            Assert.AreEqual(BossRules.MaxHp(BossRules.HpRatioByFloor.Length, 100), BossRules.MaxHp(99, 100));
+            Assert.AreEqual(BossRules.MaxHp(BossRules.HpRatioByFloor.Count, 100), BossRules.MaxHp(99, 100));
 
         [TestCase(0, 100)]
         [TestCase(1, 0)]

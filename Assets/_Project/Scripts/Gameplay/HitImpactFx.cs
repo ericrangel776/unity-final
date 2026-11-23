@@ -36,13 +36,10 @@ namespace DeckArpg.Gameplay
         private void Awake()
         {
             impulse = GetComponent<CinemachineImpulseSource>();
-            var def = impulse.ImpulseDefinition;
-            def.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Recoil;
-            def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform;
-            def.ImpulseDuration = 0.2f;
+            ParticleFx.ConfigureImpulse(impulse, CinemachineImpulseDefinition.ImpulseShapes.Recoil, 0.2f);
 
-            var material = particleMaterial != null ? particleMaterial : ClashImpactFx.SharedParticleMaterial;
-            sparks = ClashImpactFx.CreateSystem(transform, "HitSparks", material, maxParticles: 128);
+            var material = particleMaterial != null ? particleMaterial : ParticleFx.SharedParticleMaterial;
+            sparks = ParticleFx.CreateSystem(transform, "HitSparks", material, maxParticles: 128);
             var main = sparks.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 9f);
@@ -54,7 +51,7 @@ namespace DeckArpg.Gameplay
         }
 
         // Shake during the freeze, not after it (same as ClashImpactFx).
-        private void Start() => CinemachineImpulseManager.Instance.IgnoreTimeScale = true;
+        private void Start() => ParticleFx.ShakeDuringHitStop();
 
         private void OnEnable() => CombatantStatus.AnyHitLanded += HandleHit;
         private void OnDisable() => CombatantStatus.AnyHitLanded -= HandleHit;
@@ -64,8 +61,8 @@ namespace DeckArpg.Gameplay
             int count = hit.IsEffect
                 ? (hit.Victim != null && hit.Victim.LastHitElement == Element.Lightning ? ChainSparks : EffectSparks)
                 : hit.Payload.IsPoke ? PokeSparks : CardSparks;
-            var color = ClashImpactFx.Opaque(ElementColors.For(hit.Payload));
-            ClashImpactFx.Emit(sparks, hit.Position, color, count);
+            var color = ParticleFx.Opaque(ElementColors.For(hit.Payload));
+            ParticleFx.Emit(sparks, hit.Position, color, count);
             LastSparkCount = count;
             LastSparkColor = color;
 

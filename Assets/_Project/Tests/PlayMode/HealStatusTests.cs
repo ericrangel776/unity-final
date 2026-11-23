@@ -5,7 +5,6 @@ using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -129,32 +128,13 @@ namespace DeckArpg.Tests.PlayMode
     }
 
     /// <summary>The run's max HP reaches the player's status (heal rework, step 4).</summary>
-    public class HealRunSyncTests
+    public class HealRunSyncTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private CombatantStatus player;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             player = director.Player.GetComponent<CombatantStatus>();
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         [Test]

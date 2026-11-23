@@ -17,6 +17,7 @@ namespace DeckArpg.Gameplay
 
         private HealChannel channel;
         private LineRenderer ring;
+        private CharacterController body; // looked up lazily: runtime-built rigs may add it after this component
 
         /// <summary>True while the ring is drawn.</summary>
         public bool RingVisible => ring != null && ring.enabled;
@@ -52,7 +53,7 @@ namespace DeckArpg.Gameplay
             get
             {
                 // The rig's root sits at body centre when it has a CharacterController (the player prefab), else at the feet.
-                var body = GetComponent<CharacterController>();
+                if (body == null) body = GetComponent<CharacterController>();
                 float down = body != null ? body.height * 0.5f - body.center.y : 0f;
                 return transform.position + Vector3.up * (Height - down);
             }

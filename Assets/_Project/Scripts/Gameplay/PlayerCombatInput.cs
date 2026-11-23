@@ -139,17 +139,39 @@ namespace DeckArpg.Gameplay
             if (RouteToDeadlock()) return;
 
             motor.SetMoveInput(move.ReadValue<Vector2>());
-            // Chill multiplies with the reload boost. Dash, i-frames and the reload bar are untouched.
-            if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
-            // The heal channel's x0.5 multiplies in too, so the previous value returns when the channel ends.
-            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier * (elementFx != null ? elementFx.SpeedMultiplier : 1f) *
-                                        healChannel.MoveMultiplier;
+            ApplyMoveSpeed();
             ReadAim();
             if (dash.WasPressedThisFrame()) motor.TryDash();
 
             float now = Time.unscaledTime;
             bool stockHeld = stock != null && stock.IsPressed();
             ReadReload(stockHeld, now);
+            BufferCardPresses(stockHeld, now);
+
+            if (recoveryRemaining > 0f) recoveryRemaining -= Time.deltaTime;
+
+            // Hold buffered commands while frozen, stunned, recovering, or mid-dash.
+            bool canAct = Time.timeScale > 0f && !status.IsStunned && !status.IsDead && !motor.IsDashing
+                          && recoveryRemaining <= 0f;
+            if (canAct && buffer.TryDequeue(now, out var command) && Execute(command))
+                recoveryRemaining = ActionRecoverySeconds;
+        }
+
+        /// <summary>
+        /// Rewritten every frame: the reload boost x Chill x the heal channel's x0.5, so each factor's effect ends with it.
+        /// Dash, i-frames and the reload bar are untouched.
+        /// </summary>
+        private void ApplyMoveSpeed()
+        {
+            // Looked up lazily: runtime-built test rigs may add it after this component.
+            if (elementFx == null) elementFx = GetComponent<ElementStatusEffects>();
+            motor.MoveSpeedMultiplier = deck.Reload.SpeedMultiplier * (elementFx != null ? elementFx.SpeedMultiplier : 1f) *
+                                        healChannel.MoveMultiplier;
+        }
+
+        /// <summary>Slot/parry presses (as Stock commands while the stock key is held) and Poke go into the input buffer.</summary>
+        private void BufferCardPresses(bool stockHeld, float now)
+        {
             // Card presses during the reload bar are dropped, not held for after it.
             if (!deck.Reload.LocksCardPlays)
             {
@@ -159,14 +181,6 @@ namespace DeckArpg.Gameplay
                 Buffer(parry, stockHeld ? CombatCommand.StockParry : CombatCommand.Parry, now);
             }
             Buffer(poke, CombatCommand.Poke, now);
-
-            if (recoveryRemaining > 0f) recoveryRemaining -= Time.deltaTime;
-
-            // Hold buffered commands while frozen, stunned, recovering, or mid-dash.
-            bool canAct = Time.timeScale > 0f && !status.IsStunned && !status.IsDead && !motor.IsDashing
-                          && recoveryRemaining <= 0f;
-            if (canAct && buffer.TryDequeue(now, out var command) && Execute(command))
-                recoveryRemaining = ActionRecoverySeconds;
         }
 
         /// <summary>

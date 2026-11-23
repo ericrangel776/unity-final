@@ -122,7 +122,7 @@ namespace DeckArpg.Gameplay
         {
             var playerPayload = playerHb.Payload;
             var bossPayload = bossHb.Payload;
-            var position = (playerHb.Owner.transform.position + boss.transform.position) * 0.5f + Vector3.up * 0.5f;
+            var position = (playerHb.Owner.transform.position + boss.transform.position) * 0.5f + Vector3.up * CombatantStatus.BodyCenterHeight;
             var deadlock = DeadlockController.Current;
             void Apply(ClashOutcome outcome) => ApplyBig(outcome, playerHb, playerPayload, bossPayload, position);
 
@@ -150,7 +150,8 @@ namespace DeckArpg.Gameplay
                     float guard = boss.Status.DamageTakenMultiplier;
                     boss.Status.DamageTakenMultiplier = Mathf.Max(1f, guard);
                     boss.Status.TakeHit(combined, away, canCounter: false);
-                    boss.Status.DamageTakenMultiplier = guard;
+                    // A killing hit already reset the multipliers (BossEnemy.HandleDied); don't put the guard back.
+                    if (!boss.Status.IsDead) boss.Status.DamageTakenMultiplier = guard;
                     if (!boss.Status.IsDead) boss.ForceExhausted();
                     break;
                 }

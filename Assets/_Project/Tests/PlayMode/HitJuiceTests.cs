@@ -38,19 +38,13 @@ namespace DeckArpg.Tests.PlayMode
         private static AttackPayload Card(int value, Team attacker, Element element = Element.Fire) =>
             new AttackPayload(1, attacker, value, false, false, 0, CardShape.Strike, element);
 
-        private static IEnumerator WaitUntilRealtime(System.Func<bool> done, float timeout = 1f)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
-
         /// <summary>Lands the hit and measures how long (real time) the game stayed frozen.</summary>
         private static IEnumerator MeasureFreeze(CombatantStatus victim, AttackPayload payload, System.Action<bool, float> result)
         {
             float start = Time.realtimeSinceStartup;
             victim.TakeHit(payload);
             bool froze = Time.timeScale == 0f;
-            yield return WaitUntilRealtime(() => Time.timeScale > 0f);
+            yield return TestWait.UntilRealtime(() => Time.timeScale > 0f, 1f);
             result(froze, Time.realtimeSinceStartup - start);
         }
 
@@ -93,7 +87,7 @@ namespace DeckArpg.Tests.PlayMode
             enemy.TakeHit(Card(4, Team.Player, Element.Fire));
 
             Assert.AreEqual(HitImpactFx.CardSparks, fx.LastSparkCount);
-            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Fire)), fx.LastSparkColor);
+            Assert.AreEqual(ParticleFx.Opaque(ElementColors.For(Element.Fire)), fx.LastSparkColor);
             Assert.AreEqual(0, fx.PlayerHurtImpulses, "Hitting an enemy must not kick the camera.");
             yield return null;
         }
@@ -149,9 +143,9 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.IsTrue(pop.IsPopped);
             Assert.AreEqual(DeathPop.BaseBurstCount, pop.LastBurstCount);
-            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Ice)), pop.LastBurstColor);
+            Assert.AreEqual(ParticleFx.Opaque(ElementColors.For(Element.Ice)), pop.LastBurstColor);
 
-            yield return WaitUntilRealtime(() => !body.enabled, timeout: 1f);
+            yield return TestWait.UntilRealtime(() => !body.enabled, timeout: 1f);
             Assert.IsFalse(body.enabled, "The body should be hidden after the squash.");
             Assert.Less(body.transform.localScale.x, 0.05f);
         }
@@ -189,7 +183,7 @@ namespace DeckArpg.Tests.PlayMode
         {
             var (status, pop, body) = PoppableEnemy();
             status.TakeHit(Card(9, Team.Player));
-            yield return WaitUntilRealtime(() => !body.enabled, timeout: 1f);
+            yield return TestWait.UntilRealtime(() => !body.enabled, timeout: 1f);
 
             status.Revive();
 

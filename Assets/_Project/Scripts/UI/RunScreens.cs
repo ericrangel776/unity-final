@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using DeckArpg.Gameplay;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.UI;
 
 namespace DeckArpg.UI
 {
@@ -37,7 +35,7 @@ namespace DeckArpg.UI
         private void Awake()
         {
             if (director == null) director = FindAnyObjectByType<RunDirector>();
-            EnsureEventSystem();
+            UiFactory.EnsureEventSystem();
             canvas = UiFactory.CreateOverlayCanvas(transform, "RunScreensCanvas", SortingOrder);
             // Without a raycaster the EventSystem never hits the screen's buttons, so mouse clicks do nothing.
             canvas.gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
@@ -167,12 +165,6 @@ namespace DeckArpg.UI
                 group.blocksRaycasts = true;
             }
             hiddenHud.Clear();
-        }
-
-        private static void EnsureEventSystem()
-        {
-            if (FindAnyObjectByType<EventSystem>() != null) return;
-            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         }
 
         internal static void Stretch(RectTransform rt)

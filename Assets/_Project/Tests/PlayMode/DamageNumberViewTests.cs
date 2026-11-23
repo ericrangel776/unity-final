@@ -45,11 +45,6 @@ namespace DeckArpg.Tests.PlayMode
         private static AttackPayload Card(int value, Team attacker, Element element = Element.Lightning) =>
             new AttackPayload(1, attacker, value, false, false, 0, CardShape.Strike, element);
 
-        private static IEnumerator WaitRealtime(float seconds)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (Time.realtimeSinceStartup < end) yield return null;
-        }
 
         [UnityTest]
         public IEnumerator EnemyHit_ShowsDamage_InElementColour()
@@ -141,7 +136,7 @@ namespace DeckArpg.Tests.PlayMode
             var enemy = Body(Team.Enemy);
             enemy.TakeHit(Card(3, Team.Player));
 
-            yield return WaitRealtime(0.35f);
+            yield return TestWait.Realtime(0.35f);
             enemy.TakeHit(Card(5, Team.Player));
 
             var shown = view.Active;
@@ -204,7 +199,7 @@ namespace DeckArpg.Tests.PlayMode
             enemy.TakeHit(Card(4, Team.Player));
             Assert.AreEqual(1, view.ActiveCount);
 
-            yield return WaitRealtime(0.8f);
+            yield return TestWait.Realtime(0.8f);
 
             Assert.AreEqual(0, view.ActiveCount);
         }
@@ -216,7 +211,7 @@ namespace DeckArpg.Tests.PlayMode
             Time.timeScale = 0f;
             enemy.TakeHit(Card(4, Team.Player));
 
-            yield return WaitRealtime(0.8f);
+            yield return TestWait.Realtime(0.8f);
 
             Assert.AreEqual(0, view.ActiveCount, "Numbers run on unscaled time, so the freeze must not hold them.");
         }

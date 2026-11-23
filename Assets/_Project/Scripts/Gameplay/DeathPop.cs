@@ -42,10 +42,7 @@ namespace DeckArpg.Gameplay
             status = GetComponent<CombatantStatus>();
             CacheVisuals();
             impulse = gameObject.AddComponent<CinemachineImpulseSource>();
-            var def = impulse.ImpulseDefinition;
-            def.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
-            def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform;
-            def.ImpulseDuration = 0.25f;
+            ParticleFx.ConfigureImpulse(impulse, CinemachineImpulseDefinition.ImpulseShapes.Bump, 0.25f);
             BuildBurst();
         }
 
@@ -88,8 +85,8 @@ namespace DeckArpg.Gameplay
 
         private void BuildBurst()
         {
-            var material = particleMaterial != null ? particleMaterial : ClashImpactFx.SharedParticleMaterial;
-            burst = ClashImpactFx.CreateSystem(transform, "DeathPopFx", material, maxParticles: 128);
+            var material = particleMaterial != null ? particleMaterial : ParticleFx.SharedParticleMaterial;
+            burst = ParticleFx.CreateSystem(transform, "DeathPopFx", material, maxParticles: 128);
             var main = burst.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(3f, 8f);
@@ -109,10 +106,10 @@ namespace DeckArpg.Gameplay
 
             var position = transform.position + Vector3.up * CombatantStatus.HitFeedbackHeight;
             int count = Mathf.RoundToInt(BaseBurstCount * Mathf.Max(0f, Scale));
-            var color = ClashImpactFx.Opaque(ElementColors.For(status.LastHitElement));
+            var color = ParticleFx.Opaque(ElementColors.For(status.LastHitElement));
             if (burst != null)
             {
-                ClashImpactFx.Emit(burst, position, color, count);
+                ParticleFx.Emit(burst, position, color, count);
                 // Detach so the burst outlives the enemy, which is destroyed on its own timer.
                 burst.transform.SetParent(null, true);
                 Destroy(burst.gameObject, BurstLifetimeSeconds);

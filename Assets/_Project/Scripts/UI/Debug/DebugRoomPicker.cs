@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
+using System.Collections.Generic;
 using DeckArpg.Core;
 
 namespace DeckArpg.UI
@@ -10,7 +11,7 @@ namespace DeckArpg.UI
     /// </summary>
     public sealed class DebugRoomPicker
     {
-        private static readonly EliteTrial[] Trials = { EliteTrial.Veiled, EliteTrial.Counterpuncher, EliteTrial.Hexer };
+        private static IReadOnlyList<EliteTrial> Trials => MapOfferGenerator.Trials;
         private static readonly MapCardKind[] Kinds = (MapCardKind[])Enum.GetValues(typeof(MapCardKind));
         private static readonly Element[] Elements = (Element[])Enum.GetValues(typeof(Element));
 
@@ -27,8 +28,8 @@ namespace DeckArpg.UI
 
         public void StepKind(int dir) => kind = Wrap(kind + dir, Kinds.Length);
         public void StepNumber(int dir) => Number = Math.Max(CardValue.Min, Math.Min(CardValue.Max, Number + dir));
-        public void StepTrial(int dir) => trial = Wrap(trial + dir, Trials.Length);
-        public void StepElement(int dir) => element = Wrap(element + dir, Elements.Length);
+        private void StepTrial(int dir) => trial = Wrap(trial + dir, Trials.Count);
+        private void StepElement(int dir) => element = Wrap(element + dir, Elements.Length);
 
         public string KindLabel => $"Room: {Kind}";
         public string NumberLabel => $"{(MapCard.IsCombatKind(Kind) ? "Intensity" : "Quality")}: {Number}";

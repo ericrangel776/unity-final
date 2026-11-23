@@ -98,8 +98,7 @@ namespace DeckArpg.Gameplay
         public bool TryLunge(Vector3 direction)
         {
             if (IsDashing || status.IsStunned || status.IsDead) return false;
-            direction.y = 0f;
-            lungeDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : AimDirection;
+            lungeDirection = FlatDirection.Of(direction, AimDirection);
             lungeRemaining = lungeDuration;
             return true;
         }

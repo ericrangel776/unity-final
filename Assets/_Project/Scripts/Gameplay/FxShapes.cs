@@ -24,7 +24,7 @@ namespace DeckArpg.Gameplay
             {
                 if (material != null) return material;
                 material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit")) { name = "FxLine" };
-                ClashImpactFx.ConfigureAdditive(material, Texture2D.whiteTexture);
+                ParticleFx.ConfigureAdditive(material, Texture2D.whiteTexture);
                 return material;
             }
         }
