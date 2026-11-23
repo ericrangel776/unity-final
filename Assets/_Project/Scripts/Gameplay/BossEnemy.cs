@@ -128,8 +128,7 @@ namespace DeckArpg.Gameplay
         public bool TryTakeTurn()
         {
             var cycle = deck.Cycle;
-            int handCount = 0;
-            foreach (var c in cycle.Hand) if (c != null) handCount++;
+            int handCount = cycle.HandCount;
             if (handCount == 0) return false; // the body calls OnOutOfCards
 
             var action = Policy.Next(Context(handCount));
@@ -215,9 +214,7 @@ namespace DeckArpg.Gameplay
             status.FlinchArmor = false;
             PendingSleight = null;
 
-            int slot = -1;
-            for (int i = 0; i < DeckCycle.HandSize; i++)
-                if (cycle.Hand[i] != null && cycle.Hand[i] == reservedThird) slot = i;
+            int slot = cycle.IndexOf(reservedThird);
             var cards = new List<RuntimeCardInstance>(cycle.Stock) { reservedThird };
             reservedThird = null;
 
@@ -338,11 +335,8 @@ namespace DeckArpg.Gameplay
             return FlatDirection.Of(body.Target.position - transform.position, transform.forward);
         }
 
-        private void FaceTarget()
-        {
-            var d = AimDirection();
-            if (d.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(d);
-        }
+        // AimDirection is always flat and unit length (it falls back to forward).
+        private void FaceTarget() => transform.rotation = Quaternion.LookRotation(AimDirection());
 
         // ---- Tests ----
 
