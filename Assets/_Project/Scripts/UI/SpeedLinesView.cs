@@ -78,8 +78,8 @@ namespace DeckArpg.UI
         {
             // Unparented so it never inherits the player's rotation; positioned every frame instead.
             root = new GameObject("SpeedLines").transform;
-            var material = ClashImpactFx.CreateParticleMaterial();
-            material.name = "SpeedLine";
+            // The shared FX material: lines are tinted by vertex colour, so no per-view material (it used to leak per scene load).
+            var material = ClashImpactFx.SharedParticleMaterial;
             lines = new LineRenderer[lineCount];
             ringOffsets = new Vector2[lineCount];
             lengths = new float[lineCount];

@@ -15,6 +15,8 @@ namespace DeckArpg.Gameplay
     {
         private readonly HashSet<CombatantStatus> alreadyHit = new HashSet<CombatantStatus>();
         private readonly Dictionary<CombatantStatus, int> touching = new Dictionary<CombatantStatus, int>();
+        // Each touching body's enemy component (null for the player), fetched once on enter instead of every step.
+        private readonly Dictionary<CombatantStatus, TrainingDummyEnemy> winders = new Dictionary<CombatantStatus, TrainingDummyEnemy>();
         private readonly List<CombatantStatus> hitScratch = new List<CombatantStatus>();
         // Combatants whose card this hitbox broke. Its own follow-through on them isn't a counter.
         private readonly HashSet<CombatantStatus> brokeInClash = new HashSet<CombatantStatus>();
@@ -108,7 +110,7 @@ namespace DeckArpg.Gameplay
             foreach (var status in hitScratch)
             {
                 // A body that is winding up a telegraph clashes its card with ours first.
-                var winder = status.GetComponent<TrainingDummyEnemy>();
+                winders.TryGetValue(status, out var winder);
                 if (winder != null) winder.ResolveTelegraphClash(this);
                 if (!IsLive)
                 {
@@ -212,7 +214,13 @@ namespace DeckArpg.Gameplay
             }
 
             var status = OpposingBody(other);
-            if (status != null) touching[status] = touching.TryGetValue(status, out int n) ? n + 1 : 1;
+            if (status == null) return;
+            if (touching.TryGetValue(status, out int n)) touching[status] = n + 1;
+            else
+            {
+                touching[status] = 1;
+                winders[status] = status.GetComponent<TrainingDummyEnemy>();
+            }
         }
 
         private void OnTriggerExit(Collider other)
@@ -220,7 +228,11 @@ namespace DeckArpg.Gameplay
             if (other.GetComponent<AttackHitbox>() != null) return;
             var status = OpposingBody(other);
             if (status == null || !touching.TryGetValue(status, out int n)) return;
-            if (n <= 1) touching.Remove(status);
+            if (n <= 1)
+            {
+                touching.Remove(status);
+                winders.Remove(status);
+            }
             else touching[status] = n - 1;
         }
 
