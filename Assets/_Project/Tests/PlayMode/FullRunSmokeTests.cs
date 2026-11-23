@@ -5,7 +5,6 @@ using DeckArpg.Gameplay;
 using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -15,39 +14,20 @@ namespace DeckArpg.Tests.PlayMode
     /// A whole run driven the way a player drives it (docs/specs/m3-smoke-test.md): walk into the exit door, then
     /// only the screens' key routing (`1`-`9`, Esc, Enter). Combat rooms are cleared with the debug kill.
     /// </summary>
-    public class FullRunSmokeTests
+    public class FullRunSmokeTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
         /// <summary>A seed whose run visits both an Elite and a Blue room under <see cref="PickDoor"/>.</summary>
         private const int VictorySeed = 2; // was 3; re-picked when enemy variants added a composition seed draw per combat room
         private const int MaxFrames = 600;
 
-        private RunDirector director;
         private RunScreens screens;
         private CombatantStatus playerStatus;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
             screens = Object.FindAnyObjectByType<RunScreens>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             Assert.IsNotNull(screens, "RunScreens missing from M3_Run (rebuild the scene).");
             playerStatus = director.Player.GetComponent<CombatantStatus>();
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         // ---- tests ----

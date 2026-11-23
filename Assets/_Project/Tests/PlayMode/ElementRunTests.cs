@@ -5,40 +5,14 @@ using DeckArpg.Gameplay;
 using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>Element wiring in the real run scene: resistances per room kind and the player's HUD chips.</summary>
-    public class ElementRunTests
+    public class ElementRunTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
-
-        [UnitySetUp]
-        public IEnumerator LoadRun()
-        {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
-        }
-
-        /// <summary>Unload so live enemies can't affect later fixtures (see CLAUDE.md lessons).</summary>
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
-        }
-
         [Test]
         public void MobRoom_EnemiesTakeFullStatusDurations()
         {

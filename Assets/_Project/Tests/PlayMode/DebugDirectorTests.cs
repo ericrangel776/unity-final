@@ -5,42 +5,22 @@ using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>RunDirector's debug-menu entry points (docs/specs/debug-menu.md) on the real run scene.</summary>
-    public class DebugDirectorTests
+    public class DebugDirectorTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private CombatantStatus player;
         private DeckRuntimeManager playerDeck;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null;
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             player = director.Player.GetComponent<CombatantStatus>();
             playerDeck = director.Player.GetComponent<DeckRuntimeManager>();
             director.RestartRun(5);
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         private void KillLiving(Func<TrainingDummyEnemy, bool> which = null)

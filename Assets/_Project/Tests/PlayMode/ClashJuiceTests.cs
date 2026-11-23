@@ -46,11 +46,6 @@ namespace DeckArpg.Tests.PlayMode
             (MakeCombatant(Team.Player, Vector3.zero), MakeCombatant(Team.Enemy, new Vector3(0f, 0f, 2.2f)));
 
         /// <summary>Waits on frames + real time (WaitForFixedUpdate would stall while timeScale is 0).</summary>
-        private static IEnumerator WaitUntilRealtime(System.Func<bool> done, float timeout = 1f)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
         private static IEnumerator Clash(CombatActionController winner, int winValue, CombatActionController loser, int loseValue,
             bool zero = false)
@@ -102,10 +97,10 @@ namespace DeckArpg.Tests.PlayMode
             {
                 enemy.Spawn(Payload(enemy, 3, tick: 1), Vector3.back);
                 player.Spawn(Payload(player, 8, tick: 2), Vector3.forward);
-                yield return WaitUntilRealtime(() => scaleDuringClash >= 0f);
+                yield return TestWait.UntilRealtime(() => scaleDuringClash >= 0f, 1f);
                 Assert.AreEqual(0f, scaleDuringClash, "Time should freeze on Card Break.");
 
-                yield return WaitUntilRealtime(() => Time.timeScale > 0f);
+                yield return TestWait.UntilRealtime(() => Time.timeScale > 0f, 1f);
                 Assert.AreEqual(1f, Time.timeScale, "Time scale must be restored after the freeze.");
                 Assert.GreaterOrEqual(Time.realtimeSinceStartup - clashRealtime, CombatMath.CardBreakHitStop * 0.9f);
             }
@@ -125,9 +120,9 @@ namespace DeckArpg.Tests.PlayMode
             enemy.Spawn(Payload(enemy, 3, tick: 1), Vector3.back);
             player.Spawn(Payload(player, 8, tick: 2), Vector3.forward);
 
-            yield return WaitUntilRealtime(() => Time.timeScale == 0f);
+            yield return TestWait.UntilRealtime(() => Time.timeScale == 0f, 1f);
             Assert.AreEqual(0f, Time.timeScale, "Clash should have frozen time.");
-            yield return WaitUntilRealtime(() => Time.timeScale > 0f, timeout: 1f);
+            yield return TestWait.UntilRealtime(() => Time.timeScale > 0f, timeout: 1f);
 
             Assert.AreEqual(1f, Time.timeScale, "Overlapping HitStops must restore the original time scale.");
         }
@@ -154,7 +149,7 @@ namespace DeckArpg.Tests.PlayMode
             var hitStop = Spawn<HitStop>("HitStop");
             hitStop.Freeze(0.05f);
 
-            yield return WaitUntilRealtime(() => !hitStop.IsFrozen);
+            yield return TestWait.UntilRealtime(() => !hitStop.IsFrozen, 1f);
 
             Assert.AreEqual(0.5f, Time.timeScale);
         }

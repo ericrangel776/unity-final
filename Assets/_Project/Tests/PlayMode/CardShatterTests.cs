@@ -72,11 +72,6 @@ namespace DeckArpg.Tests.PlayMode
             result(shown, showing);
         }
 
-        private static IEnumerator WaitUntilRealtime(System.Func<bool> done, float timeout = 1.5f)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!done() && Time.realtimeSinceStartup < end) yield return null;
-        }
 
         [UnityTest]
         public IEnumerator CardBreak_ShowsTheLosersValue()
@@ -108,7 +103,7 @@ namespace DeckArpg.Tests.PlayMode
             player.Spawn(Payload(player, 0, tick: 1, zero: true), Vector3.forward);
             enemy.Spawn(Payload(enemy, 2, tick: 2), Vector3.back);
 
-            yield return WaitUntilRealtime(() => view.ShownValue != null, 1f);
+            yield return TestWait.UntilRealtime(() => view.ShownValue != null, 1f);
 
             Assert.AreEqual("0", view.ShownValue);
         }
@@ -135,10 +130,10 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(0, view.ActiveShardCount, "Card stays whole during the freeze.");
 
             Time.timeScale = 1f;
-            yield return WaitUntilRealtime(() => view.ActiveShardCount > 0, 0.5f);
+            yield return TestWait.UntilRealtime(() => view.ActiveShardCount > 0, 0.5f);
             Assert.Greater(view.ActiveShardCount, 0, "Card should shatter once time resumes.");
 
-            yield return WaitUntilRealtime(() => !view.IsShowing, 1.5f);
+            yield return TestWait.UntilRealtime(() => !view.IsShowing, 1.5f);
             Assert.IsFalse(view.IsShowing, "Shards should clear themselves.");
             Assert.IsNull(view.ShownValue);
         }

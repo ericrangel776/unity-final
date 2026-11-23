@@ -6,43 +6,23 @@ using DeckArpg.UI;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>The run-screen shell and HUD strip (docs/specs/m3-ui.md, sub-step 2).</summary>
-    public class RunScreensTests
+    public class RunScreensTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private RunScreens screens;
         private RunHudStripView strip;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
             screens = Object.FindAnyObjectByType<RunScreens>();
             strip = Object.FindAnyObjectByType<RunHudStripView>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             Assert.IsNotNull(screens, "RunScreens missing from M3_Run (rebuild the scene).");
             Assert.IsNotNull(strip, "RunHudStripView missing from M3_Run.");
-        }
-
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         private TestRunScreen AddFake() => TestRunScreen.AddTo(screens);

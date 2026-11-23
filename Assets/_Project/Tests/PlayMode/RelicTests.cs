@@ -6,44 +6,23 @@ using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>Relic choice and the fight effects in the M3 run scene (docs/specs/m3-relics.md).</summary>
-    public class RelicTests
+    public class RelicTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private CombatantStatus player;
         private CombatActionController playerCombat;
         private DeckRuntimeManager playerDeck;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             player = director.Player.GetComponent<CombatantStatus>();
             playerCombat = director.Player.GetComponent<CombatActionController>();
             playerDeck = director.Player.GetComponent<DeckRuntimeManager>();
-        }
-
-        /// <summary>Unload so live enemies can't affect later fixtures (see CLAUDE.md lessons).</summary>
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         // ---- helpers ----

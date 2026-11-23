@@ -5,48 +5,21 @@ using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>Drives the M3 run scene through the RunDirector API (the step 6 screens will call the same API).</summary>
-    public class RunLoopTests
+    public class RunLoopTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private CombatantStatus player;
         private DeckRuntimeManager playerDeck;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             player = director.Player.GetComponent<CombatantStatus>();
             playerDeck = director.Player.GetComponent<DeckRuntimeManager>();
-        }
-
-        /// <summary>Unload so live enemies can't affect later fixtures (see CLAUDE.md lessons).</summary>
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
-        }
-
-        private static IEnumerator WaitRealtime(float seconds)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (Time.realtimeSinceStartup < end) yield return null;
         }
 
         private int IndexOf(Func<MapCard, bool> match)
@@ -298,7 +271,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual(false, ended);
             Assert.AreEqual(0, director.Run.Hp);
 
-            yield return WaitRealtime(2f); // longer than the player's respawn delay
+            yield return TestWait.Realtime(2f); // longer than the player's respawn delay
             Assert.IsTrue(player.IsDead, "No auto-respawn during a run.");
 
             director.RestartRun(6);
@@ -318,7 +291,7 @@ namespace DeckArpg.Tests.PlayMode
             var spawned = director.Enemies.ToArray();
             director.DebugDefeatAllEnemies();
 
-            yield return WaitRealtime(3f); // longer than the dummy's respawn delay
+            yield return TestWait.Realtime(3f); // longer than the dummy's respawn delay
             Assert.IsTrue(spawned.All(e => e == null), "Dead run enemies are destroyed.");
         }
 
@@ -532,7 +505,7 @@ namespace DeckArpg.Tests.PlayMode
                 Element.Physical));
             Assert.AreEqual(RunDirectorState.Defeat, director.State);
 
-            yield return WaitRealtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
+            yield return TestWait.Realtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
             Assert.AreEqual(0, waveTwoStarts);
             Assert.AreEqual(0, Living);
             Assert.LessOrEqual(director.Enemies.Count, spawned, "No wave-2 enemies were added.");
@@ -555,7 +528,7 @@ namespace DeckArpg.Tests.PlayMode
 
             director.ChooseDoor(0);
             int roomOne = director.Enemies.Count;
-            yield return WaitRealtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
+            yield return TestWait.Realtime(EnemyVariantRules.WaveSpawnDelaySeconds + 0.6f);
             Assert.AreEqual(0, waveTwoStarts, "The old room's wave never arrives.");
             Assert.AreEqual(roomOne, director.Enemies.Count);
         }

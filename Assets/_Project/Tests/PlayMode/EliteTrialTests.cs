@@ -5,7 +5,6 @@ using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -13,37 +12,17 @@ using Object = UnityEngine.Object;
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary>Purple Elite trials in the M3 run scene (docs/specs/m3-elite-trials.md).</summary>
-    public class EliteTrialTests
+    public class EliteTrialTests : RunSceneTest
     {
-        private const string SceneName = "M3_Run";
-        private RunDirector director;
         private CombatantStatus player;
         private CombatActionController playerCombat;
         private DeckRuntimeManager playerDeck;
 
-        [UnitySetUp]
-        public IEnumerator LoadRun()
+        protected override void OnRunLoaded()
         {
-            Time.timeScale = 1f;
-            yield return SceneManager.LoadSceneAsync(SceneName);
-            yield return null; // let Start run
-            director = Object.FindAnyObjectByType<RunDirector>();
-            Assert.IsNotNull(director, "RunDirector missing from M3_Run.");
             player = director.Player.GetComponent<CombatantStatus>();
             playerCombat = director.Player.GetComponent<CombatActionController>();
             playerDeck = director.Player.GetComponent<DeckRuntimeManager>();
-        }
-
-        /// <summary>Unload so live enemies can't affect later fixtures (see CLAUDE.md lessons).</summary>
-        [UnityTearDown]
-        public IEnumerator UnloadRun()
-        {
-            Time.timeScale = 1f;
-            var scene = SceneManager.GetSceneByName(SceneName);
-            if (!scene.IsValid() || !scene.isLoaded) yield break;
-            var empty = SceneManager.CreateScene("Empty_" + Guid.NewGuid().ToString("N"));
-            SceneManager.SetActiveScene(empty);
-            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         // ---- helpers ----
@@ -70,18 +49,6 @@ namespace DeckArpg.Tests.PlayMode
             var aim = Elite.transform.position - director.Player.transform.position;
             hitbox = playerCombat.Spawn(AttackPayload.FromCard(card, player.OwnerId, Team.Player, Time.frameCount), aim, card);
             return card;
-        }
-
-        private static IEnumerator WaitUntilRealtime(Func<bool> condition, float timeout)
-        {
-            float end = Time.realtimeSinceStartup + timeout;
-            while (!condition() && Time.realtimeSinceStartup < end) yield return null;
-        }
-
-        private static IEnumerator WaitRealtime(float seconds)
-        {
-            float end = Time.realtimeSinceStartup + seconds;
-            while (Time.realtimeSinceStartup < end) yield return null;
         }
 
         // ---- setup per trial ----
@@ -129,7 +96,7 @@ namespace DeckArpg.Tests.PlayMode
             var elite = Elite;
             RunTestHelpers.Place(director.Player, elite.transform.position + elite.transform.forward * 1.5f);
 
-            yield return WaitUntilRealtime(() => elite == null || elite.CurrentTelegraph != null, 6f);
+            yield return TestWait.UntilRealtime(() => elite == null || elite.CurrentTelegraph != null, 6f);
             Assert.IsNotNull(elite.CurrentTelegraph, "The elite never telegraphed.");
             Assert.IsTrue(elite.IsTelegraphVeiled, "Value is hidden at the start of the wind-up.");
 
@@ -141,7 +108,7 @@ namespace DeckArpg.Tests.PlayMode
             Assert.AreEqual("?", value.text);
             Time.timeScale = 1f;
 
-            yield return WaitUntilRealtime(() => !elite.IsTelegraphVeiled, 2f);
+            yield return TestWait.UntilRealtime(() => !elite.IsTelegraphVeiled, 2f);
             Assert.IsFalse(elite.IsTelegraphVeiled);
             Assert.IsNotNull(elite.CurrentTelegraph, "The value is revealed before the swing, not at it.");
         }
@@ -160,7 +127,7 @@ namespace DeckArpg.Tests.PlayMode
 
             PlayCardAtElite(out _);
             Assert.AreEqual(zerosBefore - 1, Elite.Deck.Cycle.ZerosReady, "The 0 is spent at once.");
-            yield return WaitUntilRealtime(() => brokeByZero.HasValue, 1f);
+            yield return TestWait.UntilRealtime(() => brokeByZero.HasValue, 1f);
 
             Assert.AreEqual(1, counter.CountersFired);
             Assert.AreEqual(true, brokeByZero, "The answer comes a frame later, so the 0 wins.");
@@ -175,7 +142,7 @@ namespace DeckArpg.Tests.PlayMode
             int zerosBefore = Elite.Deck.Cycle.ZerosReady;
 
             PlayCardAtElite(out _);
-            yield return WaitRealtime(0.2f);
+            yield return TestWait.Realtime(0.2f);
 
             Assert.AreEqual(0, counter.CountersFired);
             Assert.AreEqual(zerosBefore, Elite.Deck.Cycle.ZerosReady);
@@ -194,7 +161,7 @@ namespace DeckArpg.Tests.PlayMode
             var aim = Elite.transform.position - director.Player.transform.position;
             playerCombat.SpawnSleight(new AttackPayload(player.OwnerId, Team.Player, 12, false, true, Time.frameCount,
                 CardShape.Strike, Element.Physical, 3, SleightRules.HitCount(CardShape.Strike)), aim);
-            yield return WaitRealtime(0.5f); // every hit of the combo has spawned
+            yield return TestWait.Realtime(0.5f); // every hit of the combo has spawned
 
             Assert.AreEqual(0, counter.CountersFired);
             Assert.AreEqual(1, cycle.ZerosReady);
@@ -213,7 +180,7 @@ namespace DeckArpg.Tests.PlayMode
             var aim = Elite.transform.position - director.Player.transform.position;
             playerCombat.SpawnSleight(new AttackPayload(player.OwnerId, Team.Player, 12, false, true, Time.frameCount,
                 CardShape.Strike, Element.Physical, 3, SleightRules.HitCount(CardShape.Strike)), aim);
-            yield return WaitRealtime(0.5f);
+            yield return TestWait.Realtime(0.5f);
 
             Assert.AreEqual(1, counter.CountersFired);
             Assert.AreEqual(zerosBefore - 2, cycle.ZerosReady);
