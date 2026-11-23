@@ -189,7 +189,7 @@ namespace DeckArpg.Gameplay
             boltAnchors.AddRange(points);
             chainLine.positionCount = (points.Count - 1) * ChainBoltSubdivisions + 1;
             LayOutBolt();
-            FxShapes.SetColor(chainLine, ClashImpactFx.Opaque(ElementColors.For(Element.Lightning)));
+            FxShapes.SetColor(chainLine, ParticleFx.Opaque(ElementColors.For(Element.Lightning)));
             chainLine.startWidth = chainLine.endWidth = ChainLineWidth;
             chainLine.enabled = true;
             chainLineRemaining = ChainLineSeconds;
@@ -217,7 +217,7 @@ namespace DeckArpg.Gameplay
         {
             ringCenter = center + Vector3.up * 0.1f;
             ringElapsed = 0f;
-            FxShapes.SetColor(finisherRing, ClashImpactFx.Opaque(ElementColors.For(element)));
+            FxShapes.SetColor(finisherRing, ParticleFx.Opaque(ElementColors.For(element)));
             FxShapes.SetArc(finisherRing, ringCenter, 0.3f, 1f);
             finisherRing.enabled = true;
         }

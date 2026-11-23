@@ -338,7 +338,7 @@ namespace DeckArpg.Editor
             var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
             if (tex == null)
             {
-                tex = ClashImpactFx.CreateSoftDotTexture();
+                tex = ParticleFx.CreateSoftDotTexture();
                 AssetDatabase.CreateAsset(tex, texPath);
             }
 
@@ -349,7 +349,7 @@ namespace DeckArpg.Editor
                 mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
                 AssetDatabase.CreateAsset(mat, path);
             }
-            ClashImpactFx.ConfigureAdditive(mat, tex);
+            ParticleFx.ConfigureAdditive(mat, tex);
             EditorUtility.SetDirty(mat);
             return mat;
         }

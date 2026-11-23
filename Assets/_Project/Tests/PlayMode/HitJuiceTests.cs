@@ -93,7 +93,7 @@ namespace DeckArpg.Tests.PlayMode
             enemy.TakeHit(Card(4, Team.Player, Element.Fire));
 
             Assert.AreEqual(HitImpactFx.CardSparks, fx.LastSparkCount);
-            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Fire)), fx.LastSparkColor);
+            Assert.AreEqual(ParticleFx.Opaque(ElementColors.For(Element.Fire)), fx.LastSparkColor);
             Assert.AreEqual(0, fx.PlayerHurtImpulses, "Hitting an enemy must not kick the camera.");
             yield return null;
         }
@@ -149,7 +149,7 @@ namespace DeckArpg.Tests.PlayMode
 
             Assert.IsTrue(pop.IsPopped);
             Assert.AreEqual(DeathPop.BaseBurstCount, pop.LastBurstCount);
-            Assert.AreEqual(ClashImpactFx.Opaque(ElementColors.For(Element.Ice)), pop.LastBurstColor);
+            Assert.AreEqual(ParticleFx.Opaque(ElementColors.For(Element.Ice)), pop.LastBurstColor);
 
             yield return WaitUntilRealtime(() => !body.enabled, timeout: 1f);
             Assert.IsFalse(body.enabled, "The body should be hidden after the squash.");

@@ -56,7 +56,7 @@ namespace DeckArpg.Gameplay
                 return;
             }
             var element = burning && (!chilled || Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f) ? Element.Fire : Element.Ice;
-            var color = ClashImpactFx.Opaque(ElementColors.For(element));
+            var color = ParticleFx.Opaque(ElementColors.For(element));
             float pulse = (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * PulseHz * Mathf.PI * 2f)) * MaxTint;
             tint.Set(BodyTint.Layer.Status, color, pulse);
             CurrentTint = color;
@@ -92,7 +92,7 @@ namespace DeckArpg.Gameplay
 
         private Transform CreatePip(string name, Color color)
         {
-            var pip = FxShapes.CreateVisual(PrimitiveType.Sphere, name, transform, ClashImpactFx.Opaque(color));
+            var pip = FxShapes.CreateVisual(PrimitiveType.Sphere, name, transform, ParticleFx.Opaque(color));
             pip.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             pip.SetActive(false);
             return pip.transform;
