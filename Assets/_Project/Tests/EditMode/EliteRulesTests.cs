@@ -17,10 +17,10 @@ namespace DeckArpg.Tests.EditMode
 
         private static MapCard Elite(int n) => new MapCard(MapCardKind.EliteTrial, n, EliteTrial.Hexer);
 
-        [TestCase(2, new[] { 3, 4, 5, 5, 6, 7 })]
-        [TestCase(5, new[] { 4, 5, 6, 6, 7, 8 })]
-        [TestCase(9, new[] { 5, 6, 7, 7, 8, 9 })]
-        public void EliteDeck_SitsBelowTheMobCurve_AndRisesWithIntensity(int intensity, int[] expected)
+        [TestCase(2, new[] { 4, 5, 6, 6, 7, 8 })]
+        [TestCase(5, new[] { 5, 6, 7, 7, 8, 9 })]
+        [TestCase(9, new[] { 6, 7, 8, 8, 9, 9 })]
+        public void EliteDeck_IsOneBelowItsOldValues_AndRisesWithIntensity(int intensity, int[] expected)
         {
             int bonus = RoomIntensity.EnemyCardValueBonus(Elite(intensity));
             var values = EliteDeck.Select(v =>
@@ -70,8 +70,8 @@ namespace DeckArpg.Tests.EditMode
                 card.TemporaryRoomMod = RoomIntensity.EnemyCardValueBonus(Elite(n));
                 return EliteRules.IsHeavy(card);
             });
-            Assert.AreEqual(2, Heavy(2));
-            Assert.AreEqual(5, Heavy(9));
+            Assert.AreEqual(4, Heavy(2));
+            Assert.AreEqual(6, Heavy(9));
         }
     }
 }

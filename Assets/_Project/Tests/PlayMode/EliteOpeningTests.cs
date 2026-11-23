@@ -52,7 +52,7 @@ namespace DeckArpg.Tests.PlayMode
         // ---- setup ----
 
         [Test]
-        public void Elite_HitsLighter_AndHasTheOpening()
+        public void Elite_UsesTheEliteDamageScale_AndHasTheOpening()
         {
             var elite = EnterElite();
             Assert.AreEqual(EliteRules.DamageDealtMultiplier, elite.GetComponent<CombatActionController>().OutgoingDamageScale, Eps);

@@ -16,16 +16,28 @@ Goal: the skill is reading and punishing the Elite, not tanking it. Target: abou
 ## Rules (`Core/EliteRules.cs`)
 | Lever | Rule | Value |
 |---|---|---|
-| Winnable clashes | Elite card value offset, added to the room bonus (clamped to [1,9]) | -2 |
-| Lighter hits | HP damage the Elite's attacks deal (`OutgoingDamageScale`, as the boss uses) | x0.8 |
+| Winnable clashes | Elite card value offset, added to the room bonus (clamped to [1,9]) | -1 |
+| Hit weight | HP damage the Elite's attacks deal (`OutgoingDamageScale`, as the boss uses); the first tuning knob | x1.0 |
 | No stun-lock | Player's break stun in an Elite room | x0.7 |
 | No stun-lock | Player's posture damage taken in an Elite room | x0.67 |
 | Readable tell | A heavy card (effective value >= 6, not a 0) winds up longer | +0.15 s |
 | Punish window | After a heavy swing: **Overextended**, recover is longer | +0.6 s |
 | Punish window | While Overextended: HP and posture damage taken (orange tint) | x1.5 |
 
-Elite deck by Intensity after the offset: I1-4 `{3,4,5,5,6,7}`, I5-8 `{4,5,6,6,7,8}`, I9 `{5,6,7,7,8,9}`. At I2, 2 of 6
-cards are heavy; at I9, 5 of 6. Harder Elites hit harder but commit more.
+Elite deck by Intensity after the offset: I1-4 `{4,5,6,6,7,8}`, I5-8 `{5,6,7,7,8,9}`, I9 `{6,7,8,8,9,9}`. Before this
+change it was I1-4 `{5,6,7,7,8,9}` up to I9 `{7,8,9,9,9,9}`. At I2, 4 of 6 cards are heavy; at I9, all 6. Harder Elites
+hit harder but leave more openings.
+
+## Tuning (pacing bot, god mode, the same 6 seeds; `RunTimingMeasurement`)
+| Round | Offset | Damage | Elite HP lost | Elite time |
+|---|---|---|---|---|
+| Before | 0 | x1.0 | 87.1 (capped at max HP) | 32.9 s |
+| 1 | -2 | x0.8 | 23.1 | 10.0 s |
+| 2 (kept) | -1 | x1.0 | 39.3 | 10.5 s |
+
+Round 2 sits close to the 45-55 target. The noise between runs is about ±15 HP (Vanguard moved 30 -> 47 with no change).
+The next-worst rooms now cost 46-55. By Intensity: I2-4 Elites cost the bot about 0, I5 about 25, I7+ 50-90. The bot
+never parries, so it is weaker than a player. The final numbers come from the user's playtest.
 
 Unchanged: HP 250%, posture 150%, size, the trials, rewards.
 

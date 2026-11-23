@@ -1,16 +1,19 @@
 namespace DeckArpg.Core
 {
     /// <summary>
-    /// Elite tuning: readable and punishable instead of a damage wall (docs/specs/elite-rework.md). Its cards sit below
-    /// the mob curve so clashes are winnable, its hits land lighter, the player's break stun and posture damage shrink in
-    /// an Elite room so breaks can't chain, and a heavy swing leaves it Overextended (takes extra damage).
+    /// Elite tuning: readable and punishable instead of a damage wall (docs/specs/elite-rework.md). Its cards sit one below
+    /// their old values so clashes are winnable, the player's break stun and posture damage shrink in an Elite room so breaks
+    /// can't chain, and a heavy swing leaves it Overextended (takes extra damage).
     /// </summary>
     public static class EliteRules
     {
         /// <summary>Added to the room's enemy card bonus in an Elite room (values still clamp to [1, 9]).</summary>
-        public const int CardValueOffset = -2;
-        /// <summary>HP damage the Elite's attacks deal. Card values and clashes are unchanged.</summary>
-        public const float DamageDealtMultiplier = 0.8f;
+        public const int CardValueOffset = -1;
+        /// <summary>
+        /// HP damage the Elite's attacks deal; card values and clashes are unchanged. 1 after tuning (0.8 overshot: Elites
+        /// cost the pacing bot 23 HP); kept as the first knob for playtest tuning.
+        /// </summary>
+        public const float DamageDealtMultiplier = 1f;
         /// <summary>Player's break stun in an Elite room (it is always alone, so crowd stun scaling never helps).</summary>
         public const float PlayerBreakStunScale = 0.7f;
         /// <summary>Player's posture damage taken in an Elite room: about three heavy breaks to posture-break, not two.</summary>
