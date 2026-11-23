@@ -183,7 +183,7 @@ namespace DeckArpg.Gameplay
                 alreadyHit.Clear(); // second pass may hit again
             }
 
-            var target = returnTo.position + Vector3.up * 0.5f;
+            var target = returnTo.position + Vector3.up * CombatantStatus.BodyCenterHeight;
             var toTarget = target - body.position;
             if (toTarget.magnitude <= ReturnCatchDistance)
             {

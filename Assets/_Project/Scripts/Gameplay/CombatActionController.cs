@@ -170,7 +170,7 @@ namespace DeckArpg.Gameplay
 #endif
             go.layer = gameObject.layer;
             var hb = go.AddComponent<AttackHitbox>();
-            var origin = transform.position + Vector3.up * 0.5f;
+            var origin = transform.position + Vector3.up * CombatantStatus.BodyCenterHeight;
 
             switch (payload.Delivery)
             {

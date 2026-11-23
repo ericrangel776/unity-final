@@ -126,6 +126,8 @@ namespace DeckArpg.Gameplay
 
         /// <summary>Height above the root at which hit feedback is shown.</summary>
         public const float HitFeedbackHeight = 1f;
+        /// <summary>Height of a body's centre above its root: where attacks spawn from and boomerangs home to.</summary>
+        public const float BodyCenterHeight = 0.5f;
 
         private void Awake()
         {
