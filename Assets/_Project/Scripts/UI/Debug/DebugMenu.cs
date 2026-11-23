@@ -1,14 +1,10 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using DeckArpg.Core;
 using DeckArpg.Gameplay;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace DeckArpg.UI
@@ -19,7 +15,7 @@ namespace DeckArpg.UI
     /// scene. While open (and not pinned) it blocks gameplay input through <see cref="PlayerCombatInput.DebugInputBlocked"/>.
     /// Commands live in <see cref="DebugCommands"/>.
     /// </summary>
-    public sealed class DebugMenu : MonoBehaviour
+    public sealed partial class DebugMenu : MonoBehaviour
     {
         public const int SortingOrder = 100;
         public const float RefreshSeconds = 0.25f;
@@ -70,58 +66,6 @@ namespace DeckArpg.UI
         /// <summary>Rows drawn for the current tab.</summary>
         public int RowCount => rows.Count;
         public bool PanelVisible => canvas != null && canvas.gameObject.activeSelf;
-
-        // ---- targets (found lazily; Unity-null after a scene unload) ----
-
-        public RunDirector Director { get; private set; }
-        public PlayerCombatInput PlayerInput { get; private set; }
-        public CombatantStatus PlayerStatus => PlayerInput != null ? PlayerInput.GetComponent<CombatantStatus>() : null;
-        public DeckRuntimeManager PlayerDeck => PlayerInput != null ? PlayerInput.GetComponent<DeckRuntimeManager>() : null;
-
-        /// <summary>Every distinct card in the run content (starter, pool, enemy decks), for the Add card picker.</summary>
-        public IReadOnlyList<CardData> AllCards
-        {
-            get
-            {
-                var content = Director != null ? Director.Content : null;
-                if (content == null) return Array.Empty<CardData>();
-                if (allCards != null && allCardsFrom == content) return allCards;
-                allCardsFrom = content;
-                allCards = content.StarterDeck.Concat(content.DraftPool).Concat(content.MobDeck).Concat(content.HexfireDeck)
-                    .Concat(content.EliteDeck).Concat(content.BossDeck).Concat(content.CasterDeck).Concat(content.RusherDeck)
-                    .Append(content.EnemyZero).Where(c => c != null).Distinct().ToList();
-                return allCards;
-            }
-        }
-
-        public List<TrainingDummyEnemy> LivingEnemies() =>
-            FindObjectsByType<TrainingDummyEnemy>(FindObjectsSortMode.None)
-                .Where(e => e != null && e.Status != null && !e.Status.IsDead).ToList();
-
-        public TrainingDummyEnemy NearestEnemy()
-        {
-            var from = PlayerStatus != null ? PlayerStatus.transform.position : Vector3.zero;
-            return LivingEnemies().OrderBy(e => (e.transform.position - from).sqrMagnitude).FirstOrDefault();
-        }
-
-        /// <summary>A ground point <paramref name="distance"/> in front of the player, kept inside the arena.</summary>
-        public Vector3 SpawnPointAhead(float distance)
-        {
-            var t = PlayerInput.transform;
-            var forward = t.forward;
-            forward.y = 0f;
-            if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
-            var p = t.position + forward.normalized * distance;
-            return new Vector3(Mathf.Clamp(p.x, -10f, 10f), 0f, Mathf.Clamp(p.z, -10f, 10f));
-        }
-
-        /// <summary>Finds the director and player of the current scene if the cached ones are gone.</summary>
-        public void FindTargets()
-        {
-            if (Director == null) Director = FindAnyObjectByType<RunDirector>();
-            if (PlayerInput == null) PlayerInput = FindAnyObjectByType<PlayerCombatInput>();
-            BindTimer();
-        }
 
         // ---- lifecycle ----
 
@@ -183,7 +127,7 @@ namespace DeckArpg.UI
         public void Open()
         {
             FindTargets();
-            EnsureEventSystem();
+            UiFactory.EnsureEventSystem();
             IsOpen = true;
             SetVisible(true);
             Refresh();
@@ -361,12 +305,6 @@ namespace DeckArpg.UI
             if (canvas != null) canvas.gameObject.SetActive(visible);
         }
 
-        private static void EnsureEventSystem()
-        {
-            if (FindAnyObjectByType<EventSystem>() != null) return;
-            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-        }
-
         // ---- refresh ----
 
         /// <summary>Redraws labels, greys out unavailable rows, rewrites the Info tab and re-applies the juice switches.</summary>
@@ -374,6 +312,16 @@ namespace DeckArpg.UI
         {
             nextRefresh = Time.unscaledTime + RefreshSeconds;
             ApplyJuice();
+            // Many rows ask for the living enemies; scan the scene once for this redraw (rows only read it here).
+            refreshEnemies = LivingEnemies();
+            try { RefreshRows(); }
+            finally { refreshEnemies = null; }
+            if (CurrentTab == DebugTab.Info && infoText != null) infoText.text = BuildInfo();
+            if (statusText != null) statusText.text = LastError != null ? $"Error: {LastError}" : StatusLine();
+        }
+
+        private void RefreshRows()
+        {
             foreach (var row in rows)
             {
                 bool available = SafeAvailable(row.Command);
@@ -383,8 +331,6 @@ namespace DeckArpg.UI
                 if (row.Prev != null) row.Prev.interactable = available;
                 if (row.Next != null) row.Next.interactable = available;
             }
-            if (CurrentTab == DebugTab.Info && infoText != null) infoText.text = BuildInfo();
-            if (statusText != null) statusText.text = LastError != null ? $"Error: {LastError}" : StatusLine();
         }
 
         private static bool SafeAvailable(DebugCommand c)
@@ -397,119 +343,6 @@ namespace DeckArpg.UI
         {
             try { return c.Label(); }
             catch (Exception) { return "(unavailable)"; }
-        }
-
-        private string StatusLine()
-        {
-            string scene = Director != null ? "run scene" : PlayerInput != null ? "arena (no RunDirector)" : "no player";
-            return $"{scene}  ·  time x{HitStop.BaseTimeScale:0.##}  ·  {(Pinned ? "pinned: input free" : "input blocked while open")}";
-        }
-
-        private void ApplyJuice()
-        {
-            if (Juice.AllOn && juiceApplied) return; // nothing switched off: leave the scene alone
-            foreach (var punch in FindObjectsByType<CameraPunch>(FindObjectsSortMode.None))
-            {
-                punch.enabled = Juice.Shake;
-                foreach (var b in punch.GetComponents<Behaviour>())
-                    if (b.GetType().Name == "CinemachineImpulseListener") b.enabled = Juice.Shake;
-            }
-            foreach (var fx in FindObjectsByType<HitImpactFx>(FindObjectsSortMode.None)) fx.enabled = Juice.Sparks;
-            foreach (var fx in FindObjectsByType<ClashImpactFx>(FindObjectsSortMode.None)) fx.enabled = Juice.Sparks;
-            foreach (var view in FindObjectsByType<DamageNumberView>(FindObjectsSortMode.None)) view.enabled = Juice.Numbers;
-            AudioListener.volume = Juice.Sound ? 1f : 0f;
-            juiceApplied = Juice.AllOn; // all back on: applied once, then left alone
-        }
-
-        /// <summary>Marks the juice switches for re-application (call after changing <see cref="Juice"/>).</summary>
-        public void JuiceChanged() => juiceApplied = false;
-
-        private string BuildInfo()
-        {
-            float now = Time.realtimeSinceStartup;
-            var sb = new StringBuilder();
-            sb.AppendLine($"FPS {fps:0}   time x{HitStop.BaseTimeScale:0.##}   Freeze AI {(TrainingDummyEnemy.DebugFreezeAI ? "ON" : "off")}");
-
-            var d = Director;
-            var run = d != null ? d.Run : null;
-            if (run != null)
-            {
-                string room = d.State == RunDirectorState.ChoosingDoor
-                    ? $"door ({string.Join(", ", run.CurrentOffer.Select(c => c.ToString()))})"
-                    : run.CurrentRoom.ToString();
-                sb.AppendLine($"{d.State}   room {run.RoomNumber}/{RunState.BossRoom}: {room}");
-                sb.AppendLine($"Seed {d.LastSeed}   currency {run.Currency}   Momentum {run.Momentum.Stacks}");
-                sb.AppendLine($"Relics: {(run.Relics.Count > 0 ? string.Join(", ", run.Relics) : "none")}");
-                sb.AppendLine($"Room time {Timer.RoomElapsed(now):0.0}s   run time {Timer.RunElapsed(now):0}s");
-                if (Timer.History.Count > 0)
-                    sb.AppendLine("Last rooms: " + string.Join("  ", Timer.History.Select(h => $"{h.room} {h.seconds:0.0}s")));
-                sb.AppendLine($"Enemies {d.Enemies.Count(e => e != null && !e.Status.IsDead)}/{d.Enemies.Count(e => e != null)}" +
-                              $"   mix [{string.Join(", ", d.CurrentMix)}]   waves pending {d.WavesPending}" +
-                              (d.IsWaveIncoming ? "   WAVE 2 INCOMING" : ""));
-            }
-            else
-            {
-                sb.AppendLine(d == null ? "No RunDirector in this scene (Run tab is off)." : "No run yet.");
-                sb.AppendLine($"Enemies alive: {LivingEnemies().Count}");
-            }
-
-            var p = PlayerStatus;
-            if (p != null)
-            {
-                var fx = p.GetComponent<ElementStatusEffects>();
-                string statuses = fx == null ? "" : (fx.IsBurning ? " BURN" : "") + (fx.IsChilled ? " CHILL" : "");
-                sb.AppendLine($"Player HP {p.Hp}/{p.MaxHp}   posture {p.Posture:0}/{p.MaxPosture:0}{statuses}" +
-                              (p.GodMode ? "   GOD" : "") + (p.IsStunned ? "   STUNNED" : ""));
-            }
-            var deck = PlayerDeck;
-            if (deck != null && deck.Cycle != null)
-            {
-                var c = deck.Cycle;
-                sb.AppendLine($"Hand [{string.Join(", ", c.Hand.Select(h => h == null ? "-" : h.GetEffectiveValue().ToString()))}]" +
-                              $"   draw {c.DrawCount}  discard {c.DiscardCount}  burned {c.BurnedCount}  stock {c.StockCount}");
-            }
-            return sb.ToString();
-        }
-
-        // ---- run timer ----
-
-        private void BindTimer()
-        {
-            if (Director == boundDirector) return;
-            UnbindTimer();
-            boundDirector = Director;
-            if (boundDirector == null) return;
-            boundDirector.RoomStarted += HandleRoomStarted;
-            boundDirector.StateChanged += HandleStateChanged;
-            boundRun = boundDirector.Run;
-            Timer.StartRun(Time.realtimeSinceStartup);
-        }
-
-        private void UnbindTimer()
-        {
-            if (ReferenceEquals(boundDirector, null)) return;
-            boundDirector.RoomStarted -= HandleRoomStarted;
-            boundDirector.StateChanged -= HandleStateChanged;
-            boundDirector = null;
-        }
-
-        private void HandleRoomStarted(MapCard room)
-        {
-            CheckNewRun();
-            Timer.RoomStarted(Time.realtimeSinceStartup, room.ToString());
-        }
-
-        private void HandleStateChanged(RunDirectorState state)
-        {
-            CheckNewRun();
-            if (state != RunDirectorState.Fighting && state != RunDirectorState.Utility) Timer.RoomEnded(Time.realtimeSinceStartup);
-        }
-
-        private void CheckNewRun()
-        {
-            if (boundDirector == null || boundDirector.Run == boundRun) return;
-            boundRun = boundDirector.Run;
-            Timer.StartRun(Time.realtimeSinceStartup);
         }
 
         private sealed class Row
