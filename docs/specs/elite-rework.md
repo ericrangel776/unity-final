@@ -22,7 +22,7 @@ Goal: the skill is reading and punishing the Elite, not tanking it. Target: abou
 | No stun-lock | Player's posture damage taken in an Elite room | x0.67 |
 | Readable tell | A heavy card (effective value >= 6, not a 0) winds up longer | +0.15 s |
 | Punish window | After a heavy swing: **Overextended**, recover is longer | +0.6 s |
-| Punish window | While Overextended: HP and posture damage taken (orange tint) | x1.5 |
+| Punish window | While Overextended: HP and posture damage taken (gold tint) | x1.5 |
 
 Elite deck by Intensity after the offset: I1-4 `{4,5,6,6,7,8}`, I5-8 `{5,6,7,7,8,9}`, I9 `{6,7,8,8,9,9}`. Before this
 change it was I1-4 `{5,6,7,7,8,9}` up to I9 `{7,8,9,9,9,9}`. At I2, 4 of 6 cards are heavy; at I9, all 6. Harder Elites

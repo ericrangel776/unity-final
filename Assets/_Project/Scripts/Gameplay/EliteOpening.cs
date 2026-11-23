@@ -5,12 +5,15 @@ namespace DeckArpg.Gameplay
 {
     /// <summary>
     /// Elite punish window (docs/specs/elite-rework.md). A heavy card winds up a little longer (the tell); after the
-    /// swing the Elite recovers longer and is Overextended: it takes extra HP and posture damage and is tinted orange.
+    /// swing the Elite recovers longer and is Overextended: it takes extra HP and posture damage and is tinted gold.
     /// The window ends on its timer, at the next wind-up, or on death.
     /// </summary>
     [RequireComponent(typeof(TrainingDummyEnemy))]
     public sealed class EliteOpening : MonoBehaviour
     {
+        /// <summary>Bright gold: reads against every enemy body colour (the Elite is red; orange didn't stand out).</summary>
+        public static readonly Color OverextendedColor = new Color(1f, 0.85f, 0.15f, 1f);
+
         private TrainingDummyEnemy enemy;
         private BodyTint tint;
         private float remaining;
@@ -61,7 +64,7 @@ namespace DeckArpg.Gameplay
             remaining = seconds;
             enemy.Status.DamageTakenMultiplier = EliteRules.OverextendDamageMultiplier;
             enemy.Status.PostureTakenMultiplier = EliteRules.OverextendDamageMultiplier;
-            tint.Set(BodyTint.Layer.State, BossStateFx.ExhaustedColor, 0.6f);
+            tint.Set(BodyTint.Layer.State, OverextendedColor, 0.85f);
             WindowsOpened++;
         }
 
