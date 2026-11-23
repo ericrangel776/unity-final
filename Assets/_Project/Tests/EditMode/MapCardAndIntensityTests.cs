@@ -87,6 +87,10 @@ namespace DeckArpg.Tests.EditMode
         [TestCase(MapCardKind.Hexfire, 9, 3)]
         [TestCase(MapCardKind.Boss, 7, 0)]
         [TestCase(MapCardKind.Boss, 9, 0)]
+        [TestCase(MapCardKind.EliteTrial, 1, -2)]
+        [TestCase(MapCardKind.EliteTrial, 4, -2)]
+        [TestCase(MapCardKind.EliteTrial, 5, -1)]
+        [TestCase(MapCardKind.EliteTrial, 9, 0)]
         public void EnemyCardValueBonus(MapCardKind kind, int n, int expected) =>
             Assert.AreEqual(expected, RoomIntensity.EnemyCardValueBonus(Room(kind, n)));
 

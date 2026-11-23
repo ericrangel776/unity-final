@@ -76,8 +76,9 @@ namespace DeckArpg.Core
         }
 
         /// <summary>
-        /// Added to every enemy card as a room mod (so still clamped): <c>(I - 1) / 4</c>, +1 on Hexfire. The boss gets
-        /// 0: its deck is tuned directly so 9s are regular but spaced (M4).
+        /// Added to every enemy card as a room mod (so still clamped): <c>(I - 1) / 4</c>, +1 on Hexfire,
+        /// <see cref="EliteRules.CardValueOffset"/> on an Elite. The boss gets 0: its deck is tuned directly so 9s are
+        /// regular but spaced (M4).
         /// </summary>
         public static int EnemyCardValueBonus(in MapCard room)
         {
@@ -85,6 +86,7 @@ namespace DeckArpg.Core
             if (room.Kind == MapCardKind.Boss) return 0;
             int bonus = (room.Number - 1) / 4;
             if (room.Kind == MapCardKind.Hexfire) bonus += 1;
+            if (room.Kind == MapCardKind.EliteTrial) bonus += EliteRules.CardValueOffset;
             return bonus;
         }
 
