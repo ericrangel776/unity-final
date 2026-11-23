@@ -88,6 +88,8 @@ namespace DeckArpg.Gameplay
         public float BodyHitDelay { get => bodyHitDelay; set => bodyHitDelay = Mathf.Max(0f, value); }
         /// <summary>Stamped onto every payload we spawn (<see cref="AttackPayload.DamageScale"/>). 1 = normal; the boss uses 0.5.</summary>
         public float OutgoingDamageScale { get; set; } = 1f;
+        /// <summary>Multiplies the stun we take when one of our cards is broken. 1 = normal; the player in an Elite room uses 0.7.</summary>
+        public float BreakStunScale { get; set; } = 1f;
 
         /// <summary>Raised when one of our cards loses a clash. Card is null for off-deck attacks (poke).</summary>
         public event Action<RuntimeCardInstance, bool> CardBroken;
@@ -241,6 +243,7 @@ namespace DeckArpg.Gameplay
             CancelActiveAction();
             // The player's stun shrinks as more enemies are alive, so crowds can't stun-lock.
             float stunScale = Status.Team == Team.Player ? CombatMath.CrowdStunScale(TrainingDummyEnemy.LiveCount) : 1f;
+            stunScale *= BreakStunScale;
             Status.ApplyBreak(margin, awayFromWinner, stunScale, postureScale);
             CardBroken?.Invoke(card, brokeByZero);
         }
