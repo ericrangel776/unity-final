@@ -63,7 +63,7 @@ docs/specs/               one spec per feature, written before it was built
 | `DeckArpg.Gameplay` | Core, Input System, Cinemachine, URP | Turns rules into behaviour in the world |
 | `DeckArpg.UI` | Core, Gameplay, uGUI, Input System | Shows state and never owns rules |
 | `DeckArpg.Editor` | Core, Gameplay, UI, Cinemachine | Editor-only content builders |
-| `DeckArpg.Tests.*` | everything above | NUnit; `InternalsVisibleTo` lets tests reach `internal` hooks |
+| `DeckArpg.Tests.*` | Core, Gameplay, UI (plus Input System / Cinemachine / URP as needed) | NUnit; `InternalsVisibleTo` lets tests reach `internal` hooks |
 
 Dependencies only point one way: **Core <- Gameplay <- UI**. The asmdefs enforce it, because Gameplay can't even see
 UI types. The namespace always matches the assembly name.

@@ -86,7 +86,7 @@ freeze adds nothing, and each hit of a multi-hit Sleight only extends the freeze
 ### World FX: `Assets/_Project/Scripts/Gameplay/HitImpactFx.cs` (new)
 `[RequireComponent(typeof(CinemachineImpulseSource))]`. It lives on its own child `HitFx` under the `ClashFx` object so it
 never shares a `GetComponent<CinemachineImpulseSource>()` with `ClashImpactFx`. It reuses
-`ClashImpactFx.CreateParticleMaterial()`, `ConfigureAdditive` and the same unscaled-time particle settings. The small
+`ClashImpactFx.CreateParticleMaterial()`, `ConfigureAdditive` (now on `ParticleFx`) and the same unscaled-time particle settings. The small
 particle-system builder can be copied or made `internal static`; don't refactor `ClashImpactFx` beyond that.
 - `AnyHitLanded` -> emit sparks at `info.Position` coloured `Opaque(ElementColors.For(info.Payload))`, 6 for a poke and 10
   for a card or Sleight. If `info.Victim.Team == Team.Player`, call `impulse.GenerateImpulseAtPositionWithVelocity(pos,
