@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace DeckArpg.Tests.PlayMode
 {
     /// <summary><see cref="CombatantStatus.Heal"/> and <see cref="CombatantStatus.SetMaxHpKeepHp"/> (heal rework, step 4).</summary>
-    public class HealStatusTests : RunSceneTest
+    public class HealStatusTests
     {
         private GameObject go;
         private CombatantStatus status;
@@ -128,7 +128,7 @@ namespace DeckArpg.Tests.PlayMode
     }
 
     /// <summary>The run's max HP reaches the player's status (heal rework, step 4).</summary>
-    public class HealRunSyncTests
+    public class HealRunSyncTests : RunSceneTest
     {
         private CombatantStatus player;
 
