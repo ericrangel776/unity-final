@@ -26,6 +26,10 @@ input is off), Cinemachine 3.1.7, uGUI and Test Framework 1.6. No other packages
 2. Open `Assets/_Project/Scenes/M3_Run.unity` (the full run) or `M1_Arena.unity` (one dummy, for testing combat).
 3. Press Play. **Ctrl+Shift+B** (`DeckArpg/Play Boss Fight`) jumps straight to the boss.
 
+**Windows build:** `DeckArpg/Build Windows` writes a release (non-development) player to `Builds/Windows/`. In
+batchmode, use `-batchmode -nographics -quit -executeMethod DeckArpg.Editor.ReleaseBuilder.BuildWindows`, which exits
+non-zero if the build fails. The build opens on a title screen; it is skipped in batchmode, so tests start in the run.
+
 ### Controls
 
 | Input | Action |

@@ -83,6 +83,9 @@ When compacting, always keep: the current goal, the list of files modified, the
 test command and its latest result, and any failed approaches to avoid.
 
 ## Lessons learned
+- In a URP **player build**, `GameObject.CreatePrimitive` gets the built-in Standard material and renders magenta
+  (the Editor hides it). Runtime visuals go through `FxShapes.CreateVisual`, which uses URP Lit. Smoke-test the exe.
+- Batchmode builds re-serialize `Assets/Settings/*.asset` (URP churn): `git checkout -- Assets/Settings` afterwards.
 - `Time.timeScale` is global: anything that freezes it must share one owner/saved scale across
   instances, or a second freezer saves `0` as "previous" and locks the game. Restore it in `OnDisable`.
 - Wrap batchmode test runs in `timeout` so a hang fails fast. PlayMode test-writing gotchas live in

@@ -45,10 +45,18 @@ namespace DeckArpg.Gameplay
             return go;
         }
 
+        /// <summary>URP Lit: always in builds, because the scene's own materials use it.</summary>
+        public const string SolidShaderName = "Universal Render Pipeline/Lit";
+
         private static Material SolidMaterial(Material template, Color color)
         {
             if (solidMaterials.TryGetValue(color, out var m) && m != null) return m;
-            m = new Material(template) { name = "FxSolid", color = color };
+            // Not a copy of the primitive's material: in a player build CreatePrimitive hands out the built-in
+            // Standard material, which URP can't draw (magenta). The Editor hides this by using the pipeline default.
+            var lit = Shader.Find(SolidShaderName);
+            m = lit != null ? new Material(lit) : new Material(template);
+            m.name = "FxSolid";
+            m.color = color;
             solidMaterials[color] = m;
             return m;
         }
